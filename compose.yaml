@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.service
     ports:
-      - "8000:8000"
+      - "80:80"
     env_file:
       - .env
     develop:
@@ -28,7 +28,7 @@ services:
     depends_on:
       - agent_service
     environment:
-      - AGENT_URL=http://agent_service:8000
+      - AGENT_URL=http://agent_service
     develop:
       watch:
         - path: client/

@@ -8,7 +8,7 @@ from schema import ChatMessage, UserInput, StreamInput, Feedback
 class AgentClient:
     """Client for interacting with the agent service."""
 
-    def __init__(self, base_url: str = "http://localhost:8000"):
+    def __init__(self, base_url: str = "http://localhost:80"):
         """
         Initialize the client.
 
@@ -92,7 +92,7 @@ class AgentClient:
                         raise Exception(f"Server returned invalid message: {e}")
                 case "token":
                     # Yield the str token directly
-                    return parsed["content"]
+                    yield parsed["content"]
                 case "error":
                     raise Exception(parsed["content"])
 
@@ -171,7 +171,7 @@ class AgentClient:
                     raise Exception(f"Error: {response.status} - {await response.text()}")
                 # Parse incoming events with the SSE protocol
                 async for line in response.content:
-                    if line:
+                    if line.decode('utf-8').strip():
                         parsed = self._parse_stream_line(line)
                         if parsed is None:
                             break

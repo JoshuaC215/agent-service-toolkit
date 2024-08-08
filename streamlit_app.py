@@ -24,7 +24,7 @@ APP_ICON = "🔎"
 
 @st.cache_resource
 def get_agent_client():
-    agent_url = os.getenv("AGENT_URL", "http://localhost:8000")
+    agent_url = os.getenv("AGENT_URL", "http://localhost")
     return AgentClient(agent_url)
 
 
