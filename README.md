@@ -170,6 +170,15 @@ response.pretty_print()
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+### Roadmap
+
+- [ ] Get LlamaGuard working for content moderation (anyone know a reliable and fast hosted version?)
+- [ ] Add more sophisticated tools for the research assistant
+- [ ] Add support for multiple agents running on the same service, including non-chat agent
+- [ ] Increase test coverage and add CI pipeline
+- [ ] Deployment instructions and configuration for cloud providers
+- [ ] More ideas? File an issue or create a discussion!
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
