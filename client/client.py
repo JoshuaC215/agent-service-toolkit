@@ -92,7 +92,7 @@ class AgentClient:
                         raise Exception(f"Server returned invalid message: {e}")
                 case "token":
                     # Yield the str token directly
-                    yield parsed["content"]
+                    return parsed["content"]
                 case "error":
                     raise Exception(parsed["content"])
 
