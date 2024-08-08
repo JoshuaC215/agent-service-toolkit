@@ -4,6 +4,8 @@ This repository provides a blueprint and full toolkit for a LangGraph-based agen
 
 This project offers a template for you to easily build and run your own agents using the LangGraph framework. It demonstrates a complete setup from agent definition to user interface, making it easier to get started with LangGraph-based projects by providing a full, robust toolkit.
 
+**[🎥 Watch a video walkthrough of the repo and app](https://www.youtube.com/watch?v=VqQti9nGoe4)**
+
 ## Overview
 
 ### [Try the app!](https://agent-service-toolkit.streamlit.app/)
