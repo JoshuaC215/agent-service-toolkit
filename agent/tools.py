@@ -1,16 +1,16 @@
+import inspect
 import math
 import numexpr
 import re
-from langchain_core.tools import tool
+from langchain_core.tools import tool, BaseTool
 from langchain_community.tools import DuckDuckGoSearchResults, ArxivQueryRun
 
-web_search = DuckDuckGoSearchResults()
+web_search = DuckDuckGoSearchResults(name="WebSearch")
 
 # Kinda busted since it doesn't return links
-arxiv_search = ArxivQueryRun()
+arxiv_search = ArxivQueryRun(name="ArxivSearch")
 
-@tool
-def calculator(expression: str) -> str:
+def calculator_func(expression: str) -> str:
     """Calculates a math expression using numexpr.
     
     Useful for when you need to answer questions about math using numexpr.
@@ -39,3 +39,6 @@ def calculator(expression: str) -> str:
             f'calculator("{expression}") raised error: {e}.'
             " Please try again with a valid numerical expression"
         )
+
+calculator: BaseTool = tool(calculator_func)
+calculator.name = "Calculator"

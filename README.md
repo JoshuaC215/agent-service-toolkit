@@ -2,25 +2,24 @@
 
 This repository provides a blueprint and full toolkit for a LangGraph-based agent service architecture. It includes a [LangGraph](https://langchain-ai.github.io/langgraph/) agent, a [FastAPI](https://fastapi.tiangolo.com/) service to serve it, a client to interact with the service, and a [Streamlit](https://streamlit.io/) app that uses the client to provide a chat interface.
 
-## Purpose
+This project offers a template for you to easily build and run your own agents using the LangGraph framework. It demonstrates a complete setup from agent definition to user interface, making it easier to get started with LangGraph-based projects by providing a full, robust toolkit.
 
-The purpose of this project is to offer a template for developers to easily build and run their own agents using the LangGraph framework. It demonstrates a complete setup from agent definition to user interface, making it easier to get started with LangGraph-based projects by providing a full, robust kit.
+## Overview
 
-## Structure
+### [Try the app!](https://agent-service-toolkit.streamlit.app/)
 
-The repository is structured as follows:
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://agent-service-toolkit.streamlit.app/)
+ 
 
-- `agent/agent.py`: Defines the LangGraph agent
-- `schema/__init__.py`: Defines the service schema
-- `service/service.py`: FastAPI service to serve the agent
-- `client/__init__.py`: Client to interact with the agent service
-- `streamlit_app.py`: Streamlit app providing a chat interface
+<a href="https://agent-service-toolkit.streamlit.app/"><img src="media/app_screenshot.png" width="600"></a>
+
+
 
 ### Architecture Diagram
 
 <img src="media/agent_architecture.png" width="600">
 
-## Key Features
+### Key Features
 
 1. **LangGraph Agent**: A customizable agent built using the LangGraph framework.
 2. **FastAPI Service**: Serves the agent with both streaming and non-streaming endpoints.
@@ -30,6 +29,16 @@ The repository is structured as follows:
 6. **(WIP) Content Moderation**: Implements LlamaGuard for content moderation.
 7. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
 8. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
+
+### Key Files
+
+The repository is structured as follows:
+
+- `agent/agent.py`: Defines the LangGraph agent
+- `schema/__init__.py`: Defines the service schema
+- `service/service.py`: FastAPI service to serve the agent
+- `client/__init__.py`: Client to interact with the agent service
+- `streamlit_app.py`: Streamlit app providing a chat interface
 
 ## Why LangGraph?
 
