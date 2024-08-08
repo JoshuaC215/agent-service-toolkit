@@ -19,8 +19,8 @@ from schema import ChatMessage
 # The app heavily uses AgentClient to interact with the agent's FastAPI endpoints.
 
 
-APP_TITLE = "Research Assistant"
-APP_ICON = "🔎"
+APP_TITLE = "Agent Service Toolkit"
+APP_ICON = "🧰"
 
 @st.cache_resource
 def get_agent_client():
@@ -60,12 +60,26 @@ async def main():
     with st.sidebar:
         st.header(f"{APP_ICON} {APP_TITLE}")
         ""
-        with st.popover(":material/settings: Settings"):
+        "Full toolkit for running an AI agent service built with LangGraph, FastAPI and Streamlit"
+        with st.popover(":material/settings: Settings", use_container_width=True):
             m = st.radio("LLM to use", options=models.keys())
             model = models[m]
             use_streaming = st.toggle("Stream results", value=True)
-        with st.popover(":material/policy: Privacy"):
+        
+        @st.dialog("Architecture")
+        def architecture_dialog():
+            st.image("https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png?raw=true")
+            "[View full size on Github](https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png)"
+            st.caption("App hosted on [Streamlit Cloud](https://share.streamlit.io/) with FastAPI service running in [Azure](https://learn.microsoft.com/en-us/azure/app-service/)")
+
+        if st.button(":material/schema: Architecture", use_container_width=True):
+            architecture_dialog()
+
+        with st.popover(":material/policy: Privacy", use_container_width=True):
             st.write("Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only.")
+
+        "[View the source code](https://github.com/JoshuaC215/agent-service-toolkit)"
+        st.caption("Made with :material/favorite: by [Joshua](https://www.linkedin.com/in/joshua-k-carroll/) in Oakland")
 
     # Draw existing messages
     if "messages" not in st.session_state:
@@ -73,7 +87,7 @@ async def main():
     messages: List[ChatMessage] = st.session_state.messages
 
     if len(messages) == 0:
-        WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
+        WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. I may take a few seconds to boot up when you send your first message. Ask me anything!"
         with st.chat_message("ai"):
             st.write(WELCOME)
 
