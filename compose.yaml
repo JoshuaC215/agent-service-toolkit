@@ -1,0 +1,42 @@
+services:
+  agent_service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.service
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    develop:
+      watch:
+        - path: agent/
+          action: sync+restart
+          target: /app/agent/
+        - path: schema/
+          action: sync+restart
+          target: /app/schema/
+        - path: service/
+          action: sync+restart
+          target: /app/service/
+
+  streamlit_app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.app
+    ports:
+      - "8501:8501"
+    depends_on:
+      - agent_service
+    environment:
+      - AGENT_URL=http://agent_service:8000
+    develop:
+      watch:
+        - path: client/
+          action: sync+restart
+          target: /app/client/
+        - path: schema/
+          action: sync+restart
+          target: /app/schema/
+        - path: streamlit_app.py
+          action: sync+restart
+          target: /app/streamlit_app.py
