@@ -59,8 +59,8 @@ With that said, there are several other interesting projects in this space that 
 
 1. Clone the repository:
    ```
-   git clone https://github.com/JoshuaC215/langgraph-assistant.git
-   cd langgraph-assistant
+   git clone https://github.com/JoshuaC215/agent-service-toolkit.git
+   cd agent-service-toolkit
    ```
 
 2. Set up environment variables:
