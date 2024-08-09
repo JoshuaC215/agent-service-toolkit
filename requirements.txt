@@ -13,7 +13,8 @@ langchain-core~=0.2.26
 langchain-community~=0.2.11
 langchain-openai~=0.1.20
 langchain-groq~=0.1.9
-langgraph==0.1.19
+langgraph~=0.2.3
+langgraph-checkpoint-sqlite~=1.0.0
 langsmith~=0.1.96
 numexpr~=2.10.1
 pydantic~=1.10.17

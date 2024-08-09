@@ -5,7 +5,7 @@ from langchain_groq import ChatGroq
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage, RemoveMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda
-from langgraph.checkpoint import MemorySaver
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph, MessagesState
 from langgraph.managed import IsLastStep
 from langgraph.prebuilt import ToolNode
