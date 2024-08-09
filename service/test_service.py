@@ -7,20 +7,19 @@ from schema import ChatMessage
 
 client = TestClient(app)
 
-@patch("service.service.construct_agent")
-def test_invoke(mock_construct_agent):
-    agent = mock_construct_agent.return_value
+@patch("service.service.research_assistant")
+def test_invoke(mock_agent):
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is 70 degrees."
     agent_response = {"messages": [AIMessage(content=ANSWER)]}
-    agent.ainvoke = AsyncMock(return_value=agent_response)
+    mock_agent.ainvoke = AsyncMock(return_value=agent_response)
     
     with client as c:
         response = c.post("/invoke", json={"message": QUESTION})
         assert response.status_code == 200
     
-    agent.ainvoke.assert_awaited_once()
-    input_message = agent.ainvoke.await_args.kwargs["input"]["messages"][0]
+    mock_agent.ainvoke.assert_awaited_once()
+    input_message = mock_agent.ainvoke.await_args.kwargs["input"]["messages"][0]
     assert input_message.content == QUESTION
     
     output = ChatMessage.parse_obj(response.json())
