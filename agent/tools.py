@@ -1,4 +1,3 @@
-import inspect
 import math
 import numexpr
 import re
