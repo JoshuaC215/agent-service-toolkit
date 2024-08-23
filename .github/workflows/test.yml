@@ -20,15 +20,19 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python 3.12
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v5
       with:
-        python-version: "3.12.3"
+        python-version-file: ".python-version"
+    - name: Set up uv
+      run: |
+        curl -LsSf https://astral.sh/uv/0.3.2/install.sh | sh
     - name: Install dependencies with uv
       run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
         uv pip install flake8
         uv pip install -r requirements.txt
         uv pip install -r test-requirements.txt
+      env:
+        UV_SYSTEM_PYTHON: 1
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -37,6 +41,6 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        # ChatGroq won't initialize without a key
-        export GROQ_API_KEY=some-fake-groq-key
         pytest
+      env:
+        GROQ_API_KEY: some-fake-groq-key
