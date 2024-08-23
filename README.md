@@ -15,7 +15,25 @@ This project offers a template for you to easily build and run your own agents u
 
 <a href="https://agent-service-toolkit.streamlit.app/"><img src="media/app_screenshot.png" width="600"></a>
 
+### Quickstart
 
+Run directly in python
+
+```sh
+echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
+pip install -r requirements.txt
+python run_service.py
+
+# In another shell
+streamlit run streamlit_app.py
+```
+
+Run with docker
+
+```sh
+echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
+docker compose watch
+```
 
 ### Architecture Diagram
 
