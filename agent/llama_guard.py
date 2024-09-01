@@ -34,11 +34,13 @@ unsafe_content_categories = {
     "S14": "Code Interpreter Abuse."
 }
 
+categories_str = "\n".join([f"{k}: {v}" for k, v in unsafe_content_categories.items()])
+
 llama_guard_instructions = f"""
 [INST] Task: Check if there is unsafe content in '{{role}}' messages in conversations according our safety policy with the below categories.
 
 <BEGIN UNSAFE CONTENT CATEGORIES>
-{"\n".join([f"{k}: {v}" for k, v in unsafe_content_categories.items()])}
+{categories_str}
 <END UNSAFE CONTENT CATEGORIES>
 
 <BEGIN CONVERSATION>
