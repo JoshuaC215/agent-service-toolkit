@@ -34,7 +34,7 @@ unsafe_content_categories = {
     "S14": "Code Interpreter Abuse."
 }
 
-llama_guard_instructions = f"""
+llama_guard_instructions = """
 [INST] Task: Check if there is unsafe content in '{{role}}' messages in conversations according our safety policy with the below categories.
 
 <BEGIN UNSAFE CONTENT CATEGORIES>

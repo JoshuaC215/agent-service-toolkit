@@ -20,7 +20,7 @@ class AgentState(MessagesState):
 # NOTE: models with streaming=True will send tokens as they are generated
 # if the /stream endpoint is called with stream_tokens=True (the default)
 models = {
-    "gpt-4o-mini": ChatOpenAI(model="gpt-4o-mini", temperature=0.5, streaming=True),
+    "gpt-4o-mini": ChatOpenAI(model="gpt-4o-mini", temperature=0.5, openai_api_base="https://aihubmix.com/v1", streaming=True),
     "llama-3.1-70b": ChatGroq(model="llama-3.1-70b-versatile", temperature=0.5)
 }
 
@@ -29,7 +29,7 @@ current_date = datetime.now().strftime("%B %d, %Y")
 instructions = f"""
     You are a helpful research assistant with the ability to search the web for information.
     Today's date is {current_date}.
-    
+
     NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.
 
     A few things to remember:
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
 
     load_dotenv()
-    
+
     async def main():
         inputs = {"messages": [("user", "Find me a recipe for chocolate chip cookies")]}
         result = await research_assistant.ainvoke(
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         # export CFLAGS="-I $(brew --prefix graphviz)/include"
         # export LDFLAGS="-L $(brew --prefix graphviz)/lib"
         # pip install pygraphviz
-        # 
+        #
         # researcH_assistant.get_graph().draw_png("agent_diagram.png")
 
 

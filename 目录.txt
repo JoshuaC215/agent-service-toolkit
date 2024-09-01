@@ -1,0 +1,7 @@
+4.api           # 管理接收的数据和接口
+5.client        # 用户交互的逻辑
+1.schema        # agent的结构管理
+2.agent         # agent本体
+3.service       # agent的服务
+6.apiservice    # 用户交互的接口
+7.requirements.txt  # 安装部署
