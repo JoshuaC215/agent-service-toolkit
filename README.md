@@ -42,22 +42,23 @@ docker compose watch
 ### Key Features
 
 1. **LangGraph Agent**: A customizable agent built using the LangGraph framework.
-2. **FastAPI Service**: Serves the agent with both streaming and non-streaming endpoints.
-3. **Advanced Streaming**: A novel approach to support both token-based and message-based streaming.
-4. **Streamlit Interface**: Provides a user-friendly chat interface for interacting with the agent.
-5. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
-6. **(WIP) Content Moderation**: Implements LlamaGuard for content moderation.
-7. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
-8. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
+1. **FastAPI Service**: Serves the agent with both streaming and non-streaming endpoints.
+1. **Advanced Streaming**: A novel approach to support both token-based and message-based streaming.
+1. **Content Moderation**: Implements LlamaGuard for content moderation (requires Groq API key).
+1. **Streamlit Interface**: Provides a user-friendly chat interface for interacting with the agent.
+1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
+1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
+1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
 
 ### Key Files
 
 The repository is structured as follows:
 
-- `agent/agent.py`: Defines the LangGraph agent
-- `schema/__init__.py`: Defines the service schema
+- `agent/research_assistant.py`: Defines the LangGraph agent
+- `agent/llama_guard.py`: Defines the LlamaGuard content moderation
+- `schema/schema.py`: Defines the service schema
 - `service/service.py`: FastAPI service to serve the agent
-- `client/__init__.py`: Client to interact with the agent service
+- `client/client.py`: Client to interact with the agent service
 - `streamlit_app.py`: Streamlit app providing a chat interface
 
 ## Why LangGraph?
@@ -209,10 +210,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ### Roadmap
 
-- [ ] Get LlamaGuard working for content moderation (anyone know a reliable and fast hosted version?)
-- [ ] Add more sophisticated tools for the research assistant
+- [x] Get LlamaGuard working for content moderation (anyone know a reliable and fast hosted version?)
+- [x] Add more sophisticated tools for the research assistant
+- [x] Increase test coverage and add CI pipeline
 - [ ] Add support for multiple agents running on the same service, including non-chat agent
-- [ ] Increase test coverage and add CI pipeline
 - [ ] Deployment instructions and configuration for cloud providers
 - [ ] More ideas? File an issue or create a discussion!
 
