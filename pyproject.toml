@@ -15,11 +15,13 @@ classifiers = [
 
 requires-python = ">=3.9, <= 3.12.3"
 
-# see requirements.txt for dependencies
-# (pyproject dependencies is broken due to langchain issues)
+# NOTE: FastAPI < 0.100.0 and Pydantic v1 is required until langchain has full pydantic v2 compatibility
+# https://python.langchain.com/v0.1/docs/guides/development/pydantic_compatibility/
+# https://github.com/langchain-ai/langchain/discussions/24405
+# https://github.com/langchain-ai/langchain/discussions/9337
+# IMPORTANT: This also requires using python < 3.12.4
 dependencies = [
     "aiohttp ~=3.10.0",
-    "arxiv ~=2.1.3",
     "duckduckgo-search ~=6.2.6",
     "fastapi <0.100.0",
     "langchain-core ~=0.2.26",

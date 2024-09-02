@@ -2,12 +2,9 @@ import math
 import numexpr
 import re
 from langchain_core.tools import tool, BaseTool
-from langchain_community.tools import DuckDuckGoSearchResults, ArxivQueryRun
+from langchain_community.tools import DuckDuckGoSearchResults
 
 web_search = DuckDuckGoSearchResults(name="WebSearch")
-
-# Kinda busted since it doesn't return links
-arxiv_search = ArxivQueryRun(name="ArxivSearch")
 
 
 def calculator_func(expression: str) -> str:
