@@ -13,7 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-requires-python = ">=3.9, <= 3.12.3"
+requires-python = ">=3.9, <=3.12.3"
 
 # NOTE: FastAPI < 0.100.0 and Pydantic v1 is required until langchain has full pydantic v2 compatibility
 # https://python.langchain.com/v0.1/docs/guides/development/pydantic_compatibility/
@@ -36,6 +36,7 @@ dependencies = [
     "pydantic ~=1.10.17",
     "pyowm ~=3.3.0",
     "python-dotenv ~=1.0.1",
+    "setuptools ~=74.0.0",
     "streamlit ~=1.37.0",
     "uvicorn ~=0.30.5",
 ]

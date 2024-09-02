@@ -212,12 +212,13 @@ class AgentClient:
         See: https://api.smith.langchain.com/redoc#tag/feedback/operation/create_feedback_api_v1_feedback_post
         """
         request = Feedback(run_id=run_id, key=key, score=score, kwargs=kwargs)
-        response = await self.async_client.post(
-            f"{self.base_url}/feedback",
-            json=request.dict(),
-            headers=self._headers,
-            timeout=self.timeout,
-        )
-        if response.status_code != 200:
-            raise Exception(f"Error: {response.status_code} - {response.text}")
-        response.json()
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/feedback",
+                json=request.dict(),
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            if response.status_code != 200:
+                raise Exception(f"Error: {response.status_code} - {response.text}")
+            response.json()
