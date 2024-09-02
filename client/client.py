@@ -18,10 +18,6 @@ class AgentClient:
         self.base_url = base_url
         self.auth_secret = os.getenv("AUTH_SECRET")
 
-        # Use a shared async client to get the most benefit from connection pooling
-        # See: https://www.python-httpx.org/async/#opening-and-closing-clients
-        self.async_client = httpx.AsyncClient(timeout=None)
-
     @property
     def _headers(self):
         headers = {}
@@ -48,17 +44,17 @@ class AgentClient:
             request.thread_id = thread_id
         if model:
             request.model = model
-        response = await self.async_client.post(
-            f"{self.base_url}/invoke",
-            json=request.dict(),
-            headers=self._headers,
-            timeout=None,
-        )
-        if response.status_code == 200:
-            result = response.json()
-            return ChatMessage.parse_obj(result)
-        else:
-            raise Exception(f"Error: {response.status_code} - {response.text}")
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{self.base_url}/invoke",
+                json=request.dict(),
+                headers=self._headers,
+                timeout=None,
+            )
+            if response.status_code == 200:
+                return ChatMessage.parse_obj(response.json())
+            else:
+                raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def invoke(
         self, message: str, model: str | None = None, thread_id: str | None = None
@@ -183,17 +179,18 @@ class AgentClient:
             request.thread_id = thread_id
         if model:
             request.model = model
-        async with self.async_client.stream(
-            "POST", f"{self.base_url}/stream", json=request.dict(), headers=self._headers
-        ) as response:
-            if response.status_code != 200:
-                raise Exception(f"Error: {response.status_code} - {response.text}")
-            async for line in response.aiter_lines():
-                if line.strip():
-                    parsed = self._parse_stream_line(line)
-                    if parsed is None:
-                        break
-                    yield parsed
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST", f"{self.base_url}/stream", json=request.dict(), headers=self._headers
+            ) as response:
+                if response.status_code != 200:
+                    raise Exception(f"Error: {response.status_code} - {response.text}")
+                async for line in response.aiter_lines():
+                    if line.strip():
+                        parsed = self._parse_stream_line(line)
+                        if parsed is None:
+                            break
+                        yield parsed
 
     async def acreate_feedback(
         self, run_id: str, key: str, score: float, kwargs: Dict[str, Any] = {}
