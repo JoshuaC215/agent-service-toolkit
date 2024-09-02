@@ -29,17 +29,14 @@ jobs:
         curl -LsSf https://astral.sh/uv/0.3.2/install.sh | sh
     - name: Install dependencies with uv
       run: |
-        uv pip install flake8
-        uv pip install -r requirements.txt
-        uv pip install -r test-requirements.txt
+        uv pip install -r pyproject.toml --extra dev
       env:
         UV_SYSTEM_PYTHON: 1
-    - name: Lint with flake8
+    - name: Lint and format with ruff
       run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        ruff format --check
+        ruff check --output-format github
+
     - name: Test with pytest
       run: |
         pytest
