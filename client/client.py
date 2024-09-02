@@ -8,7 +8,7 @@ from schema import ChatMessage, UserInput, StreamInput, Feedback
 class AgentClient:
     """Client for interacting with the agent service."""
 
-    def __init__(self, base_url: str = "http://localhost:80"):
+    def __init__(self, base_url: str = "http://localhost:80", timeout: float | None = None):
         """
         Initialize the client.
 
@@ -17,6 +17,7 @@ class AgentClient:
         """
         self.base_url = base_url
         self.auth_secret = os.getenv("AUTH_SECRET")
+        self.timeout = timeout
 
     @property
     def _headers(self):
@@ -49,7 +50,7 @@ class AgentClient:
                 f"{self.base_url}/invoke",
                 json=request.dict(),
                 headers=self._headers,
-                timeout=None,
+                timeout=self.timeout,
             )
             if response.status_code == 200:
                 return ChatMessage.parse_obj(response.json())
@@ -79,7 +80,7 @@ class AgentClient:
             f"{self.base_url}/invoke",
             json=request.dict(),
             headers=self._headers,
-            timeout=None,
+            timeout=self.timeout,
         )
         if response.status_code == 200:
             return ChatMessage.parse_obj(response.json())
@@ -139,7 +140,11 @@ class AgentClient:
         if model:
             request.model = model
         with httpx.stream(
-            "POST", f"{self.base_url}/stream", json=request.dict(), headers=self._headers
+            "POST",
+            f"{self.base_url}/stream",
+            json=request.dict(),
+            headers=self._headers,
+            timeout=self.timeout,
         ) as response:
             if response.status_code != 200:
                 raise Exception(f"Error: {response.status_code} - {response.text}")
@@ -181,7 +186,11 @@ class AgentClient:
             request.model = model
         async with httpx.AsyncClient() as client:
             async with client.stream(
-                "POST", f"{self.base_url}/stream", json=request.dict(), headers=self._headers
+                "POST",
+                f"{self.base_url}/stream",
+                json=request.dict(),
+                headers=self._headers,
+                timeout=self.timeout,
             ) as response:
                 if response.status_code != 200:
                     raise Exception(f"Error: {response.status_code} - {response.text}")
@@ -204,7 +213,10 @@ class AgentClient:
         """
         request = Feedback(run_id=run_id, key=key, score=score, kwargs=kwargs)
         response = await self.async_client.post(
-            f"{self.base_url}/feedback", json=request.dict(), headers=self._headers
+            f"{self.base_url}/feedback",
+            json=request.dict(),
+            headers=self._headers,
+            timeout=self.timeout,
         )
         if response.status_code != 200:
             raise Exception(f"Error: {response.status_code} - {response.text}")
