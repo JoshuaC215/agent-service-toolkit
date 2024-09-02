@@ -119,7 +119,8 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
         # s could have updates for multiple nodes, so check each for messages.
         new_messages = []
         for _, state in s.items():
-            new_messages.extend(state["messages"])
+            if "messages" in state:
+                new_messages.extend(state["messages"])
         for message in new_messages:
             try:
                 chat_message = ChatMessage.from_langchain(message)

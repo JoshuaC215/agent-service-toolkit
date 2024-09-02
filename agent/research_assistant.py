@@ -12,7 +12,7 @@ from langgraph.managed import IsLastStep
 from langgraph.prebuilt import ToolNode
 
 from agent.tools import calculator
-from agent.llama_guard import LlamaGuard, LlamaGuardOutput
+from agent.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
 
 
 class AgentState(MessagesState):
@@ -84,6 +84,12 @@ async def llama_guard_input(state: AgentState, config: RunnableConfig):
     return {"safety": safety_output}
 
 
+async def llama_guard_output(state: AgentState, config: RunnableConfig):
+    llama_guard = LlamaGuard()
+    safety_output = await llama_guard.ainvoke("Agent", state["messages"])
+    return {"safety": safety_output}
+
+
 async def block_unsafe_content(state: AgentState, config: RunnableConfig):
     safety: LlamaGuardOutput = state["safety"]
     output_messages = []
@@ -104,27 +110,28 @@ async def block_unsafe_content(state: AgentState, config: RunnableConfig):
 agent = StateGraph(AgentState)
 agent.add_node("model", acall_model)
 agent.add_node("tools", ToolNode(tools))
-# agent.add_node("guard_input", llama_guard_input)
-# agent.add_node("block_unsafe_content", block_unsafe_content)
-# agent.set_entry_point("guard_input")
-agent.set_entry_point("model")
+agent.add_node("guard_input", llama_guard_input)
+agent.add_node("guard_output", llama_guard_output)
+agent.add_node("block_unsafe_content", block_unsafe_content)
+agent.set_entry_point("guard_input")
+
 
 # Check for unsafe input and block further processing if found
-# def unsafe_input(state: AgentState):
-#     safety: LlamaGuardOutput = state["safety"]
-#     match safety.safety_assessment:
-#         case "unsafe":
-#             return "block_unsafe_content"
-#         case _:
-#             return "model"
-# agent.add_conditional_edges(
-#     "guard_input",
-#     unsafe_input,
-#     {"block_unsafe_content": "block_unsafe_content", "model": "model"}
-# )
+def check_safety(state: AgentState):
+    safety: LlamaGuardOutput = state["safety"]
+    match safety.safety_assessment:
+        case SafetyAssessment.UNSAFE:
+            return "unsafe"
+        case _:
+            return "safe"
+
+
+agent.add_conditional_edges(
+    "guard_input", check_safety, {"unsafe": "block_unsafe_content", "safe": "model"}
+)
 
 # Always END after blocking unsafe content
-# agent.add_edge("block_unsafe_content", END)
+agent.add_edge("block_unsafe_content", END)
 
 # Always run "model" after "tools"
 agent.add_edge("tools", "model")
@@ -136,10 +143,14 @@ def pending_tool_calls(state: AgentState):
     if last_message.tool_calls:
         return "tools"
     else:
-        return END
+        return "done"
 
 
-agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", END: END})
+agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", "done": "guard_output"})
+
+agent.add_conditional_edges(
+    "guard_output", check_safety, {"unsafe": "block_unsafe_content", "safe": END}
+)
 
 research_assistant = agent.compile(
     checkpointer=MemorySaver(),
@@ -168,6 +179,6 @@ if __name__ == "__main__":
         # export LDFLAGS="-L $(brew --prefix graphviz)/lib"
         # pip install pygraphviz
         #
-        # researcH_assistant.get_graph().draw_png("agent_diagram.png")
+        # research_assistant.get_graph().draw_png("agent_diagram.png")
 
     asyncio.run(main())
