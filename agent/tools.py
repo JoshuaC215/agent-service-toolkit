@@ -2,9 +2,6 @@ import math
 import numexpr
 import re
 from langchain_core.tools import tool, BaseTool
-from langchain_community.tools import DuckDuckGoSearchResults
-
-web_search = DuckDuckGoSearchResults(name="WebSearch")
 
 
 def calculator_func(expression: str) -> str:

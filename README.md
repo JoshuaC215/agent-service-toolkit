@@ -93,6 +93,9 @@ With that said, there are several other interesting projects in this space that 
    # Optional, to enable simple header-based auth on the service
    AUTH_SECRET=any_string_you_choose
 
+   # Optional, to enable OpenWeatherMap
+   OPENWEATHERMAP_API_KEY=your_openweathermap_api_key
+
    # Optional, to enable LangSmith tracing
    LANGCHAIN_TRACING_V2=true
    LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
