@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
+from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage, RemoveMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda
@@ -10,7 +11,7 @@ from langgraph.graph import END, StateGraph, MessagesState
 from langgraph.managed import IsLastStep
 from langgraph.prebuilt import ToolNode
 
-from agent.tools import calculator, web_search
+from agent.tools import calculator
 from agent.llama_guard import LlamaGuard, LlamaGuardOutput
 
 
@@ -28,10 +29,17 @@ models = {
 if os.getenv("GROQ_API_KEY") is not None:
     models["llama-3.1-70b"] = ChatGroq(model="llama-3.1-70b-versatile", temperature=0.5)
 
+web_search = DuckDuckGoSearchResults(name="WebSearch")
 tools = [web_search, calculator]
+
+# Add weather tool if API key is set
+# Register for an API key at https://openweathermap.org/api/
+if os.getenv("OPENWEATHERMAP_API_KEY") is not None:
+    tools.append(OpenWeatherMapQueryRun(name="Weather"))
+
 current_date = datetime.now().strftime("%B %d, %Y")
 instructions = f"""
-    You are a helpful research assistant with the ability to search the web for information.
+    You are a helpful research assistant with the ability to search the web and use other tools.
     Today's date is {current_date}.
 
     NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.

@@ -34,6 +34,7 @@ dependencies = [
     "langsmith ~=0.1.96",
     "numexpr ~=2.10.1",
     "pydantic ~=1.10.17",
+    "pyowm ~=3.3.0",
     "python-dotenv ~=1.0.1",
     "streamlit ~=1.37.0",
     "uvicorn ~=0.30.5",
