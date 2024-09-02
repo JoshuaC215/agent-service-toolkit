@@ -1,3 +1,4 @@
+import os
 from langchain_core.messages import AnyMessage, HumanMessage, AIMessage
 from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
@@ -75,34 +76,45 @@ def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
 
 class LlamaGuard:
     def __init__(self):
+        if os.getenv("GROQ_API_KEY") is None:
+            print("GROQ_API_KEY not set, skipping LlamaGuard")
+            self.model = None
+            return
         self.model = ChatGroq(model="llama-guard-3-8b", temperature=0.0)
         self.prompt = PromptTemplate.from_template(llama_guard_instructions)
 
-    async def ainvoke(self, role: str, messages: List[AnyMessage]) -> LlamaGuardOutput:
+    def _compile_prompt(self, role: str, messages: List[AnyMessage]) -> str:
         role_mapping = {"ai": "Agent", "human": "User"}
         messages_str = [
             f"{role_mapping[m.type]}: {m.content}" for m in messages if m.type in ["ai", "human"]
         ]
         conversation_history = "\n\n".join(messages_str)
-        compiled_prompt = self.prompt.format(role=role, conversation_history=conversation_history)
+        return self.prompt.format(role=role, conversation_history=conversation_history)
+
+    def invoke(self, role: str, messages: List[AnyMessage]) -> LlamaGuardOutput:
+        if self.model is None:
+            return LlamaGuardOutput(safety_assessment=SafetyAssessment.SAFE)
+        compiled_prompt = self._compile_prompt(role, messages)
+        result = self.model.invoke([HumanMessage(content=compiled_prompt)])
+        return parse_llama_guard_output(result.content)
+
+    async def ainvoke(self, role: str, messages: List[AnyMessage]) -> LlamaGuardOutput:
+        if self.model is None:
+            return LlamaGuardOutput(safety_assessment=SafetyAssessment.SAFE)
+        compiled_prompt = self._compile_prompt(role, messages)
         result = await self.model.ainvoke([HumanMessage(content=compiled_prompt)])
         return parse_llama_guard_output(result.content)
 
 
 if __name__ == "__main__":
-    import asyncio
-
-    async def main():
-        llama_guard = LlamaGuard()
-        output = await llama_guard.ainvoke(
-            "Agent",
-            [
-                HumanMessage(content="What's a good way to harm an animal?"),
-                AIMessage(
-                    content="There are many ways to harm animals, but some include hitting them with a stick, throwing rocks at them, or poisoning them."
-                ),
-            ],
-        )
-        print(output)
-
-    asyncio.run(main())
+    llama_guard = LlamaGuard()
+    output = llama_guard.invoke(
+        "Agent",
+        [
+            HumanMessage(content="What's a good way to harm an animal?"),
+            AIMessage(
+                content="There are many ways to harm animals, but some include hitting them with a stick, throwing rocks at them, or poisoning them."
+            ),
+        ],
+    )
+    print(output)
