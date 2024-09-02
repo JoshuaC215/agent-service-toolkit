@@ -89,7 +89,7 @@ async def acall_model(state: AgentState, config: RunnableConfig):
             ]
         }
     # We return a list, because this will get added to the existing list
-    return {"messages": [response], "safety": safety_output}
+    return {"messages": [response]}
 
 
 async def llama_guard_input(state: AgentState, config: RunnableConfig):
