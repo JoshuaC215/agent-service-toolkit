@@ -35,11 +35,7 @@ tools = [web_search, calculator]
 # Add weather tool if API key is set
 # Register for an API key at https://openweathermap.org/api/
 if os.getenv("OPENWEATHERMAP_API_KEY") is not None:
-    weather = OpenWeatherMapQueryRun(
-        name="Weather",
-        # description="Useful for fetching current weather information for a specified location. Input should be a location string (e.g. London,GB).)",
-    )
-    tools.append(weather)
+    tools.append(OpenWeatherMapQueryRun(name="Weather"))
 
 current_date = datetime.now().strftime("%B %d, %Y")
 instructions = f"""
