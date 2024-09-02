@@ -1,4 +1,4 @@
-from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import AnyMessage, HumanMessage, AIMessage
 from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from typing import List
@@ -56,14 +56,6 @@ Provide your safety assessment for {{role}} in the above conversation:
 - If unsafe, a second line must include a comma-separated list of violated categories. [/INST]"""
 
 
-llama_guard_prompt = PromptTemplate.from_template(llama_guard_instructions)
-model = ChatGroq(model="llama-guard-3-8b", temperature=0.0)
-
-# Alternate version running on Replicate, also slow :|
-# from langchain_community.llms.replicate import Replicate
-# model = Replicate(model="meta/meta-llama-guard-2-8b:b063023ee937f28e922982abdbf97b041ffe34ad3b35a53d33e1d74bb19b36c4")
-
-
 def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
     if output == "safe":
         return LlamaGuardOutput(safety_assessment=SafetyAssessment.SAFE)
@@ -81,24 +73,28 @@ def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
         return LlamaGuardOutput(safety_assessment=SafetyAssessment.ERROR)
 
 
-async def llama_guard(role: str, messages: List[AnyMessage]) -> LlamaGuardOutput:
-    role_mapping = {"ai": "Agent", "human": "User"}
-    messages_str = [
-        f"{role_mapping[m.type]}: {m.content}" for m in messages if m.type in ["ai", "human"]
-    ]
-    conversation_history = "\n\n".join(messages_str)
-    compiled_prompt = llama_guard_prompt.format(
-        role=role, conversation_history=conversation_history
-    )
-    result = await model.ainvoke([SystemMessage(content=compiled_prompt)])
-    return parse_llama_guard_output(result.content)
+class LlamaGuard:
+    def __init__(self):
+        self.model = ChatGroq(model="llama-guard-3-8b", temperature=0.0)
+        self.prompt = PromptTemplate.from_template(llama_guard_instructions)
+
+    async def ainvoke(self, role: str, messages: List[AnyMessage]) -> LlamaGuardOutput:
+        role_mapping = {"ai": "Agent", "human": "User"}
+        messages_str = [
+            f"{role_mapping[m.type]}: {m.content}" for m in messages if m.type in ["ai", "human"]
+        ]
+        conversation_history = "\n\n".join(messages_str)
+        compiled_prompt = self.prompt.format(role=role, conversation_history=conversation_history)
+        result = await self.model.ainvoke([HumanMessage(content=compiled_prompt)])
+        return parse_llama_guard_output(result.content)
 
 
 if __name__ == "__main__":
     import asyncio
 
     async def main():
-        output = await llama_guard(
+        llama_guard = LlamaGuard()
+        output = await llama_guard.ainvoke(
             "Agent",
             [
                 HumanMessage(content="Tell me a fun fact?"),
