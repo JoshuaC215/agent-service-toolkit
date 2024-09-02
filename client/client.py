@@ -5,6 +5,7 @@ from typing import AsyncGenerator, Dict, Any, Generator
 import requests
 from schema import ChatMessage, UserInput, StreamInput, Feedback
 
+
 class AgentClient:
     """Client for interacting with the agent service."""
 
@@ -25,7 +26,9 @@ class AgentClient:
             headers["Authorization"] = f"Bearer {self.auth_secret}"
         return headers
 
-    async def ainvoke(self, message: str, model: str|None = None, thread_id: str|None = None) -> ChatMessage:
+    async def ainvoke(
+        self, message: str, model: str | None = None, thread_id: str | None = None
+    ) -> ChatMessage:
         """
         Invoke the agent asynchronously. Only the final message is returned.
 
@@ -43,14 +46,18 @@ class AgentClient:
                 request.thread_id = thread_id
             if model:
                 request.model = model
-            async with session.post(f"{self.base_url}/invoke", json=request.dict(), headers=self._headers) as response:
+            async with session.post(
+                f"{self.base_url}/invoke", json=request.dict(), headers=self._headers
+            ) as response:
                 if response.status == 200:
                     result = await response.json()
                     return ChatMessage.parse_obj(result)
                 else:
                     raise Exception(f"Error: {response.status} - {await response.text()}")
 
-    def invoke(self, message: str, model: str|None = None, thread_id: str|None = None) -> ChatMessage:
+    def invoke(
+        self, message: str, model: str | None = None, thread_id: str | None = None
+    ) -> ChatMessage:
         """
         Invoke the agent synchronously. Only the final message is returned.
 
@@ -67,14 +74,16 @@ class AgentClient:
             request.thread_id = thread_id
         if model:
             request.model = model
-        response = requests.post(f"{self.base_url}/invoke", json=request.dict(), headers=self._headers)
+        response = requests.post(
+            f"{self.base_url}/invoke", json=request.dict(), headers=self._headers
+        )
         if response.status_code == 200:
             return ChatMessage.parse_obj(response.json())
         else:
             raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def _parse_stream_line(self, line: str) -> ChatMessage | str | None:
-        line = line.decode('utf-8').strip()
+        line = line.decode("utf-8").strip()
         if line.startswith("data: "):
             data = line[6:]
             if data == "[DONE]":
@@ -97,15 +106,15 @@ class AgentClient:
                     raise Exception(parsed["content"])
 
     def stream(
-            self,
-            message: str,
-            model: str|None = None,
-            thread_id: str|None = None,
-            stream_tokens: bool = True
-        ) -> Generator[ChatMessage | str, None, None]:
+        self,
+        message: str,
+        model: str | None = None,
+        thread_id: str | None = None,
+        stream_tokens: bool = True,
+    ) -> Generator[ChatMessage | str, None, None]:
         """
         Stream the agent's response synchronously.
-        
+
         Each intermediate message of the agent process is yielded as a ChatMessage.
         If stream_tokens is True (the default value), the response will also yield
         content tokens from streaming models as they are generated.
@@ -125,10 +134,12 @@ class AgentClient:
             request.thread_id = thread_id
         if model:
             request.model = model
-        response = requests.post(f"{self.base_url}/stream", json=request.dict(), headers=self._headers, stream=True)
+        response = requests.post(
+            f"{self.base_url}/stream", json=request.dict(), headers=self._headers, stream=True
+        )
         if response.status_code != 200:
             raise Exception(f"Error: {response.status_code} - {response.text}")
-        
+
         for line in response.iter_lines():
             if line:
                 parsed = self._parse_stream_line(line)
@@ -137,15 +148,15 @@ class AgentClient:
                 yield parsed
 
     async def astream(
-            self,
-            message: str,
-            model: str|None = None,
-            thread_id: str|None = None,
-            stream_tokens: bool = True
-        ) -> AsyncGenerator[ChatMessage | str, None]:
+        self,
+        message: str,
+        model: str | None = None,
+        thread_id: str | None = None,
+        stream_tokens: bool = True,
+    ) -> AsyncGenerator[ChatMessage | str, None]:
         """
         Stream the agent's response asynchronously.
-        
+
         Each intermediate message of the agent process is yielded as an AnyMessage.
         If stream_tokens is True (the default value), the response will also yield
         content tokens from streaming modelsas they are generated.
@@ -166,24 +177,22 @@ class AgentClient:
                 request.thread_id = thread_id
             if model:
                 request.model = model
-            async with session.post(f"{self.base_url}/stream", json=request.dict(), headers=self._headers) as response:
+            async with session.post(
+                f"{self.base_url}/stream", json=request.dict(), headers=self._headers
+            ) as response:
                 if response.status != 200:
                     raise Exception(f"Error: {response.status} - {await response.text()}")
                 # Parse incoming events with the SSE protocol
                 async for line in response.content:
-                    if line.decode('utf-8').strip():
+                    if line.decode("utf-8").strip():
                         parsed = self._parse_stream_line(line)
                         if parsed is None:
                             break
                         yield parsed
 
     async def acreate_feedback(
-            self,
-            run_id: str,
-            key: str,
-            score: float,
-            kwargs: Dict[str, Any] = {}
-        ):
+        self, run_id: str, key: str, score: float, kwargs: Dict[str, Any] = {}
+    ):
         """
         Create a feedback record for a run.
 
@@ -193,7 +202,9 @@ class AgentClient:
         """
         async with aiohttp.ClientSession() as session:
             request = Feedback(run_id=run_id, key=key, score=score, kwargs=kwargs)
-            async with session.post(f"{self.base_url}/feedback", json=request.dict(), headers=self._headers) as response:
+            async with session.post(
+                f"{self.base_url}/feedback", json=request.dict(), headers=self._headers
+            ) as response:
                 if response.status != 200:
                     raise Exception(f"Error: {response.status} - {await response.text()}")
                 await response.json()

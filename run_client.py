@@ -1,9 +1,10 @@
-
 from client import AgentClient
 from schema import ChatMessage
 
 #### ASYNC ####
 import asyncio
+
+
 async def amain():
     client = AgentClient()
 
@@ -19,6 +20,7 @@ async def amain():
             message.pretty_print()
         else:
             print(f"ERROR: Unknown type - {type(message)}")
+
 
 asyncio.run(amain())
 

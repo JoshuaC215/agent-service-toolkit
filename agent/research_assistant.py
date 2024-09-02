@@ -9,7 +9,7 @@ from langgraph.graph import END, StateGraph, MessagesState
 from langgraph.managed import IsLastStep
 from langgraph.prebuilt import ToolNode
 
-from agent.tools import arxiv_search, calculator, web_search
+from agent.tools import calculator, web_search
 from agent.llama_guard import llama_guard, LlamaGuardOutput
 
 
@@ -17,11 +17,12 @@ class AgentState(MessagesState):
     safety: LlamaGuardOutput
     is_last_step: IsLastStep
 
+
 # NOTE: models with streaming=True will send tokens as they are generated
 # if the /stream endpoint is called with stream_tokens=True (the default)
 models = {
     "gpt-4o-mini": ChatOpenAI(model="gpt-4o-mini", temperature=0.5, streaming=True),
-    "llama-3.1-70b": ChatGroq(model="llama-3.1-70b-versatile", temperature=0.5)
+    "llama-3.1-70b": ChatGroq(model="llama-3.1-70b-versatile", temperature=0.5),
 }
 
 tools = [web_search, calculator]
@@ -29,7 +30,7 @@ current_date = datetime.now().strftime("%B %d, %Y")
 instructions = f"""
     You are a helpful research assistant with the ability to search the web for information.
     Today's date is {current_date}.
-    
+
     NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.
 
     A few things to remember:
@@ -39,6 +40,7 @@ instructions = f"""
       so for the final response, use human readable format - e.g. "300 * 200", not "(300 \\times 200)".
     """
 
+
 def wrap_model(model: BaseChatModel):
     model = model.bind_tools(tools)
     preprocessor = RunnableLambda(
@@ -46,6 +48,7 @@ def wrap_model(model: BaseChatModel):
         name="StateModifier",
     )
     return preprocessor | model
+
 
 async def acall_model(state: AgentState, config: RunnableConfig):
     m = models[config["configurable"].get("model", "gpt-4o-mini")]
@@ -68,6 +71,7 @@ async def llama_guard_input(state: AgentState, config: RunnableConfig):
     safety_output = await llama_guard("User", state["messages"])
     return {"safety": safety_output}
 
+
 async def block_unsafe_content(state: AgentState, config: RunnableConfig):
     safety: LlamaGuardOutput = state["safety"]
     output_messages = []
@@ -77,9 +81,12 @@ async def block_unsafe_content(state: AgentState, config: RunnableConfig):
     if last_message.type == "ai":
         output_messages.append(RemoveMessage(id=last_message.id))
 
-    content_warning = f"This conversation was flagged for unsafe content: {', '.join(safety.unsafe_categories)}"
+    content_warning = (
+        f"This conversation was flagged for unsafe content: {', '.join(safety.unsafe_categories)}"
+    )
     output_messages.append(AIMessage(content=content_warning))
     return {"messages": output_messages}
+
 
 # Define the graph
 agent = StateGraph(AgentState)
@@ -105,10 +112,11 @@ agent.set_entry_point("model")
 # )
 
 # Always END after blocking unsafe content
-#agent.add_edge("block_unsafe_content", END)
+# agent.add_edge("block_unsafe_content", END)
 
 # Always run "model" after "tools"
 agent.add_edge("tools", "model")
+
 
 # After "model", if there are tool calls, run "tools". Otherwise END.
 def pending_tool_calls(state: AgentState):
@@ -117,6 +125,8 @@ def pending_tool_calls(state: AgentState):
         return "tools"
     else:
         return END
+
+
 agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", END: END})
 
 research_assistant = agent.compile(
@@ -130,7 +140,7 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
 
     load_dotenv()
-    
+
     async def main():
         inputs = {"messages": [("user", "Find me a recipe for chocolate chip cookies")]}
         result = await research_assistant.ainvoke(
@@ -145,8 +155,7 @@ if __name__ == "__main__":
         # export CFLAGS="-I $(brew --prefix graphviz)/include"
         # export LDFLAGS="-L $(brew --prefix graphviz)/lib"
         # pip install pygraphviz
-        # 
+        #
         # researcH_assistant.get_graph().draw_png("agent_diagram.png")
-
 
     asyncio.run(main())

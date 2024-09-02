@@ -22,6 +22,7 @@ from schema import ChatMessage
 APP_TITLE = "Agent Service Toolkit"
 APP_ICON = "🧰"
 
+
 @st.cache_resource
 def get_agent_client():
     agent_url = os.getenv("AGENT_URL", "http://localhost")
@@ -65,21 +66,29 @@ async def main():
             m = st.radio("LLM to use", options=models.keys())
             model = models[m]
             use_streaming = st.toggle("Stream results", value=True)
-        
+
         @st.dialog("Architecture")
         def architecture_dialog():
-            st.image("https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png?raw=true")
+            st.image(
+                "https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png?raw=true"
+            )
             "[View full size on Github](https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png)"
-            st.caption("App hosted on [Streamlit Cloud](https://share.streamlit.io/) with FastAPI service running in [Azure](https://learn.microsoft.com/en-us/azure/app-service/)")
+            st.caption(
+                "App hosted on [Streamlit Cloud](https://share.streamlit.io/) with FastAPI service running in [Azure](https://learn.microsoft.com/en-us/azure/app-service/)"
+            )
 
         if st.button(":material/schema: Architecture", use_container_width=True):
             architecture_dialog()
 
         with st.popover(":material/policy: Privacy", use_container_width=True):
-            st.write("Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only.")
+            st.write(
+                "Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only."
+            )
 
         "[View the source code](https://github.com/JoshuaC215/agent-service-toolkit)"
-        st.caption("Made with :material/favorite: by [Joshua](https://www.linkedin.com/in/joshua-k-carroll/) in Oakland")
+        st.caption(
+            "Made with :material/favorite: by [Joshua](https://www.linkedin.com/in/joshua-k-carroll/) in Oakland"
+        )
 
     # Draw existing messages
     if "messages" not in st.session_state:
@@ -93,7 +102,9 @@ async def main():
 
     # draw_messages() expects an async iterator over messages
     async def amessage_iter():
-        for m in messages: yield m
+        for m in messages:
+            yield m
+
     await draw_messages(amessage_iter())
 
     # Generate new message if the user provided new input
@@ -116,7 +127,7 @@ async def main():
             )
             messages.append(response)
             st.chat_message("ai").write(response.content)
-        st.rerun() # Clear stale containers
+        st.rerun()  # Clear stale containers
 
     # If messages have been generated, show feedback widget
     if len(messages) > 0:
@@ -125,9 +136,9 @@ async def main():
 
 
 async def draw_messages(
-        messages_agen: AsyncGenerator[ChatMessage | str, None],
-        is_new=False,
-    ):
+    messages_agen: AsyncGenerator[ChatMessage | str, None],
+    is_new=False,
+):
     """
     Draws a set of chat messages - either replaying existing messages
     or streaming new ones.
@@ -136,7 +147,7 @@ async def draw_messages(
     - Use a placeholder container to render streaming tokens as they arrive.
     - Use a status container to render tool calls. Track the tool inputs and outputs
       and update the status container accordingly.
-    
+
     The function also needs to track the last message container in session state
     since later messages can draw to the same container. This is also used for
     drawing the feedback widget in the latest chat message.
@@ -166,7 +177,7 @@ async def draw_messages(
                     st.session_state.last_message = st.chat_message("ai")
                 with st.session_state.last_message:
                     streaming_placeholder = st.empty()
-            
+
             streaming_content += msg
             streaming_placeholder.write(streaming_content)
             continue
@@ -186,12 +197,12 @@ async def draw_messages(
                 # If we're rendering new messages, store the message in session state
                 if is_new:
                     st.session_state.messages.append(msg)
-                
+
                 # If the last message type was not AI, create a new chat message
                 if last_message_type != "ai":
                     last_message_type = "ai"
                     st.session_state.last_message = st.chat_message("ai")
-                
+
                 with st.session_state.last_message:
                     # If the message has content, write it out.
                     # Reset the streaming variables to prepare for the next message.
@@ -210,9 +221,9 @@ async def draw_messages(
                         call_results = {}
                         for tool_call in msg.tool_calls:
                             status = st.status(
-                                    f"""Tool Call: {tool_call["name"]}""",
-                                    state="running" if is_new else "complete",
-                                )
+                                f"""Tool Call: {tool_call["name"]}""",
+                                state="running" if is_new else "complete",
+                            )
                             call_results[tool_call["id"]] = status
                             status.write("Input:")
                             status.write(tool_call["args"])
@@ -224,7 +235,7 @@ async def draw_messages(
                                 st.error(f"Unexpected ChatMessage type: {tool_result.type}")
                                 st.write(tool_result)
                                 st.stop()
-                            
+
                             # Record the message if it's new, and update the correct
                             # status container with the result
                             if is_new:
@@ -235,7 +246,7 @@ async def draw_messages(
                             status.update(state="complete")
 
             # In case of an unexpected message type, log an error and stop
-            case _: 
+            case _:
                 st.error(f"Unexpected ChatMessage type: {msg.type}")
                 st.write(msg)
                 st.stop()
@@ -247,13 +258,12 @@ async def handle_feedback():
     # Keep track of last feedback sent to avoid sending duplicates
     if "last_feedback" not in st.session_state:
         st.session_state.last_feedback = (None, None)
-    
+
     latest_run_id = st.session_state.messages[-1].run_id
     feedback = st.feedback("stars", key=latest_run_id)
 
     # If the feedback value or run ID has changed, send a new feedback record
     if feedback and (latest_run_id, feedback) != st.session_state.last_feedback:
-        
         # Normalize the feedback value (an index) to a score between 0 and 1
         normalized_score = (feedback + 1) / 5.0
 

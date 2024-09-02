@@ -14,7 +14,9 @@ class SafetyAssessment(Enum):
 
 class LlamaGuardOutput(BaseModel):
     safety_assessment: SafetyAssessment = Field(description="The safety assessment of the content.")
-    unsafe_categories: List[str] = Field(description="If content is unsafe, the list of unsafe categories.", default=[])
+    unsafe_categories: List[str] = Field(
+        description="If content is unsafe, the list of unsafe categories.", default=[]
+    )
 
 
 unsafe_content_categories = {
@@ -31,7 +33,7 @@ unsafe_content_categories = {
     "S11": "Self-Harm.",
     "S12": "Sexual Content.",
     "S13": "Elections.",
-    "S14": "Code Interpreter Abuse."
+    "S14": "Code Interpreter Abuse.",
 }
 
 categories_str = "\n".join([f"{k}: {v}" for k, v in unsafe_content_categories.items()])
@@ -70,9 +72,7 @@ def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
         return LlamaGuardOutput(safety_assessment=SafetyAssessment.ERROR)
     try:
         categories = parsed_output[1].split(",")
-        readable_categories = [
-            unsafe_content_categories[c.strip()].strip(".") for c in categories
-        ]
+        readable_categories = [unsafe_content_categories[c.strip()].strip(".") for c in categories]
         return LlamaGuardOutput(
             safety_assessment=SafetyAssessment.UNSAFE,
             unsafe_categories=readable_categories,
@@ -83,9 +83,13 @@ def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
 
 async def llama_guard(role: str, messages: List[AnyMessage]) -> LlamaGuardOutput:
     role_mapping = {"ai": "Agent", "human": "User"}
-    messages_str = [f"{role_mapping[m.type]}: {m.content}" for m in messages if m.type in ["ai", "human"]]
+    messages_str = [
+        f"{role_mapping[m.type]}: {m.content}" for m in messages if m.type in ["ai", "human"]
+    ]
     conversation_history = "\n\n".join(messages_str)
-    compiled_prompt = llama_guard_prompt.format(role=role, conversation_history=conversation_history)
+    compiled_prompt = llama_guard_prompt.format(
+        role=role, conversation_history=conversation_history
+    )
     result = await model.ainvoke([SystemMessage(content=compiled_prompt)])
     return parse_llama_guard_output(result.content)
 
@@ -94,9 +98,13 @@ if __name__ == "__main__":
     import asyncio
 
     async def main():
-        output = await llama_guard("Agent", [
-            HumanMessage(content="Tell me a fun fact?"),
-            AIMessage(content="Did you know that honey never spoils?"),
-        ])
+        output = await llama_guard(
+            "Agent",
+            [
+                HumanMessage(content="Tell me a fun fact?"),
+                AIMessage(content="Did you know that honey never spoils?"),
+            ],
+        )
         print(output)
+
     asyncio.run(main())
