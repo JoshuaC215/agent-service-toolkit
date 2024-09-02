@@ -84,7 +84,10 @@ With that said, there are several other interesting projects in this space that 
 2. Set up environment variables:
    Create a `.env` file in the root directory and add the following:
    ```
+   # OPENAI_API_KEY is the only required variable
    OPENAI_API_KEY=your_openai_api_key
+
+   # Optional, to enable LlamaGuard and Llama 3.1
    GROQ_API_KEY=your_groq_api_key
 
    # Optional, to enable simple header-based auth on the service
