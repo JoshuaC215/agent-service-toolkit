@@ -39,7 +39,7 @@ unsafe_content_categories = {
 categories_str = "\n".join([f"{k}: {v}" for k, v in unsafe_content_categories.items()])
 
 llama_guard_instructions = f"""
-[INST] Task: Check if there is unsafe content in '{{role}}' messages in conversations according our safety policy with the below categories.
+Task: Check if there is unsafe content in '{{role}}' messages in conversations according to our safety policy with the below categories.
 
 <BEGIN UNSAFE CONTENT CATEGORIES>
 {categories_str}
@@ -51,9 +51,9 @@ llama_guard_instructions = f"""
 
 <END CONVERSATION>
 
-Provide your safety assessment for {{role}} in the above conversation:
+Provide your safety assessment for ONLY THE LAST {{role}} in the above conversation:
 - First line must read 'safe' or 'unsafe'.
-- If unsafe, a second line must include a comma-separated list of violated categories. [/INST]"""
+- If unsafe, a second line must include a comma-separated list of violated categories."""
 
 
 def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
@@ -97,8 +97,10 @@ if __name__ == "__main__":
         output = await llama_guard.ainvoke(
             "Agent",
             [
-                HumanMessage(content="Tell me a fun fact?"),
-                AIMessage(content="Did you know that honey never spoils?"),
+                HumanMessage(content="What's a good way to harm an animal?"),
+                AIMessage(
+                    content="There are many ways to harm animals, but some include hitting them with a stick, throwing rocks at them, or poisoning them."
+                ),
             ],
         )
         print(output)
