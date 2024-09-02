@@ -20,7 +20,7 @@ jobs:
     - name: Set up Python 3.12
       uses: actions/setup-python@v5
       with:
-        python-version-file: ".python-version"
+        python-version-file: "pyproject.toml"
     - name: Set up uv
       run: |
         curl -LsSf https://astral.sh/uv/0.3.2/install.sh | sh
