@@ -21,9 +21,9 @@ requires-python = ">=3.9, <= 3.12.3"
 # https://github.com/langchain-ai/langchain/discussions/9337
 # IMPORTANT: This also requires using python < 3.12.4
 dependencies = [
-    "aiohttp ~=3.10.0",
     "duckduckgo-search ~=6.2.6",
     "fastapi <0.100.0",
+    "httpx~=0.26.0",
     "langchain-core ~=0.2.26",
     "langchain-community ~=0.2.11",
     "langchain-openai ~=0.1.20",
@@ -42,7 +42,6 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "httpx~=0.26.0",
     "pre-commit",
     "pytest",
     "pytest-env",

@@ -1,8 +1,7 @@
-import aiohttp
 import json
 import os
+import httpx
 from typing import AsyncGenerator, Dict, Any, Generator
-import requests
 from schema import ChatMessage, UserInput, StreamInput, Feedback
 
 
@@ -18,6 +17,10 @@ class AgentClient:
         """
         self.base_url = base_url
         self.auth_secret = os.getenv("AUTH_SECRET")
+
+        # Use a shared async client to get the most benefit from connection pooling
+        # See: https://www.python-httpx.org/async/#opening-and-closing-clients
+        self.async_client = httpx.AsyncClient(timeout=None)
 
     @property
     def _headers(self):
@@ -40,20 +43,22 @@ class AgentClient:
         Returns:
             AnyMessage: The response from the agent
         """
-        async with aiohttp.ClientSession() as session:
-            request = UserInput(message=message)
-            if thread_id:
-                request.thread_id = thread_id
-            if model:
-                request.model = model
-            async with session.post(
-                f"{self.base_url}/invoke", json=request.dict(), headers=self._headers
-            ) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    return ChatMessage.parse_obj(result)
-                else:
-                    raise Exception(f"Error: {response.status} - {await response.text()}")
+        request = UserInput(message=message)
+        if thread_id:
+            request.thread_id = thread_id
+        if model:
+            request.model = model
+        response = await self.async_client.post(
+            f"{self.base_url}/invoke",
+            json=request.dict(),
+            headers=self._headers,
+            timeout=None,
+        )
+        if response.status_code == 200:
+            result = response.json()
+            return ChatMessage.parse_obj(result)
+        else:
+            raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def invoke(
         self, message: str, model: str | None = None, thread_id: str | None = None
@@ -74,8 +79,11 @@ class AgentClient:
             request.thread_id = thread_id
         if model:
             request.model = model
-        response = requests.post(
-            f"{self.base_url}/invoke", json=request.dict(), headers=self._headers
+        response = httpx.post(
+            f"{self.base_url}/invoke",
+            json=request.dict(),
+            headers=self._headers,
+            timeout=None,
         )
         if response.status_code == 200:
             return ChatMessage.parse_obj(response.json())
@@ -83,7 +91,7 @@ class AgentClient:
             raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def _parse_stream_line(self, line: str) -> ChatMessage | str | None:
-        line = line.decode("utf-8").strip()
+        line = line.strip()
         if line.startswith("data: "):
             data = line[6:]
             if data == "[DONE]":
@@ -134,18 +142,17 @@ class AgentClient:
             request.thread_id = thread_id
         if model:
             request.model = model
-        response = requests.post(
-            f"{self.base_url}/stream", json=request.dict(), headers=self._headers, stream=True
-        )
-        if response.status_code != 200:
-            raise Exception(f"Error: {response.status_code} - {response.text}")
-
-        for line in response.iter_lines():
-            if line:
-                parsed = self._parse_stream_line(line)
-                if parsed is None:
-                    break
-                yield parsed
+        with httpx.stream(
+            "POST", f"{self.base_url}/stream", json=request.dict(), headers=self._headers
+        ) as response:
+            if response.status_code != 200:
+                raise Exception(f"Error: {response.status_code} - {response.text}")
+            for line in response.iter_lines():
+                if line.strip():
+                    parsed = self._parse_stream_line(line)
+                    if parsed is None:
+                        break
+                    yield parsed
 
     async def astream(
         self,
@@ -171,24 +178,22 @@ class AgentClient:
         Returns:
             AsyncGenerator[ChatMessage | str, None]: The response from the agent
         """
-        async with aiohttp.ClientSession() as session:
-            request = StreamInput(message=message, stream_tokens=stream_tokens)
-            if thread_id:
-                request.thread_id = thread_id
-            if model:
-                request.model = model
-            async with session.post(
-                f"{self.base_url}/stream", json=request.dict(), headers=self._headers
-            ) as response:
-                if response.status != 200:
-                    raise Exception(f"Error: {response.status} - {await response.text()}")
-                # Parse incoming events with the SSE protocol
-                async for line in response.content:
-                    if line.decode("utf-8").strip():
-                        parsed = self._parse_stream_line(line)
-                        if parsed is None:
-                            break
-                        yield parsed
+        request = StreamInput(message=message, stream_tokens=stream_tokens)
+        if thread_id:
+            request.thread_id = thread_id
+        if model:
+            request.model = model
+        async with self.async_client.stream(
+            "POST", f"{self.base_url}/stream", json=request.dict(), headers=self._headers
+        ) as response:
+            if response.status_code != 200:
+                raise Exception(f"Error: {response.status_code} - {response.text}")
+            async for line in response.aiter_lines():
+                if line.strip():
+                    parsed = self._parse_stream_line(line)
+                    if parsed is None:
+                        break
+                    yield parsed
 
     async def acreate_feedback(
         self, run_id: str, key: str, score: float, kwargs: Dict[str, Any] = {}
@@ -200,11 +205,10 @@ class AgentClient:
         credentials can be stored and managed in the service rather than the client.
         See: https://api.smith.langchain.com/redoc#tag/feedback/operation/create_feedback_api_v1_feedback_post
         """
-        async with aiohttp.ClientSession() as session:
-            request = Feedback(run_id=run_id, key=key, score=score, kwargs=kwargs)
-            async with session.post(
-                f"{self.base_url}/feedback", json=request.dict(), headers=self._headers
-            ) as response:
-                if response.status != 200:
-                    raise Exception(f"Error: {response.status} - {await response.text()}")
-                await response.json()
+        request = Feedback(run_id=run_id, key=key, score=score, kwargs=kwargs)
+        response = await self.async_client.post(
+            f"{self.base_url}/feedback", json=request.dict(), headers=self._headers
+        )
+        if response.status_code != 200:
+            raise Exception(f"Error: {response.status_code} - {response.text}")
+        response.json()
