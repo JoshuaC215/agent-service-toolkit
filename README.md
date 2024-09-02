@@ -20,12 +20,16 @@ This project offers a template for you to easily build and run your own agents u
 Run directly in python
 
 ```sh
+# An OPENAI_API_KEY is required
 echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
-pip install -r requirements.txt
-python run_service.py
+
+# uv is recommended but pip also works
+pip install uv
+uv pip install -r pyproject.toml
+python src/run_service.py
 
 # In another shell
-streamlit run streamlit_app.py
+streamlit run src/streamlit_app.py
 ```
 
 Run with docker
@@ -54,12 +58,12 @@ docker compose watch
 
 The repository is structured as follows:
 
-- `agent/research_assistant.py`: Defines the LangGraph agent
-- `agent/llama_guard.py`: Defines the LlamaGuard content moderation
-- `schema/schema.py`: Defines the service schema
-- `service/service.py`: FastAPI service to serve the agent
-- `client/client.py`: Client to interact with the agent service
-- `streamlit_app.py`: Streamlit app providing a chat interface
+- `src/agent/research_assistant.py`: Defines the LangGraph agent
+- `src/agent/llama_guard.py`: Defines the LlamaGuard content moderation
+- `src/schema/schema.py`: Defines the service schema
+- `src/service/service.py`: FastAPI service to serve the agent
+- `src/client/client.py`: Client to interact with the agent service
+- `src/streamlit_app.py`: Streamlit app providing a chat interface
 
 ## Why LangGraph?
 
@@ -121,7 +125,7 @@ For local development, we recommend using [docker compose watch](https://docs.do
 
 3. The services will now automatically update when you make changes to your code:
    - Changes in the relevant python files and directories will trigger updates for the relevantservices.
-   - NOTE: If you make changes to the `requirements.txt` file, you will need to rebuild the services by running `docker compose up --build`.
+   - NOTE: If you make changes to the `pyproject.toml` file, you will need to rebuild the services by running `docker compose up --build`.
 
 4. Access the Streamlit app by navigating to `http://localhost:8501` in your web browser.
 
@@ -137,19 +141,20 @@ You can also run the agent service and the Streamlit app locally without Docker,
 
 1. Create a virtual environment and install dependencies:
    ```
-   python -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
+   pip install uv
+   uv venv
+   source .venv/bin/activate
+   uv pip install -r pyproject.toml
    ```
 
 2. Run the FastAPI server:
    ```
-   python run_service.py
+   python src/run_service.py
    ```
 
 3. In a separate terminal, run the Streamlit app:
    ```
-   streamlit run streamlit_app.py
+   streamlit run src/streamlit_app.py
    ```
 
 4. Open your browser and navigate to the URL provided by Streamlit (usually `http://localhost:8501`).
@@ -182,14 +187,14 @@ Currently the tests need to be run using the local development without Docker se
 
 To customize the agent for your own use case:
 
-1. Modify the `agent/research_assistant.py` file to change the agent's behavior and tools. Or, build a new agent from scratch.
-2. Adjust the Streamlit interface in `streamlit_app.py` to match your agent's capabilities.
+1. Modify the `src/agent/research_assistant.py` file to change the agent's behavior and tools. Or, build a new agent from scratch.
+2. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
 
 ## Building other apps on the AgentClient
 
-The repo includes a generic `client.AgentClient` that can be used to interact with the agent service. This client is designed to be flexible and can be used to build other apps on top of the agent. It supports both synchronous and asynchronous invocations, and streaming and non-streaming requests.
+The repo includes a generic `src/client/client.AgentClient` that can be used to interact with the agent service. This client is designed to be flexible and can be used to build other apps on top of the agent. It supports both synchronous and asynchronous invocations, and streaming and non-streaming requests.
 
-See the `run_client.py` file for full examples of how to use the `AgentClient`. A quick example:
+See the `src/run_client.py` file for full examples of how to use the `AgentClient`. A quick example:
 
 ```python
 from client import AgentClient

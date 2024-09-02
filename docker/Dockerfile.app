@@ -2,12 +2,12 @@ FROM python:3.12.3-slim
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY pyproject.toml .
 RUN pip install --no-cache-dir uv
-RUN uv pip install --system --no-cache -r requirements.txt
+RUN uv pip install --system --no-cache -r pyproject.toml
 
-COPY client/ ./client/
-COPY schema/ ./schema/
-COPY streamlit_app.py .
+COPY src/client/ ./client/
+COPY src/schema/ ./schema/
+COPY src/streamlit_app.py .
 
 CMD ["streamlit", "run", "streamlit_app.py"]

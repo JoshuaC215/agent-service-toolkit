@@ -19,5 +19,6 @@ numexpr~=2.10.1
 pydantic~=1.10.17
 pyowm~=3.3.0
 python-dotenv~=1.0.1
+setuptools~=74.0.0
 streamlit~=1.37.0
 uvicorn~=0.30.5
