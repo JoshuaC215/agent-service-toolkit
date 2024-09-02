@@ -1,4 +1,4 @@
-from langchain_core.messages import AnyMessage, SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import AnyMessage, HumanMessage, AIMessage
 from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from typing import List
@@ -39,7 +39,7 @@ unsafe_content_categories = {
 categories_str = "\n".join([f"{k}: {v}" for k, v in unsafe_content_categories.items()])
 
 llama_guard_instructions = f"""
-[INST] Task: Check if there is unsafe content in '{{role}}' messages in conversations according our safety policy with the below categories.
+Task: Check if there is unsafe content in '{{role}}' messages in conversations according to our safety policy with the below categories.
 
 <BEGIN UNSAFE CONTENT CATEGORIES>
 {categories_str}
@@ -51,17 +51,9 @@ llama_guard_instructions = f"""
 
 <END CONVERSATION>
 
-Provide your safety assessment for {{role}} in the above conversation:
+Provide your safety assessment for ONLY THE LAST {{role}} in the above conversation:
 - First line must read 'safe' or 'unsafe'.
-- If unsafe, a second line must include a comma-separated list of violated categories. [/INST]"""
-
-
-llama_guard_prompt = PromptTemplate.from_template(llama_guard_instructions)
-model = ChatGroq(model="llama-guard-3-8b", temperature=0.0)
-
-# Alternate version running on Replicate, also slow :|
-# from langchain_community.llms.replicate import Replicate
-# model = Replicate(model="meta/meta-llama-guard-2-8b:b063023ee937f28e922982abdbf97b041ffe34ad3b35a53d33e1d74bb19b36c4")
+- If unsafe, a second line must include a comma-separated list of violated categories."""
 
 
 def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
@@ -81,28 +73,34 @@ def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
         return LlamaGuardOutput(safety_assessment=SafetyAssessment.ERROR)
 
 
-async def llama_guard(role: str, messages: List[AnyMessage]) -> LlamaGuardOutput:
-    role_mapping = {"ai": "Agent", "human": "User"}
-    messages_str = [
-        f"{role_mapping[m.type]}: {m.content}" for m in messages if m.type in ["ai", "human"]
-    ]
-    conversation_history = "\n\n".join(messages_str)
-    compiled_prompt = llama_guard_prompt.format(
-        role=role, conversation_history=conversation_history
-    )
-    result = await model.ainvoke([SystemMessage(content=compiled_prompt)])
-    return parse_llama_guard_output(result.content)
+class LlamaGuard:
+    def __init__(self):
+        self.model = ChatGroq(model="llama-guard-3-8b", temperature=0.0)
+        self.prompt = PromptTemplate.from_template(llama_guard_instructions)
+
+    async def ainvoke(self, role: str, messages: List[AnyMessage]) -> LlamaGuardOutput:
+        role_mapping = {"ai": "Agent", "human": "User"}
+        messages_str = [
+            f"{role_mapping[m.type]}: {m.content}" for m in messages if m.type in ["ai", "human"]
+        ]
+        conversation_history = "\n\n".join(messages_str)
+        compiled_prompt = self.prompt.format(role=role, conversation_history=conversation_history)
+        result = await self.model.ainvoke([HumanMessage(content=compiled_prompt)])
+        return parse_llama_guard_output(result.content)
 
 
 if __name__ == "__main__":
     import asyncio
 
     async def main():
-        output = await llama_guard(
+        llama_guard = LlamaGuard()
+        output = await llama_guard.ainvoke(
             "Agent",
             [
-                HumanMessage(content="Tell me a fun fact?"),
-                AIMessage(content="Did you know that honey never spoils?"),
+                HumanMessage(content="What's a good way to harm an animal?"),
+                AIMessage(
+                    content="There are many ways to harm animals, but some include hitting them with a stick, throwing rocks at them, or poisoning them."
+                ),
             ],
         )
         print(output)

@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -10,7 +11,7 @@ from langgraph.managed import IsLastStep
 from langgraph.prebuilt import ToolNode
 
 from agent.tools import calculator, web_search
-from agent.llama_guard import llama_guard, LlamaGuardOutput
+from agent.llama_guard import LlamaGuard, LlamaGuardOutput
 
 
 class AgentState(MessagesState):
@@ -22,8 +23,10 @@ class AgentState(MessagesState):
 # if the /stream endpoint is called with stream_tokens=True (the default)
 models = {
     "gpt-4o-mini": ChatOpenAI(model="gpt-4o-mini", temperature=0.5, streaming=True),
-    "llama-3.1-70b": ChatGroq(model="llama-3.1-70b-versatile", temperature=0.5),
 }
+
+if os.getenv("GROQ_API_KEY") is not None:
+    models["llama-3.1-70b"] = ChatGroq(model="llama-3.1-70b-versatile", temperature=0.5)
 
 tools = [web_search, calculator]
 current_date = datetime.now().strftime("%B %d, %Y")
@@ -68,7 +71,8 @@ async def acall_model(state: AgentState, config: RunnableConfig):
 
 
 async def llama_guard_input(state: AgentState, config: RunnableConfig):
-    safety_output = await llama_guard("User", state["messages"])
+    llama_guard = LlamaGuard()
+    safety_output = await llama_guard.ainvoke("User", state["messages"])
     return {"safety": safety_output}
 
 

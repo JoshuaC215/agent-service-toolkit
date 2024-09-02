@@ -37,6 +37,3 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
-      env:
-        OPENAI_API_KEY: sk-fake-openai-key
-        GROQ_API_KEY: gsk_fake_groq_key
