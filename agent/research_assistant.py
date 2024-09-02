@@ -4,7 +4,7 @@ from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, SystemMessage, RemoveMessage
+from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph, MessagesState
@@ -61,10 +61,24 @@ def wrap_model(model: BaseChatModel):
     return preprocessor | model
 
 
+def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
+    content = (
+        f"This conversation was flagged for unsafe content: {', '.join(safety.unsafe_categories)}"
+    )
+    return AIMessage(content=content)
+
+
 async def acall_model(state: AgentState, config: RunnableConfig):
     m = models[config["configurable"].get("model", "gpt-4o-mini")]
     model_runnable = wrap_model(m)
     response = await model_runnable.ainvoke(state, config)
+
+    # Run llama guard check here to avoid returning the message if it's unsafe
+    llama_guard = LlamaGuard()
+    safety_output = await llama_guard.ainvoke("Agent", state["messages"] + [response])
+    if safety_output.safety_assessment == SafetyAssessment.UNSAFE:
+        return {"messages": [format_safety_message(safety_output)], "safety": safety_output}
+
     if state["is_last_step"] and response.tool_calls:
         return {
             "messages": [
@@ -75,7 +89,7 @@ async def acall_model(state: AgentState, config: RunnableConfig):
             ]
         }
     # We return a list, because this will get added to the existing list
-    return {"messages": [response]}
+    return {"messages": [response], "safety": safety_output}
 
 
 async def llama_guard_input(state: AgentState, config: RunnableConfig):
@@ -84,26 +98,9 @@ async def llama_guard_input(state: AgentState, config: RunnableConfig):
     return {"safety": safety_output}
 
 
-async def llama_guard_output(state: AgentState, config: RunnableConfig):
-    llama_guard = LlamaGuard()
-    safety_output = await llama_guard.ainvoke("Agent", state["messages"])
-    return {"safety": safety_output}
-
-
 async def block_unsafe_content(state: AgentState, config: RunnableConfig):
     safety: LlamaGuardOutput = state["safety"]
-    output_messages = []
-
-    # Remove the last message if it's an AI message
-    last_message = state["messages"][-1]
-    if last_message.type == "ai":
-        output_messages.append(RemoveMessage(id=last_message.id))
-
-    content_warning = (
-        f"This conversation was flagged for unsafe content: {', '.join(safety.unsafe_categories)}"
-    )
-    output_messages.append(AIMessage(content=content_warning))
-    return {"messages": output_messages}
+    return {"messages": [format_safety_message(safety)]}
 
 
 # Define the graph
@@ -111,7 +108,6 @@ agent = StateGraph(AgentState)
 agent.add_node("model", acall_model)
 agent.add_node("tools", ToolNode(tools))
 agent.add_node("guard_input", llama_guard_input)
-agent.add_node("guard_output", llama_guard_output)
 agent.add_node("block_unsafe_content", block_unsafe_content)
 agent.set_entry_point("guard_input")
 
@@ -146,11 +142,7 @@ def pending_tool_calls(state: AgentState):
         return "done"
 
 
-agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", "done": "guard_output"})
-
-agent.add_conditional_edges(
-    "guard_output", check_safety, {"unsafe": "block_unsafe_content", "safe": END}
-)
+agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", "done": END})
 
 research_assistant = agent.compile(
     checkpointer=MemorySaver(),
