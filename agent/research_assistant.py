@@ -30,7 +30,7 @@ current_date = datetime.now().strftime("%B %d, %Y")
 instructions = f"""
     You are a helpful research assistant with the ability to search the web for information.
     Today's date is {current_date}.
-    
+
     NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.
 
     A few things to remember:

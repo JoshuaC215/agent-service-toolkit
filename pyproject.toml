@@ -41,8 +41,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest",
     "httpx~=0.26.0",
+    "pre-commit",
+    "pytest",
     "ruff",
 ]
 
