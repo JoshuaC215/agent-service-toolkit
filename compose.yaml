@@ -9,13 +9,13 @@ services:
       - .env
     develop:
       watch:
-        - path: agent/
+        - path: src/agent/
           action: sync+restart
           target: /app/agent/
-        - path: schema/
+        - path: src/schema/
           action: sync+restart
           target: /app/schema/
-        - path: service/
+        - path: src/service/
           action: sync+restart
           target: /app/service/
 
@@ -31,12 +31,12 @@ services:
       - AGENT_URL=http://agent_service
     develop:
       watch:
-        - path: client/
+        - path: src/client/
           action: sync+restart
           target: /app/client/
-        - path: schema/
+        - path: src/schema/
           action: sync+restart
           target: /app/schema/
-        - path: streamlit_app.py
+        - path: src/streamlit_app.py
           action: sync+restart
           target: /app/streamlit_app.py
