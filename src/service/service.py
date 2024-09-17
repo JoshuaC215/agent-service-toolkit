@@ -2,10 +2,12 @@ import asyncio
 from contextlib import asynccontextmanager
 import json
 import os
+import warnings
 from typing import AsyncGenerator, Dict, Any, Tuple
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
+from langchain_core._api import LangChainBetaWarning
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.graph import CompiledGraph
@@ -13,6 +15,8 @@ from langsmith import Client as LangsmithClient
 
 from agent import research_assistant
 from schema import ChatMessage, Feedback, UserInput, StreamInput
+
+warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
 
 @asynccontextmanager
@@ -102,8 +106,8 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
         # Yield messages written to the graph state after node execution finishes.
         if (
             event["event"] == "on_chain_end"
-            and event["name"].startswith("ChannelWrite<")
-            and not event["name"].startswith("ChannelWrite<branch:")
+            and not event["name"].startswith("ChannelWrite<")
+            and not event["name"] == "LangGraph"
             and "messages" in event["data"]["output"]
         ):
             new_messages = event["data"]["output"]["messages"]
@@ -114,10 +118,17 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
                 except Exception as e:
                     yield f"data: {json.dumps({'type': 'error', 'content': f'Error parsing message: {e}'})}\n\n"
                     continue
-                yield f"data: {json.dumps({'type': 'message', 'content': chat_message.dict()})}\n\n"
+                # LangGraph re-sends the input message, which feels weird, so drop it
+            if chat_message.type == "human" and chat_message.content == user_input.message:
+                continue
+            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.dict()})}\n\n"
 
         # Yield tokens streamed from LLMs.
-        if event["event"] == "on_chat_model_stream" and user_input.stream_tokens:
+        if (
+            event["event"] == "on_chat_model_stream"
+            and user_input.stream_tokens
+            and "llama_guard" not in event.get("tags", [])
+        ):
             content = event["data"]["chunk"].content
             if content:
                 # Empty content in the context of OpenAI or Anthropic usually means

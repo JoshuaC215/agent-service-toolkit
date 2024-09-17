@@ -80,7 +80,9 @@ class LlamaGuard:
             print("GROQ_API_KEY not set, skipping LlamaGuard")
             self.model = None
             return
-        self.model = ChatGroq(model="llama-guard-3-8b", temperature=0.0)
+        self.model = ChatGroq(model="llama-guard-3-8b", temperature=0.0).with_config(
+            tags=["llama_guard"],
+        )
         self.prompt = PromptTemplate.from_template(llama_guard_instructions)
 
     def _compile_prompt(self, role: str, messages: List[AnyMessage]) -> str:
