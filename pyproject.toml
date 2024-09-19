@@ -13,7 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-requires-python = ">=3.9, <=3.12.3"
+requires-python = ">=3.10, <=3.12.3"
 
 # NOTE: FastAPI < 0.100.0 and Pydantic v1 is required until langchain has full pydantic v2 compatibility
 # https://python.langchain.com/v0.1/docs/guides/development/pydantic_compatibility/
@@ -51,7 +51,7 @@ dev = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py310"
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-fake-openai-key"

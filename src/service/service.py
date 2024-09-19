@@ -1,12 +1,12 @@
-import asyncio
 from contextlib import asynccontextmanager
 import json
 import os
+import warnings
 from typing import AsyncGenerator, Dict, Any, Tuple
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
-from langchain_core.callbacks import AsyncCallbackHandler
+from langchain_core._api import LangChainBetaWarning
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.graph import CompiledGraph
@@ -15,16 +15,7 @@ from langsmith import Client as LangsmithClient
 from agent import research_assistant
 from schema import ChatMessage, Feedback, UserInput, StreamInput
 
-
-class TokenQueueStreamingHandler(AsyncCallbackHandler):
-    """LangChain callback handler for streaming LLM tokens to an asyncio queue."""
-
-    def __init__(self, queue: asyncio.Queue):
-        self.queue = queue
-
-    async def on_llm_new_token(self, token: str, **kwargs) -> None:
-        if token:
-            await self.queue.put(token)
+warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
 
 @asynccontextmanager
@@ -93,47 +84,46 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
     agent: CompiledGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
 
-    # Use an asyncio queue to process both messages and tokens in
-    # chronological order, so we can easily yield them to the client.
-    output_queue = asyncio.Queue(maxsize=10)
-    if user_input.stream_tokens:
-        kwargs["config"]["callbacks"] = [TokenQueueStreamingHandler(queue=output_queue)]
-
-    # Pass the agent's stream of messages to the queue in a separate task, so
-    # we can yield the messages to the client in the main thread.
-    async def run_agent_stream():
-        async for s in agent.astream(**kwargs, stream_mode="updates"):
-            await output_queue.put(s)
-        await output_queue.put(None)
-
-    stream_task = asyncio.create_task(run_agent_stream())
-
-    # Process the queue and yield messages over the SSE stream.
-    while s := await output_queue.get():
-        if isinstance(s, str):
-            # str is an LLM token
-            yield f"data: {json.dumps({'type': 'token', 'content': s})}\n\n"
+    # Process streamed events from the graph and yield messages over the SSE stream.
+    async for event in agent.astream_events(**kwargs, version="v2"):
+        if not event:
             continue
 
-        # Otherwise, s should be a dict of state updates for each node in the graph.
-        # s could have updates for multiple nodes, so check each for messages.
-        new_messages = []
-        for _, state in s.items():
-            if "messages" in state:
-                new_messages.extend(state["messages"])
-        for message in new_messages:
-            try:
-                chat_message = ChatMessage.from_langchain(message)
-                chat_message.run_id = str(run_id)
-            except Exception as e:
-                yield f"data: {json.dumps({'type': 'error', 'content': f'Error parsing message: {e}'})}\n\n"
-                continue
-            # LangGraph re-sends the input message, which feels weird, so drop it
+        # Yield messages written to the graph state after node execution finishes.
+        if (
+            event["event"] == "on_chain_end"
+            # on_chain_end gets called a bunch of times in a graph execution
+            # This filters out everything except for "graph node finished"
+            and any(t.startswith("graph:step:") for t in event.get("tags", []))
+            and "messages" in event["data"]["output"]
+        ):
+            new_messages = event["data"]["output"]["messages"]
+            for message in new_messages:
+                try:
+                    chat_message = ChatMessage.from_langchain(message)
+                    chat_message.run_id = str(run_id)
+                except Exception as e:
+                    yield f"data: {json.dumps({'type': 'error', 'content': f'Error parsing message: {e}'})}\n\n"
+                    continue
+                # LangGraph re-sends the input message, which feels weird, so drop it
             if chat_message.type == "human" and chat_message.content == user_input.message:
                 continue
             yield f"data: {json.dumps({'type': 'message', 'content': chat_message.dict()})}\n\n"
 
-    await stream_task
+        # Yield tokens streamed from LLMs.
+        if (
+            event["event"] == "on_chat_model_stream"
+            and user_input.stream_tokens
+            and "llama_guard" not in event.get("tags", [])
+        ):
+            content = event["data"]["chunk"].content
+            if content:
+                # Empty content in the context of OpenAI or Anthropic usually means
+                # that the model is asking for a tool to be invoked.
+                # So we only print non-empty content.
+                yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
+            continue
+
     yield "data: [DONE]\n\n"
 
 
