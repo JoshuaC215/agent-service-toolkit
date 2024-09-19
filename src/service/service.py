@@ -84,7 +84,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
     agent: CompiledGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
 
-    # Process the queue and yield messages over the SSE stream.
+    # Process streamed events from the graph and yield messages over the SSE stream.
     async for event in agent.astream_events(**kwargs, version="v2"):
         if not event:
             continue
