@@ -1,0 +1,8 @@
+{
+    "python_version": "3.12",
+    "dependencies": ["."],
+    "graphs": {
+        "research_assistant": "./src/agent/research_assistant.py:research_assistant"
+    },
+    "env": "./.env"
+}
