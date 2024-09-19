@@ -53,7 +53,7 @@ class AgentClient:
                 timeout=self.timeout,
             )
             if response.status_code == 200:
-                return ChatMessage.parse_obj(response.json())
+                return ChatMessage.model_validate(response.json())
             else:
                 raise Exception(f"Error: {response.status_code} - {response.text}")
 
@@ -83,7 +83,7 @@ class AgentClient:
             timeout=self.timeout,
         )
         if response.status_code == 200:
-            return ChatMessage.parse_obj(response.json())
+            return ChatMessage.model_validate(response.json())
         else:
             raise Exception(f"Error: {response.status_code} - {response.text}")
 
@@ -101,7 +101,7 @@ class AgentClient:
                 case "message":
                     # Convert the JSON formatted message to an AnyMessage
                     try:
-                        return ChatMessage.parse_obj(parsed["content"])
+                        return ChatMessage.model_validate(parsed["content"])
                     except Exception as e:
                         raise Exception(f"Server returned invalid message: {e}")
                 case "token":
