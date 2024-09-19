@@ -23,12 +23,15 @@ Run directly in python
 # An OPENAI_API_KEY is required
 echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 
-# uv is recommended but pip also works
+# uv is recommended but "pip install ." also works
 pip install uv
-uv pip install -r pyproject.toml
+uv sync --frozen
+# "uv sync" creates .venv automatically
+source .venv/bin/activate
 python src/run_service.py
 
 # In another shell
+source .venv/bin/activate
 streamlit run src/streamlit_app.py
 ```
 
@@ -125,7 +128,7 @@ For local development, we recommend using [docker compose watch](https://docs.do
 
 3. The services will now automatically update when you make changes to your code:
    - Changes in the relevant python files and directories will trigger updates for the relevantservices.
-   - NOTE: If you make changes to the `pyproject.toml` file, you will need to rebuild the services by running `docker compose up --build`.
+   - NOTE: If you make changes to the `pyproject.toml` or `uv.lock` files, you will need to rebuild the services by running `docker compose up --build`.
 
 4. Access the Streamlit app by navigating to `http://localhost:8501` in your web browser.
 
@@ -142,9 +145,8 @@ You can also run the agent service and the Streamlit app locally without Docker,
 1. Create a virtual environment and install dependencies:
    ```
    pip install uv
-   uv venv
+   uv sync --frozen --extra dev
    source .venv/bin/activate
-   uv pip install -r pyproject.toml
    ```
 
 2. Run the FastAPI server:
@@ -163,7 +165,7 @@ You can also run the agent service and the Streamlit app locally without Docker,
 
 The agent supports [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio), a new IDE for developing agents in LangGraph.
 
-You can simply install LangGraph Studio, add your `.env` file to the root directory as described above, and then launch LangGraph studio pointed at the `agent/` directory. Customize `agent/langgraph.json` as needed.
+You can simply install LangGraph Studio, add your `.env` file to the root directory as described above, and then launch LangGraph studio pointed at the root directory. Customize `langgraph.json` as needed.
 
 ### Contributing
 
@@ -174,7 +176,7 @@ Currently the tests need to be run using the local development without Docker se
 2. Install the development dependencies and pre-commit hooks:
    ```
    pip install uv
-   uv pip install -r pyproject.toml --extra dev
+   uv sync --frozen --extra dev
    pre-commit install
    ```
 
