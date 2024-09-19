@@ -13,27 +13,22 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
-requires-python = ">=3.10, <=3.12.3"
+requires-python = ">=3.10"
 
-# NOTE: FastAPI < 0.100.0 and Pydantic v1 is required until langchain has full pydantic v2 compatibility
-# https://python.langchain.com/v0.1/docs/guides/development/pydantic_compatibility/
-# https://github.com/langchain-ai/langchain/discussions/24405
-# https://github.com/langchain-ai/langchain/discussions/9337
-# IMPORTANT: This also requires using python < 3.12.4
 dependencies = [
     "duckduckgo-search ~=6.2.6",
-    "fastapi <0.100.0",
-    "httpx~=0.26.0",
-    "langchain-core ~=0.2.26",
-    "langchain-community ~=0.2.11",
-    "langchain-openai ~=0.1.20",
-    "langchain-groq ~=0.1.9",
-    "langgraph ~=0.2.3",
-    "langgraph-checkpoint ~=1.0.2",
-    "langgraph-checkpoint-sqlite ~=1.0.0",
+    "fastapi ~=0.115.0",
+    "httpx ~=0.26.0",
+    "langchain-core ~=0.3.0",
+    "langchain-community ~=0.3.0",
+    "langchain-openai ~=0.2.0",
+    "langchain-groq ~=0.2.0",
+    "langgraph ~=0.2.22",
+    "langgraph-checkpoint ~=1.0.10",
+    "langgraph-checkpoint-sqlite ~=1.0.3",
     "langsmith ~=0.1.96",
     "numexpr ~=2.10.1",
-    "pydantic ~=1.10.17",
+    "pydantic ~=2.9.0",
     "pyowm ~=3.3.0",
     "python-dotenv ~=1.0.1",
     "setuptools ~=74.0.0",
