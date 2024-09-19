@@ -106,8 +106,9 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
         # Yield messages written to the graph state after node execution finishes.
         if (
             event["event"] == "on_chain_end"
-            and not event["name"].startswith("ChannelWrite<")
-            and not event["name"] == "LangGraph"
+            # on_chain_end gets called a bunch of times in a graph execution
+            # This filters out everything except for "graph node finished"
+            and any(t.startswith("graph:step:") for t in event.get("tags", []))
             and "messages" in event["data"]["output"]
         ):
             new_messages = event["data"]["output"]["messages"]
