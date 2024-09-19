@@ -23,7 +23,7 @@ def test_invoke(mock_agent):
     input_message = mock_agent.ainvoke.await_args.kwargs["input"]["messages"][0]
     assert input_message.content == QUESTION
 
-    output = ChatMessage.parse_obj(response.json())
+    output = ChatMessage.model_validate(response.json())
     assert output.type == "ai"
     assert output.content == ANSWER
 
