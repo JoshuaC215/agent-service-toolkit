@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 import json
 import os
@@ -85,21 +84,8 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
     agent: CompiledGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
 
-    # Use an asyncio queue to process both messages and tokens in
-    # chronological order, so we can easily yield them to the client.
-    output_queue = asyncio.Queue(maxsize=10)
-
-    # Pass the agent's stream of messages to the queue in a separate task, so
-    # we can yield the messages to the client in the main thread.
-    async def run_agent_stream():
-        async for event in agent.astream_events(**kwargs, version="v2"):
-            await output_queue.put(event)
-        await output_queue.put(None)
-
-    stream_task = asyncio.create_task(run_agent_stream())
-
     # Process the queue and yield messages over the SSE stream.
-    while event := await output_queue.get():
+    async for event in agent.astream_events(**kwargs, version="v2"):
         if not event:
             continue
 
@@ -138,7 +124,6 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
                 yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
             continue
 
-    await stream_task
     yield "data: [DONE]\n\n"
 
 
