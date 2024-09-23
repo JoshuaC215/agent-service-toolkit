@@ -25,13 +25,14 @@ class AgentState(MessagesState):
 # if the /stream endpoint is called with stream_tokens=True (the default)
 models = {
     "gpt-4o-mini": ChatOpenAI(model="gpt-4o-mini", temperature=0.5, streaming=True),
-    "gemini-1.5-flash": ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash", temperature=0.5, streaming=True
-    ),
 }
 
 if os.getenv("GROQ_API_KEY") is not None:
     models["llama-3.1-70b"] = ChatGroq(model="llama-3.1-70b-versatile", temperature=0.5)
+if os.getenv("GOOGLE_API_KEY") is not None:
+    models["gemini-1.5-flash"] = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash", temperature=0.5, streaming=True
+    )
 
 web_search = DuckDuckGoSearchResults(name="WebSearch")
 tools = [web_search, calculator]
