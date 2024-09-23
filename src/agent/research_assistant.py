@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage
@@ -24,6 +25,9 @@ class AgentState(MessagesState):
 # if the /stream endpoint is called with stream_tokens=True (the default)
 models = {
     "gpt-4o-mini": ChatOpenAI(model="gpt-4o-mini", temperature=0.5, streaming=True),
+    "gemini-1.5-flash": ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash", temperature=0.5, streaming=True
+    ),
 }
 
 if os.getenv("GROQ_API_KEY") is not None:

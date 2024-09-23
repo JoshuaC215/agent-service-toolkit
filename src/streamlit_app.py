@@ -55,6 +55,7 @@ async def main():
 
     models = {
         "OpenAI GPT-4o-mini (streaming)": "gpt-4o-mini",
+        "Gemini 1.5 Flash (streaming)": "gemini-1.5-flash",
         "llama-3.1-70b on Groq": "llama-3.1-70b",
     }
     # Config options
