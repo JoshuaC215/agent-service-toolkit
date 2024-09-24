@@ -98,6 +98,10 @@ With that said, there are several other interesting projects in this space that 
    # Optional, to enable LlamaGuard and Llama 3.1
    GROQ_API_KEY=your_groq_api_key
 
+   # Optional, to enable Gemini 1.5 Flash
+   # See: https://ai.google.dev/gemini-api/docs/api-key
+   GOOGLE_API_KEY=your_gemini_key
+
    # Optional, to enable simple header-based auth on the service
    AUTH_SECRET=any_string_you_choose
 
