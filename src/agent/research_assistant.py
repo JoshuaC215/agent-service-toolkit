@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage
@@ -28,6 +29,10 @@ models = {
 
 if os.getenv("GROQ_API_KEY") is not None:
     models["llama-3.1-70b"] = ChatGroq(model="llama-3.1-70b-versatile", temperature=0.5)
+if os.getenv("GOOGLE_API_KEY") is not None:
+    models["gemini-1.5-flash"] = ChatGoogleGenerativeAI(
+        model="gemini-1.5-flash", temperature=0.5, streaming=True
+    )
 
 web_search = DuckDuckGoSearchResults(name="WebSearch")
 tools = [web_search, calculator]
