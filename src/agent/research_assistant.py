@@ -79,7 +79,7 @@ def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
 def remove_task_messages(messages: list[AnyMessage]) -> List[AnyMessage]:
     """Filter out task messages from a list of messages."""
     return list(
-        filter(lambda message: type(message) != TaskMessage, messages),
+        filter(lambda message: not isinstance(message, TaskMessage), messages),
     )
 
 

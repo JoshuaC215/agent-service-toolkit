@@ -90,7 +90,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
             continue
 
         if event["event"] == "on_custom_event":
-            if type(event["data"]) == TaskMessage:
+            if isinstance(event["data"], TaskMessage):
                 try:
                     chat_message = ChatMessage.from_langchain(event["data"])
                     chat_message.run_id = str(run_id)

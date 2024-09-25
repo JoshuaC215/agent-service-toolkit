@@ -1,6 +1,4 @@
 from typing import Dict, Any, List, Literal
-from typing_extensions import Self
-from enum import Enum
 from uuid import uuid4
 from langchain_core.messages import (
     BaseMessage,
@@ -14,7 +12,7 @@ from langchain_core.messages import (
 )
 from langchain_core.runnables import RunnableConfig
 from langchain_core.callbacks import adispatch_custom_event
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 
 class UserInput(BaseModel):
