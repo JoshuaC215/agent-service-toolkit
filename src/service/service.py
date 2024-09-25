@@ -13,7 +13,7 @@ from langgraph.graph.graph import CompiledGraph
 from langsmith import Client as LangsmithClient
 
 from agent import research_assistant
-from schema import ChatMessage, Feedback, UserInput, StreamInput
+from schema import ChatMessage, Feedback, UserInput, StreamInput, TaskMessage
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
@@ -89,6 +89,16 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
         if not event:
             continue
 
+        if event["event"] == "on_custom_event":
+            if type(event["data"]) == TaskMessage:
+                try:
+                    chat_message = ChatMessage.from_langchain(event["data"])
+                    chat_message.run_id = str(run_id)
+                except Exception as e:
+                    yield f"data: {json.dumps({'type': 'error', 'content': f'Error parsing message: {e}'})}\n\n"
+                    continue
+                yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
+
         # Yield messages written to the graph state after node execution finishes.
         if (
             event["event"] == "on_chain_end"
@@ -107,6 +117,10 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
                     continue
                 # LangGraph re-sends the input message, which feels weird, so drop it
             if chat_message.type == "human" and chat_message.content == user_input.message:
+                continue
+            # Task messages are only stored in 'messages' list  for chat history purposes. They are emitted
+            # by custom events.
+            if chat_message.type == "task":
                 continue
             yield f"data: {json.dumps({'type': 'message', 'content': chat_message.dict()})}\n\n"
 

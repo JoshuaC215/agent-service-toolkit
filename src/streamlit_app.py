@@ -246,6 +246,50 @@ async def draw_messages(
                             status.write(tool_result.content)
                             status.update(state="complete")
 
+            case "task":
+                # If we're rendering new messages, store the message in session state
+                if is_new:
+                    st.session_state.messages.append(msg)
+
+                # If the last message type was not Task, create a new chat message
+                # and container for task messages
+                if last_message_type != "task":
+                    last_message_type = "task"
+                    st.session_state.last_message = st.chat_message(
+                        name="task", avatar=":material/manufacturing:"
+                    )
+                    with st.session_state.last_message:
+                        status = st.status("")
+                    task_messages: dict[str, ChatMessage] = {}
+
+                match msg.task_state:
+                    case "new":
+                        status.write(f"Task **{msg.task_name}** has :blue[started]. Input:")
+                    case "running":
+                        status.write(f"Task **{msg.task_name}** wrote:")
+                    case "complete":
+                        result_text = (
+                            ":green[completed successfully]"
+                            if msg.task_result == "success"
+                            else ":red[ended with error]"
+                        )
+                        status.write(f"Task **{msg.task_name}** {result_text}. Output:")
+                status.write(msg.task_data)
+                status.write("---")
+                task_messages[msg.task_run_id] = msg
+                state = "complete"
+                for message in task_messages.values():
+                    if message.task_state != "complete":
+                        state = "running"
+                        break
+                    if message.task_state == "complete" and message.task_result == "error":
+                        state = "error"
+                        break
+                status.update(
+                    label=f"""Task: {msg.task_name}""",
+                    state=state,
+                )
+
             # In case of an unexpected message type, log an error and stop
             case _:
                 st.error(f"Unexpected ChatMessage type: {msg.type}")

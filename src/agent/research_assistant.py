@@ -1,11 +1,12 @@
 from datetime import datetime
+from typing import List
 import os
 from langchain_openai import ChatOpenAI
 from langchain_groq import ChatGroq
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, SystemMessage, AnyMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, StateGraph, MessagesState
@@ -14,6 +15,7 @@ from langgraph.prebuilt import ToolNode
 
 from agent.tools import calculator
 from agent.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
+from schema import Task, TaskMessage
 
 
 class AgentState(MessagesState):
@@ -60,7 +62,8 @@ instructions = f"""
 def wrap_model(model: BaseChatModel):
     model = model.bind_tools(tools)
     preprocessor = RunnableLambda(
-        lambda state: [SystemMessage(content=instructions)] + state["messages"],
+        lambda state: [SystemMessage(content=instructions)]
+        + remove_task_messages(state["messages"]),
         name="StateModifier",
     )
     return preprocessor | model
@@ -73,6 +76,13 @@ def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
     return AIMessage(content=content)
 
 
+def remove_task_messages(messages: list[AnyMessage]) -> List[AnyMessage]:
+    """Filter out task messages from a list of messages."""
+    return list(
+        filter(lambda message: type(message) != TaskMessage, messages),
+    )
+
+
 async def acall_model(state: AgentState, config: RunnableConfig):
     m = models[config["configurable"].get("model", "gpt-4o-mini")]
     model_runnable = wrap_model(m)
@@ -80,7 +90,9 @@ async def acall_model(state: AgentState, config: RunnableConfig):
 
     # Run llama guard check here to avoid returning the message if it's unsafe
     llama_guard = LlamaGuard()
-    safety_output = await llama_guard.ainvoke("Agent", state["messages"] + [response])
+    safety_output = await llama_guard.ainvoke(
+        "Agent", remove_task_messages(state["messages"]) + [response]
+    )
     if safety_output.safety_assessment == SafetyAssessment.UNSAFE:
         return {"messages": [format_safety_message(safety_output)], "safety": safety_output}
 
@@ -98,9 +110,17 @@ async def acall_model(state: AgentState, config: RunnableConfig):
 
 
 async def llama_guard_input(state: AgentState, config: RunnableConfig):
+    task = Task("Check input safety")
+    start_message = await task.start(config=config)
     llama_guard = LlamaGuard()
-    safety_output = await llama_guard.ainvoke("User", state["messages"])
-    return {"safety": safety_output}
+    safety_output = await llama_guard.ainvoke("User", remove_task_messages(state["messages"]))
+    end_message = await task.finish(
+        result="success", config=config, data={"safety": safety_output.safety_assessment.value}
+    )
+    return {
+        "safety": safety_output,
+        "messages": [start_message, end_message],
+    }
 
 
 async def block_unsafe_content(state: AgentState, config: RunnableConfig):
@@ -118,7 +138,7 @@ agent.set_entry_point("guard_input")
 
 
 # Check for unsafe input and block further processing if found
-def check_safety(state: AgentState):
+async def check_safety(state: AgentState, config: RunnableConfig):
     safety: LlamaGuardOutput = state["safety"]
     match safety.safety_assessment:
         case SafetyAssessment.UNSAFE:
@@ -140,7 +160,7 @@ agent.add_edge("tools", "model")
 
 # After "model", if there are tool calls, run "tools". Otherwise END.
 def pending_tool_calls(state: AgentState):
-    last_message = state["messages"][-1]
+    last_message = remove_task_messages(state["messages"])[-1]
     if last_message.tool_calls:
         return "tools"
     else:
