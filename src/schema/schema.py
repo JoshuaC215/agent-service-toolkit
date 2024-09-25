@@ -19,10 +19,8 @@ def convert_message_content_to_string(content: Union[str, List[Union[str, Dict]]
         if isinstance(content_item, str):
             text.append(content_item)
             continue
-        try:
+        if content_item["type"] == "text":
             text.append(content_item["text"])
-        except Exception as e:
-            raise ValueError(f"Error parsing message content: {e}")
     return "".join(text)
 
 
