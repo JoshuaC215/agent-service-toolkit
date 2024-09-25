@@ -8,12 +8,13 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.runnables import RunnableConfig
+from langchain_core.messages import AIMessageChunk
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.graph import CompiledGraph
 from langsmith import Client as LangsmithClient
 
 from agent import research_assistant
-from schema import ChatMessage, Feedback, UserInput, StreamInput
+from schema import ChatMessage, Feedback, UserInput, StreamInput, convert_message_content_to_string
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
@@ -108,7 +109,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
                 # LangGraph re-sends the input message, which feels weird, so drop it
             if chat_message.type == "human" and chat_message.content == user_input.message:
                 continue
-            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.dict()})}\n\n"
+            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
         # Yield tokens streamed from LLMs.
         if (
@@ -121,7 +122,10 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
                 # Empty content in the context of OpenAI or Anthropic usually means
                 # that the model is asking for a tool to be invoked.
                 # So we only print non-empty content.
-                yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
+                if isinstance(content, str):
+                    yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
+                elif isinstance(content, AIMessageChunk):
+                    yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content.content)})}\n\n"
             continue
 
     yield "data: [DONE]\n\n"

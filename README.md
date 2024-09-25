@@ -102,6 +102,10 @@ With that said, there are several other interesting projects in this space that 
    # See: https://ai.google.dev/gemini-api/docs/api-key
    GOOGLE_API_KEY=your_gemini_key
 
+   # Optional, to enable Claude 3 Haiku
+   # See: https://docs.anthropic.com/en/api/getting-started
+   ANTHROPIC_API_KEY=your_anthropic_key
+
    # Optional, to enable simple header-based auth on the service
    AUTH_SECRET=any_string_you_choose
 
