@@ -264,7 +264,7 @@ async def handle_feedback():
     feedback = st.feedback("stars", key=latest_run_id)
 
     # If the feedback value or run ID has changed, send a new feedback record
-    if feedback and (latest_run_id, feedback) != st.session_state.last_feedback:
+    if feedback is not None and (latest_run_id, feedback) != st.session_state.last_feedback:
         # Normalize the feedback value (an index) to a score between 0 and 1
         normalized_score = (feedback + 1) / 5.0
 
