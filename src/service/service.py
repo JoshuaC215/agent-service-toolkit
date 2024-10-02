@@ -122,10 +122,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
                 # Empty content in the context of OpenAI or Anthropic usually means
                 # that the model is asking for a tool to be invoked.
                 # So we only print non-empty content.
-                if isinstance(content, str):
-                    yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
-                elif isinstance(content, AIMessageChunk):
-                    yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content.content)})}\n\n"
+                yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
             continue
 
     yield "data: [DONE]\n\n"
