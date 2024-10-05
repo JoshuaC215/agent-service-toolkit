@@ -1,9 +1,10 @@
-from langchain_core.messages import AIMessage
-from fastapi.testclient import TestClient
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
-from service import app
+from fastapi.testclient import TestClient
+from langchain_core.messages import AIMessage
+
 from schema import ChatMessage
+from service import app
 
 client = TestClient(app)
 

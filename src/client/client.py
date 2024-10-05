@@ -1,8 +1,10 @@
 import json
 import os
+from typing import Any, AsyncGenerator, Dict, Generator
+
 import httpx
-from typing import AsyncGenerator, Dict, Any, Generator
-from schema import ChatMessage, UserInput, StreamInput, Feedback
+
+from schema import ChatMessage, Feedback, StreamInput, UserInput
 
 
 class AgentClient:
