@@ -48,7 +48,7 @@ class AgentClient:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}/invoke",
-                json=request.dict(),
+                json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
             )
@@ -78,7 +78,7 @@ class AgentClient:
             request.model = model
         response = httpx.post(
             f"{self.base_url}/invoke",
-            json=request.dict(),
+            json=request.model_dump(),
             headers=self._headers,
             timeout=self.timeout,
         )
@@ -142,7 +142,7 @@ class AgentClient:
         with httpx.stream(
             "POST",
             f"{self.base_url}/stream",
-            json=request.dict(),
+            json=request.model_dump(),
             headers=self._headers,
             timeout=self.timeout,
         ) as response:
@@ -188,7 +188,7 @@ class AgentClient:
             async with client.stream(
                 "POST",
                 f"{self.base_url}/stream",
-                json=request.dict(),
+                json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
             ) as response:
@@ -215,7 +215,7 @@ class AgentClient:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}/feedback",
-                json=request.dict(),
+                json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
             )
