@@ -1,9 +1,9 @@
 from schema.schema import (
-    UserInput,
     AgentResponse,
     ChatMessage,
-    StreamInput,
     Feedback,
+    StreamInput,
+    UserInput,
     convert_message_content_to_string,
 )
 

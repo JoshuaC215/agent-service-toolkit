@@ -1,9 +1,6 @@
 import os
 from datetime import datetime
-import os
-from langchain_openai import ChatOpenAI
-from langchain_groq import ChatGroq
-from langchain_google_genai import ChatGoogleGenerativeAI
+
 from langchain_anthropic import ChatAnthropic
 from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
 from langchain_core.language_models.chat_models import BaseChatModel
