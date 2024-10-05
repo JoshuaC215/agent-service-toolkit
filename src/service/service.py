@@ -57,7 +57,7 @@ def _parse_input(user_input: UserInput) -> Tuple[Dict[str, Any], str]:
 
 
 def _remove_tool_calls(
-    content: Union[str, List[Union[str, Dict]]]
+    content: Union[str, List[Union[str, Dict]]],
 ) -> Union[str, List[Union[str, Dict]]]:
     """Remove tool calls from content."""
     if isinstance(content, str):
