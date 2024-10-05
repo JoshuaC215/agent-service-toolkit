@@ -133,7 +133,9 @@ class ChatMessage(BaseModel):
     def to_langchain(self) -> BaseMessage:
         """Convert the ChatMessage to a LangChain message."""
         if self.original:
-            return messages_from_dict([self.original])[0]
+            raw_original = messages_from_dict([self.original])[0]
+            raw_original.content = self.content
+            return raw_original
         match self.type:
             case "human":
                 return HumanMessage(content=self.content)
