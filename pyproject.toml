@@ -50,5 +50,8 @@ dev = [
 line-length = 100
 target-version = "py310"
 
+[tool.ruff.lint]
+extend-select = ["I"]
+
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-fake-openai-key"

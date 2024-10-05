@@ -4,9 +4,9 @@ from typing import AsyncGenerator, List
 
 import streamlit as st
 from streamlit.runtime.scriptrunner import get_script_run_ctx
+
 from client import AgentClient
 from schema import ChatMessage
-
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:
