@@ -24,6 +24,7 @@ dependencies = [
     "langchain-openai ~=0.2.0",
     "langchain-groq ~=0.2.0",
     "langchain-google-genai ~=2.0.0",
+    "langchain-anthropic ~= 0.2.0",
     "langgraph ~=0.2.22",
     "langgraph-checkpoint ~=1.0.10",
     "langgraph-checkpoint-sqlite ~=1.0.3",

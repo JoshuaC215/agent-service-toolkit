@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, Literal
+from typing import Dict, Any, List, Literal, Union
 from langchain_core.messages import (
     BaseMessage,
     HumanMessage,
@@ -9,6 +9,19 @@ from langchain_core.messages import (
     messages_from_dict,
 )
 from pydantic import BaseModel, Field
+
+
+def convert_message_content_to_string(content: Union[str, List[Union[str, Dict]]]) -> str:
+    if isinstance(content, str):
+        return content
+    text: List[str] = []
+    for content_item in content:
+        if isinstance(content_item, str):
+            text.append(content_item)
+            continue
+        if content_item["type"] == "text":
+            text.append(content_item["text"])
+    return "".join(text)
 
 
 class UserInput(BaseModel):
@@ -91,17 +104,25 @@ class ChatMessage(BaseModel):
         original = message_to_dict(message)
         match message:
             case HumanMessage():
-                human_message = cls(type="human", content=message.content, original=original)
+                human_message = cls(
+                    type="human",
+                    content=convert_message_content_to_string(message.content),
+                    original=original,
+                )
                 return human_message
             case AIMessage():
-                ai_message = cls(type="ai", content=message.content, original=original)
+                ai_message = cls(
+                    type="ai",
+                    content=convert_message_content_to_string(message.content),
+                    original=original,
+                )
                 if message.tool_calls:
                     ai_message.tool_calls = message.tool_calls
                 return ai_message
             case ToolMessage():
                 tool_message = cls(
                     type="tool",
-                    content=message.content,
+                    content=convert_message_content_to_string(message.content),
                     tool_call_id=message.tool_call_id,
                     original=original,
                 )

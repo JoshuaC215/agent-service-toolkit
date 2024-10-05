@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 import json
 import os
 import warnings
-from typing import AsyncGenerator, Dict, Any, Tuple
+from typing import AsyncGenerator, Dict, Any, Tuple, List, Union
 from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import StreamingResponse
@@ -13,7 +13,7 @@ from langgraph.graph.graph import CompiledGraph
 from langsmith import Client as LangsmithClient
 
 from agent import research_assistant
-from schema import ChatMessage, Feedback, UserInput, StreamInput
+from schema import ChatMessage, Feedback, UserInput, StreamInput, convert_message_content_to_string
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
@@ -54,6 +54,25 @@ def _parse_input(user_input: UserInput) -> Tuple[Dict[str, Any], str]:
         ),
     )
     return kwargs, run_id
+
+
+def _remove_tool_calls(
+    content: Union[str, List[Union[str, Dict]]],
+) -> Union[str, List[Union[str, Dict]]]:
+    """Remove tool calls from content."""
+    if isinstance(content, str):
+        return content
+    # Currently only Anthropic models stream tool calls, using content item type tool_use.
+    return list(
+        filter(
+            lambda content_item: (
+                True
+                if isinstance(content_item, str) or content_item["type"] != "tool_use"
+                else False
+            ),
+            content,
+        )
+    )
 
 
 @app.post("/invoke")
@@ -108,7 +127,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
                 # LangGraph re-sends the input message, which feels weird, so drop it
             if chat_message.type == "human" and chat_message.content == user_input.message:
                 continue
-            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.dict()})}\n\n"
+            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
         # Yield tokens streamed from LLMs.
         if (
@@ -116,12 +135,12 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
             and user_input.stream_tokens
             and "llama_guard" not in event.get("tags", [])
         ):
-            content = event["data"]["chunk"].content
+            content = _remove_tool_calls(event["data"]["chunk"].content)
             if content:
-                # Empty content in the context of OpenAI or Anthropic usually means
+                # Empty content in the context of OpenAI usually means
                 # that the model is asking for a tool to be invoked.
                 # So we only print non-empty content.
-                yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
+                yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
             continue
 
     yield "data: [DONE]\n\n"
