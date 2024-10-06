@@ -1,6 +1,7 @@
 import json
 import os
-from typing import Any, AsyncGenerator, Dict, Generator
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
 
 import httpx
 
@@ -204,7 +205,7 @@ class AgentClient:
                         yield parsed
 
     async def acreate_feedback(
-        self, run_id: str, key: str, score: float, kwargs: Dict[str, Any] = {}
+        self, run_id: str, key: str, score: float, kwargs: dict[str, Any] = {}
     ):
         """
         Create a feedback record for a run.

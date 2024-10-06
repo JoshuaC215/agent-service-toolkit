@@ -1,6 +1,6 @@
 import asyncio
 import os
-from typing import AsyncGenerator, List
+from collections.abc import AsyncGenerator
 
 import streamlit as st
 from streamlit.runtime.scriptrunner import get_script_run_ctx
@@ -95,7 +95,7 @@ async def main():
     # Draw existing messages
     if "messages" not in st.session_state:
         st.session_state.messages = []
-    messages: List[ChatMessage] = st.session_state.messages
+    messages: list[ChatMessage] = st.session_state.messages
 
     if len(messages) == 0:
         WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. I may take a few seconds to boot up when you send your first message. Ask me anything!"
