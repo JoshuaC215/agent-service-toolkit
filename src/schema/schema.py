@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Literal, Union
+from typing import Any, Literal
 
 from langchain_core.messages import (
     AIMessage,
@@ -12,10 +12,10 @@ from langchain_core.messages import (
 from pydantic import BaseModel, Field
 
 
-def convert_message_content_to_string(content: Union[str, List[Union[str, Dict]]]) -> str:
+def convert_message_content_to_string(content: str | list[str | dict]) -> str:
     if isinstance(content, str):
         return content
-    text: List[str] = []
+    text: list[str] = []
     for content_item in content:
         if isinstance(content_item, str):
             text.append(content_item)
@@ -56,7 +56,7 @@ class StreamInput(UserInput):
 class AgentResponse(BaseModel):
     """Response from the agent when called via /invoke."""
 
-    message: Dict[str, Any] = Field(
+    message: dict[str, Any] = Field(
         description="Final response from the agent, as a serialized LangChain message.",
         examples=[
             {
@@ -80,7 +80,7 @@ class ChatMessage(BaseModel):
         description="Content of the message.",
         examples=["Hello, world!"],
     )
-    tool_calls: List[ToolCall] = Field(
+    tool_calls: list[ToolCall] = Field(
         description="Tool calls in the message.",
         default=[],
     )
@@ -94,7 +94,7 @@ class ChatMessage(BaseModel):
         default=None,
         examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
     )
-    original: Dict[str, Any] = Field(
+    original: dict[str, Any] = Field(
         description="Original LangChain message in serialized form.",
         default={},
     )
@@ -164,7 +164,7 @@ class Feedback(BaseModel):
         description="Feedback score.",
         examples=[0.8],
     )
-    kwargs: Dict[str, Any] = Field(
+    kwargs: dict[str, Any] = Field(
         description="Additional feedback kwargs, passed to LangSmith.",
         default={},
         examples=[{"comment": "In-line human feedback"}],

@@ -1,6 +1,5 @@
 import os
 from enum import Enum
-from typing import List
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
 from langchain_core.prompts import PromptTemplate
@@ -16,7 +15,7 @@ class SafetyAssessment(Enum):
 
 class LlamaGuardOutput(BaseModel):
     safety_assessment: SafetyAssessment = Field(description="The safety assessment of the content.")
-    unsafe_categories: List[str] = Field(
+    unsafe_categories: list[str] = Field(
         description="If content is unsafe, the list of unsafe categories.", default=[]
     )
 
@@ -86,7 +85,7 @@ class LlamaGuard:
         )
         self.prompt = PromptTemplate.from_template(llama_guard_instructions)
 
-    def _compile_prompt(self, role: str, messages: List[AnyMessage]) -> str:
+    def _compile_prompt(self, role: str, messages: list[AnyMessage]) -> str:
         role_mapping = {"ai": "Agent", "human": "User"}
         messages_str = [
             f"{role_mapping[m.type]}: {m.content}" for m in messages if m.type in ["ai", "human"]
@@ -94,14 +93,14 @@ class LlamaGuard:
         conversation_history = "\n\n".join(messages_str)
         return self.prompt.format(role=role, conversation_history=conversation_history)
 
-    def invoke(self, role: str, messages: List[AnyMessage]) -> LlamaGuardOutput:
+    def invoke(self, role: str, messages: list[AnyMessage]) -> LlamaGuardOutput:
         if self.model is None:
             return LlamaGuardOutput(safety_assessment=SafetyAssessment.SAFE)
         compiled_prompt = self._compile_prompt(role, messages)
         result = self.model.invoke([HumanMessage(content=compiled_prompt)])
         return parse_llama_guard_output(result.content)
 
-    async def ainvoke(self, role: str, messages: List[AnyMessage]) -> LlamaGuardOutput:
+    async def ainvoke(self, role: str, messages: list[AnyMessage]) -> LlamaGuardOutput:
         if self.model is None:
             return LlamaGuardOutput(safety_assessment=SafetyAssessment.SAFE)
         compiled_prompt = self._compile_prompt(role, messages)

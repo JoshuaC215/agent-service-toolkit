@@ -1,8 +1,9 @@
 import json
 import os
 import warnings
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Dict, List, Tuple, Union
+from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -43,7 +44,7 @@ async def check_auth_header(request: Request, call_next):
     return await call_next(request)
 
 
-def _parse_input(user_input: UserInput) -> Tuple[Dict[str, Any], str]:
+def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
     input_message = ChatMessage(type="human", content=user_input.message)
@@ -58,8 +59,8 @@ def _parse_input(user_input: UserInput) -> Tuple[Dict[str, Any], str]:
 
 
 def _remove_tool_calls(
-    content: Union[str, List[Union[str, Dict]]],
-) -> Union[str, List[Union[str, Dict]]]:
+    content: str | list[str | dict],
+) -> str | list[str | dict]:
     """Remove tool calls from content."""
     if isinstance(content, str):
         return content
