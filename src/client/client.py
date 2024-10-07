@@ -57,8 +57,7 @@ class AgentClient:
             )
             if response.status_code == 200:
                 return ChatMessage.model_validate(response.json())
-            else:
-                raise Exception(f"Error: {response.status_code} - {response.text}")
+            raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def invoke(
         self, message: str, model: str | None = None, thread_id: str | None = None
@@ -87,8 +86,7 @@ class AgentClient:
         )
         if response.status_code == 200:
             return ChatMessage.model_validate(response.json())
-        else:
-            raise Exception(f"Error: {response.status_code} - {response.text}")
+        raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def _parse_stream_line(self, line: str) -> ChatMessage | str | None:
         line = line.strip()
@@ -112,6 +110,7 @@ class AgentClient:
                     return parsed["content"]
                 case "error":
                     raise Exception(parsed["content"])
+        return None
 
     def stream(
         self,

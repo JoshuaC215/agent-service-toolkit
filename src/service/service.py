@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-from langgraph.graph.graph import CompiledGraph
+from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
 
 from agent import research_assistant
@@ -48,13 +48,12 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
     input_message = ChatMessage(type="human", content=user_input.message)
-    kwargs = dict(
-        input={"messages": [input_message.to_langchain()]},
-        config=RunnableConfig(
-            configurable={"thread_id": thread_id, "model": user_input.model},
-            run_id=run_id,
+    kwargs = {
+        "input": {"messages": [input_message.to_langchain()]},
+        "config": RunnableConfig(
+            configurable={"thread_id": thread_id, "model": user_input.model}, run_id=run_id
         ),
-    )
+    }
     return kwargs, run_id
 
 
@@ -65,16 +64,11 @@ def _remove_tool_calls(
     if isinstance(content, str):
         return content
     # Currently only Anthropic models stream tool calls, using content item type tool_use.
-    return list(
-        filter(
-            lambda content_item: (
-                True
-                if isinstance(content_item, str) or content_item["type"] != "tool_use"
-                else False
-            ),
-            content,
-        )
-    )
+    return [
+        content_item
+        for content_item in content
+        if isinstance(content_item, str) or content_item["type"] != "tool_use"
+    ]
 
 
 @app.post("/invoke")
@@ -85,7 +79,7 @@ async def invoke(user_input: UserInput) -> ChatMessage:
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to messages for recording feedback.
     """
-    agent: CompiledGraph = app.state.agent
+    agent: CompiledStateGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
     try:
         response = await agent.ainvoke(**kwargs)
@@ -102,7 +96,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
 
     This is the workhorse method for the /stream endpoint.
     """
-    agent: CompiledGraph = app.state.agent
+    agent: CompiledStateGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
