@@ -1,7 +1,7 @@
 import json
 import os
 import warnings
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 from uuid import uuid4
@@ -21,7 +21,7 @@ warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Construct agent with Sqlite checkpointer
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as saver:
         research_assistant.checkpointer = saver
@@ -34,7 +34,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.middleware("http")
-async def check_auth_header(request: Request, call_next):
+async def check_auth_header(request: Request, call_next: Callable) -> Response:
     if auth_secret := os.getenv("AUTH_SECRET"):
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
@@ -149,7 +149,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
 
 
 @app.post("/stream")
-async def stream_agent(user_input: StreamInput):
+async def stream_agent(user_input: StreamInput) -> StreamingResponse:
     """
     Stream the agent's response to a user input, including intermediate messages and tokens.
 
@@ -160,7 +160,7 @@ async def stream_agent(user_input: StreamInput):
 
 
 @app.post("/feedback")
-async def feedback(feedback: Feedback):
+async def feedback(feedback: Feedback) -> dict[str, str]:
     """
     Record feedback for a run to LangSmith.
 

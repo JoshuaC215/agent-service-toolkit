@@ -3,7 +3,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 from schema import ChatMessage
 
 
-def test_messages_to_langchain():
+def test_messages_to_langchain() -> None:
     human_message = ChatMessage(type="human", content="Hello, world!")
     lc_message = human_message.to_langchain()
     assert isinstance(lc_message, HumanMessage)
@@ -11,7 +11,7 @@ def test_messages_to_langchain():
     assert lc_message.content == "Hello, world!"
 
 
-def test_messages_from_langchain():
+def test_messages_from_langchain() -> None:
     lc_human_message = HumanMessage(content="Hello, world!")
     human_message = ChatMessage.from_langchain(lc_human_message)
     assert human_message.type == "human"
@@ -38,7 +38,7 @@ def test_messages_from_langchain():
         assert str(e) == "Unsupported message type: SystemMessage"
 
 
-def test_message_run_id_usage():
+def test_message_run_id_usage() -> None:
     run_id = "847c6285-8fc9-4560-a83f-4e6285809254"
     lc_message = AIMessage(content="Hello, world!")
     ai_message = ChatMessage.from_langchain(lc_message)
@@ -46,7 +46,7 @@ def test_message_run_id_usage():
     assert ai_message.run_id == run_id
 
 
-def test_messages_tool_calls():
+def test_messages_tool_calls() -> None:
     tool_call = ToolCall(name="test_tool", args={"x": 1, "y": 2}, id="call_Jja7")
     lc_ai_message = AIMessage(content="", tool_calls=[tool_call])
     ai_message = ChatMessage.from_langchain(lc_ai_message)
