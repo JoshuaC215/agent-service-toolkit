@@ -24,6 +24,7 @@ class AgentState(MessagesState, total=False):
 
     documentation: https://typing.readthedocs.io/en/latest/spec/typeddict.html#totality
     """
+
     safety: LlamaGuardOutput
     is_last_step: IsLastStep
 
