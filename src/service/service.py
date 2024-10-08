@@ -1,7 +1,7 @@
 import json
 import os
 import warnings
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 from typing import Any
 from uuid import uuid4
@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-from langgraph.graph.graph import CompiledGraph
+from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
 
 from agent import research_assistant
@@ -21,7 +21,7 @@ warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Construct agent with Sqlite checkpointer
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as saver:
         research_assistant.checkpointer = saver
@@ -34,7 +34,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.middleware("http")
-async def check_auth_header(request: Request, call_next):
+async def check_auth_header(request: Request, call_next: Callable) -> Response:
     if auth_secret := os.getenv("AUTH_SECRET"):
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
@@ -48,13 +48,12 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
     input_message = ChatMessage(type="human", content=user_input.message)
-    kwargs = dict(
-        input={"messages": [input_message.to_langchain()]},
-        config=RunnableConfig(
-            configurable={"thread_id": thread_id, "model": user_input.model},
-            run_id=run_id,
+    kwargs = {
+        "input": {"messages": [input_message.to_langchain()]},
+        "config": RunnableConfig(
+            configurable={"thread_id": thread_id, "model": user_input.model}, run_id=run_id
         ),
-    )
+    }
     return kwargs, run_id
 
 
@@ -65,16 +64,11 @@ def _remove_tool_calls(
     if isinstance(content, str):
         return content
     # Currently only Anthropic models stream tool calls, using content item type tool_use.
-    return list(
-        filter(
-            lambda content_item: (
-                True
-                if isinstance(content_item, str) or content_item["type"] != "tool_use"
-                else False
-            ),
-            content,
-        )
-    )
+    return [
+        content_item
+        for content_item in content
+        if isinstance(content_item, str) or content_item["type"] != "tool_use"
+    ]
 
 
 @app.post("/invoke")
@@ -85,7 +79,7 @@ async def invoke(user_input: UserInput) -> ChatMessage:
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to messages for recording feedback.
     """
-    agent: CompiledGraph = app.state.agent
+    agent: CompiledStateGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
     try:
         response = await agent.ainvoke(**kwargs)
@@ -102,7 +96,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
 
     This is the workhorse method for the /stream endpoint.
     """
-    agent: CompiledGraph = app.state.agent
+    agent: CompiledStateGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
@@ -149,7 +143,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
 
 
 @app.post("/stream")
-async def stream_agent(user_input: StreamInput):
+async def stream_agent(user_input: StreamInput) -> StreamingResponse:
     """
     Stream the agent's response to a user input, including intermediate messages and tokens.
 
@@ -160,7 +154,7 @@ async def stream_agent(user_input: StreamInput):
 
 
 @app.post("/feedback")
-async def feedback(feedback: Feedback):
+async def feedback(feedback: Feedback) -> dict[str, str]:
     """
     Record feedback for a run to LangSmith.
 

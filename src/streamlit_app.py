@@ -24,12 +24,12 @@ APP_ICON = "🧰"
 
 
 @st.cache_resource
-def get_agent_client():
+def get_agent_client() -> AgentClient:
     agent_url = os.getenv("AGENT_URL", "http://localhost")
     return AgentClient(agent_url)
 
 
-async def main():
+async def main() -> None:
     st.set_page_config(
         page_title=APP_TITLE,
         page_icon=APP_ICON,
@@ -70,7 +70,7 @@ async def main():
             use_streaming = st.toggle("Stream results", value=True)
 
         @st.dialog("Architecture")
-        def architecture_dialog():
+        def architecture_dialog() -> None:
             st.image(
                 "https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png?raw=true"
             )
@@ -103,27 +103,27 @@ async def main():
             st.write(WELCOME)
 
     # draw_messages() expects an async iterator over messages
-    async def amessage_iter():
+    async def amessage_iter() -> AsyncGenerator[ChatMessage, None]:
         for m in messages:
             yield m
 
     await draw_messages(amessage_iter())
 
     # Generate new message if the user provided new input
-    if input := st.chat_input():
-        messages.append(ChatMessage(type="human", content=input))
-        st.chat_message("human").write(input)
+    if user_input := st.chat_input():
+        messages.append(ChatMessage(type="human", content=user_input))
+        st.chat_message("human").write(user_input)
         agent_client = get_agent_client()
         if use_streaming:
             stream = agent_client.astream(
-                message=input,
+                message=user_input,
                 model=model,
                 thread_id=get_script_run_ctx().session_id,
             )
             await draw_messages(stream, is_new=True)
         else:
             response = await agent_client.ainvoke(
-                message=input,
+                message=user_input,
                 model=model,
                 thread_id=get_script_run_ctx().session_id,
             )
@@ -139,8 +139,8 @@ async def main():
 
 async def draw_messages(
     messages_agen: AsyncGenerator[ChatMessage | str, None],
-    is_new=False,
-):
+    is_new: bool = False,
+) -> None:
     """
     Draws a set of chat messages - either replaying existing messages
     or streaming new ones.
@@ -233,7 +233,7 @@ async def draw_messages(
                         # Expect one ToolMessage for each tool call.
                         for _ in range(len(call_results)):
                             tool_result: ChatMessage = await anext(messages_agen)
-                            if not tool_result.type == "tool":
+                            if tool_result.type != "tool":
                                 st.error(f"Unexpected ChatMessage type: {tool_result.type}")
                                 st.write(tool_result)
                                 st.stop()
@@ -254,7 +254,7 @@ async def draw_messages(
                 st.stop()
 
 
-async def handle_feedback():
+async def handle_feedback() -> None:
     """Draws a feedback widget and records feedback from the user."""
 
     # Keep track of last feedback sent to avoid sending duplicates
@@ -274,9 +274,7 @@ async def handle_feedback():
             run_id=latest_run_id,
             key="human-feedback-stars",
             score=normalized_score,
-            kwargs=dict(
-                comment="In-line human feedback",
-            ),
+            kwargs={"comment": "In-line human feedback"},
         )
         st.session_state.last_feedback = (latest_run_id, feedback)
         st.toast("Feedback recorded", icon=":material/reviews:")

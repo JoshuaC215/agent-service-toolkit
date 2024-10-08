@@ -75,7 +75,7 @@ def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
 
 
 class LlamaGuard:
-    def __init__(self):
+    def __init__(self) -> None:
         if os.getenv("GROQ_API_KEY") is None:
             print("GROQ_API_KEY not set, skipping LlamaGuard")
             self.model = None

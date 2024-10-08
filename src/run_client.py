@@ -5,7 +5,7 @@ from client import AgentClient
 from schema import ChatMessage
 
 
-async def amain():
+async def amain() -> None:
     client = AgentClient()
 
     print("Chat example:")

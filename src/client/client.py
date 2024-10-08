@@ -11,7 +11,7 @@ from schema import ChatMessage, Feedback, StreamInput, UserInput
 class AgentClient:
     """Client for interacting with the agent service."""
 
-    def __init__(self, base_url: str = "http://localhost:80", timeout: float | None = None):
+    def __init__(self, base_url: str = "http://localhost:80", timeout: float | None = None) -> None:
         """
         Initialize the client.
 
@@ -23,7 +23,7 @@ class AgentClient:
         self.timeout = timeout
 
     @property
-    def _headers(self):
+    def _headers(self) -> dict[str, str]:
         headers = {}
         if self.auth_secret:
             headers["Authorization"] = f"Bearer {self.auth_secret}"
@@ -57,8 +57,7 @@ class AgentClient:
             )
             if response.status_code == 200:
                 return ChatMessage.model_validate(response.json())
-            else:
-                raise Exception(f"Error: {response.status_code} - {response.text}")
+            raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def invoke(
         self, message: str, model: str | None = None, thread_id: str | None = None
@@ -87,8 +86,7 @@ class AgentClient:
         )
         if response.status_code == 200:
             return ChatMessage.model_validate(response.json())
-        else:
-            raise Exception(f"Error: {response.status_code} - {response.text}")
+        raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def _parse_stream_line(self, line: str) -> ChatMessage | str | None:
         line = line.strip()
@@ -112,6 +110,7 @@ class AgentClient:
                     return parsed["content"]
                 case "error":
                     raise Exception(parsed["content"])
+        return None
 
     def stream(
         self,
@@ -206,7 +205,7 @@ class AgentClient:
 
     async def acreate_feedback(
         self, run_id: str, key: str, score: float, kwargs: dict[str, Any] = {}
-    ):
+    ) -> None:
         """
         Create a feedback record for a run.
 
