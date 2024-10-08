@@ -20,6 +20,10 @@ from agent.tools import calculator
 
 
 class AgentState(MessagesState, total=False):
+    """`total=False` is PEP589 specs.
+
+    documentation: https://typing.readthedocs.io/en/latest/spec/typeddict.html#totality
+    """
     safety: LlamaGuardOutput
     is_last_step: IsLastStep
 
