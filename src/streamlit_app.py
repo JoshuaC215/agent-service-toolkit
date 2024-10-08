@@ -110,20 +110,20 @@ async def main() -> None:
     await draw_messages(amessage_iter())
 
     # Generate new message if the user provided new input
-    if _input := st.chat_input():
-        messages.append(ChatMessage(type="human", content=_input))
-        st.chat_message("human").write(_input)
+    if user_input := st.chat_input():
+        messages.append(ChatMessage(type="human", content=user_input))
+        st.chat_message("human").write(user_input)
         agent_client = get_agent_client()
         if use_streaming:
             stream = agent_client.astream(
-                message=_input,
+                message=user_input,
                 model=model,
                 thread_id=get_script_run_ctx().session_id,
             )
             await draw_messages(stream, is_new=True)
         else:
             response = await agent_client.ainvoke(
-                message=_input,
+                message=user_input,
                 model=model,
                 thread_id=get_script_run_ctx().session_id,
             )
