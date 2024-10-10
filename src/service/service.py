@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.runnables import RunnableConfig
@@ -149,7 +149,21 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
     yield "data: [DONE]\n\n"
 
 
-@app.post("/stream")
+def _sse_response_example() -> dict[str, Any]:
+    return {
+        status.HTTP_200_OK: {
+            "description": "Server Sent Event Response",
+            "content": {
+                "text/event-stream": {
+                    "example": "data: {'type': 'token', 'content': 'Hello'}\n\ndata: {'type': 'token', 'content': ' World'}\n\n",
+                    "schema": {"type": "string"},
+                }
+            },
+        }
+    }
+
+
+@app.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
 async def stream_agent(user_input: StreamInput) -> StreamingResponse:
     """
     Stream the agent's response to a user input, including intermediate messages and tokens.
