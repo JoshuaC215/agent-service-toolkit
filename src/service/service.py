@@ -15,7 +15,14 @@ from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
 
 from agent import research_assistant
-from schema import ChatMessage, Feedback, StreamInput, UserInput, convert_message_content_to_string
+from schema import (
+    ChatMessage,
+    Feedback,
+    FeedbackResponse,
+    StreamInput,
+    UserInput,
+    convert_message_content_to_string,
+)
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
@@ -154,7 +161,7 @@ async def stream_agent(user_input: StreamInput) -> StreamingResponse:
 
 
 @app.post("/feedback")
-async def feedback(feedback: Feedback) -> dict[str, str]:
+async def feedback(feedback: Feedback) -> FeedbackResponse:
     """
     Record feedback for a run to LangSmith.
 
@@ -170,4 +177,4 @@ async def feedback(feedback: Feedback) -> dict[str, str]:
         score=feedback.score,
         **kwargs,
     )
-    return {"status": "success"}
+    return FeedbackResponse()

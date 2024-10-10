@@ -169,3 +169,7 @@ class Feedback(BaseModel):
         default={},
         examples=[{"comment": "In-line human feedback"}],
     )
+
+
+class FeedbackResponse(BaseModel):
+    status: Literal["success"] = "success"
