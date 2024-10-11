@@ -153,6 +153,8 @@ agent.add_edge("tools", "model")
 # After "model", if there are tool calls, run "tools". Otherwise END.
 def pending_tool_calls(state: AgentState) -> Literal["tools", "done"]:
     last_message = state["messages"][-1]
+    if not isinstance(last_message, AIMessage):
+        raise TypeError(f"Expected AIMessage, got {type(last_message)}")
     if last_message.tool_calls:
         return "tools"
     return "done"

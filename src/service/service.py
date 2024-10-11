@@ -64,9 +64,7 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     return kwargs, run_id
 
 
-def _remove_tool_calls(
-    content: str | list[str | dict],
-) -> str | list[str | dict]:
+def _remove_tool_calls(content: str | list[str | dict]) -> str | list[str | dict]:
     """Remove tool calls from content."""
     if isinstance(content, str):
         return content
@@ -149,7 +147,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
     yield "data: [DONE]\n\n"
 
 
-def _sse_response_example() -> dict[str, Any]:
+def _sse_response_example() -> dict[int, Any]:
     return {
         status.HTTP_200_OK: {
             "description": "Server Sent Event Response",
