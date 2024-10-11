@@ -1,7 +1,9 @@
 from unittest.mock import AsyncMock, patch
 
+import langsmith
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
+from langgraph.graph.state import CompiledStateGraph
 
 from schema import ChatMessage
 from service import app
@@ -10,7 +12,7 @@ client = TestClient(app)
 
 
 @patch("service.service.research_assistant")
-def test_invoke(mock_agent: TestClient) -> None:
+def test_invoke(mock_agent: CompiledStateGraph) -> None:
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is 70 degrees."
     agent_response = {"messages": [AIMessage(content=ANSWER)]}
@@ -30,7 +32,7 @@ def test_invoke(mock_agent: TestClient) -> None:
 
 
 @patch("service.service.LangsmithClient")
-def test_feedback(mock_client: TestClient) -> None:
+def test_feedback(mock_client: langsmith.Client) -> None:
     ls_instance = mock_client.return_value
     ls_instance.create_feedback.return_value = None
     body = {
