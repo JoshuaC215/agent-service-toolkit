@@ -155,7 +155,7 @@ def _sse_response_example() -> dict[str, Any]:
             "description": "Server Sent Event Response",
             "content": {
                 "text/event-stream": {
-                    "example": "data: {'type': 'token', 'content': 'Hello'}\n\ndata: {'type': 'token', 'content': ' World'}\n\n",
+                    "example": "data: {'type': 'token', 'content': 'Hello'}\n\ndata: {'type': 'token', 'content': ' World'}\n\ndata: [DONE]\n\n",
                     "schema": {"type": "string"},
                 }
             },
