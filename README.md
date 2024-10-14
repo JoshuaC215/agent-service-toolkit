@@ -12,7 +12,6 @@ This project offers a template for you to easily build and run your own agents u
 
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://agent-service-toolkit.streamlit.app/)
 
-
 <a href="https://agent-service-toolkit.streamlit.app/"><img src="media/app_screenshot.png" width="600"></a>
 
 ### Quickstart
@@ -80,19 +79,22 @@ With that said, there are several other interesting projects in this space that 
 - [DSPy](https://github.com/stanfordnlp/dspy): The DSPy optimizer and approach also seems super interesting and promising. But the creator [has stated](https://github.com/stanfordnlp/dspy/issues/703#issuecomment-2016598529) they aren't focusing on agents yet. I will probably experiment with building some of the specific nodes in more complex agents using DSPy in the future.
 - I know there are more springing up regularly, such as I recently came across [Prefect ControlFlow](https://github.com/PrefectHQ/ControlFlow).
 
-
 ## Setup and Usage
 
 1. Clone the repository:
-   ```
+
+   ```sh
    git clone https://github.com/JoshuaC215/agent-service-toolkit.git
    cd agent-service-toolkit
    ```
 
 2. Set up environment variables:
    Create a `.env` file in the root directory and add the following:
-   ```
-   # OPENAI_API_KEY is the only required variable
+
+   ```sh
+   # Provide at least one LLM API key to enable the agent service
+
+   # Optional, to enable OpenAI gpt-4o-mini
    OPENAI_API_KEY=your_openai_api_key
 
    # Optional, to enable LlamaGuard and Llama 3.1
@@ -117,6 +119,9 @@ With that said, there are several other interesting projects in this space that 
    LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
    LANGCHAIN_API_KEY=your_langchain_api_key
    LANGCHAIN_PROJECT=your_project
+
+   # Optional, if MODE=dev, uvicorn will reload the server on file changes
+   MODE=
    ```
 
 3. You can now run the agent service and the Streamlit app locally, either with Docker or just using Python. The Docker setup is recommended for simpler environment setup and immediate reloading of the services when you make changes to your code.
@@ -130,7 +135,8 @@ For local development, we recommend using [docker compose watch](https://docs.do
 1. Make sure you have Docker and Docker Compose (>=[2.23.0](https://docs.docker.com/compose/release-notes/#2230)) installed on your system.
 
 2. Build and launch the services in watch mode:
-   ```
+
+   ```sh
    docker compose watch
    ```
 
@@ -151,19 +157,22 @@ This setup allows you to develop and test your changes in real-time without manu
 You can also run the agent service and the Streamlit app locally without Docker, just using a Python virtual environment.
 
 1. Create a virtual environment and install dependencies:
-   ```
+
+   ```sh
    pip install uv
    uv sync --frozen --extra dev
    source .venv/bin/activate
    ```
 
 2. Run the FastAPI server:
-   ```
+
+   ```sh
    python src/run_service.py
    ```
 
 3. In a separate terminal, run the Streamlit app:
-   ```
+
+   ```sh
    streamlit run src/streamlit_app.py
    ```
 
@@ -182,14 +191,16 @@ Currently the tests need to be run using the local development without Docker se
 1. Ensure you're in the project root directory and have activated your virtual environment.
 
 2. Install the development dependencies and pre-commit hooks:
-   ```
+
+   ```sh
    pip install uv
    uv sync --frozen --extra dev
    pre-commit install
    ```
 
 3. Run the tests using pytest:
-   ```
+
+   ```sh
    pytest
    ```
 
