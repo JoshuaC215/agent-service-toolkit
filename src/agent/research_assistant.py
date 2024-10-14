@@ -31,7 +31,7 @@ class AgentState(MessagesState, total=False):
 
 # NOTE: models with streaming=True will send tokens as they are generated
 # if the /stream endpoint is called with stream_tokens=True (the default)
-models: dict[str, str] = {}
+models: dict[str, BaseChatModel] = {}
 if os.getenv("OPENAI_API_KEY") is not None:
     models["gpt-4o-mini"] = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, streaming=True)
 if os.getenv("GROQ_API_KEY") is not None:
