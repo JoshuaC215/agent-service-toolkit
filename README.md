@@ -94,7 +94,7 @@ With that said, there are several other interesting projects in this space that 
    ```sh
    # Provide at least one LLM API key to enable the agent service
 
-   # Optoinal, to enable OpenAI gpt-4o-mini
+   # Optional, to enable OpenAI gpt-4o-mini
    OPENAI_API_KEY=your_openai_api_key
 
    # Optional, to enable LlamaGuard and Llama 3.1
