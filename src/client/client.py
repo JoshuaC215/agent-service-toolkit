@@ -4,8 +4,7 @@ from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import httpx
-
-from schema import ChatMessage, Feedback, StreamInput, UserInput, ChatHistoryInput, ChatHistory
+from schema import ChatHistory, ChatHistoryInput, ChatMessage, Feedback, StreamInput, UserInput
 
 
 class AgentClient:

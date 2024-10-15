@@ -3,10 +3,9 @@ import os
 from collections.abc import AsyncGenerator
 
 import streamlit as st
-from streamlit.runtime.scriptrunner import get_script_run_ctx
-
 from client import AgentClient
-from schema import ChatMessage, ChatHistory
+from schema import ChatHistory, ChatMessage
+from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:

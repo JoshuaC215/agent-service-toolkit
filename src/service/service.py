@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 from uuid import uuid4
 
+from agent import research_assistant
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from langchain_core._api import LangChainBetaWarning
@@ -14,16 +15,14 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
-
-from agent import research_assistant
 from schema import (
+    ChatHistory,
+    ChatHistoryInput,
     ChatMessage,
     Feedback,
     FeedbackResponse,
     StreamInput,
     UserInput,
-    ChatHistoryInput,
-    ChatHistory,
     convert_message_content_to_string,
 )
 

@@ -1,12 +1,12 @@
 from schema.schema import (
     AgentResponse,
+    ChatHistory,
+    ChatHistoryInput,
     ChatMessage,
     Feedback,
     FeedbackResponse,
     StreamInput,
     UserInput,
-    ChatHistoryInput,
-    ChatHistory,
     convert_message_content_to_string,
 )
 
