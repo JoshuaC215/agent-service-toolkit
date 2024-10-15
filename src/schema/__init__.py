@@ -5,6 +5,8 @@ from schema.schema import (
     FeedbackResponse,
     StreamInput,
     UserInput,
+    ChatHistoryInput,
+    ChatHistory,
     convert_message_content_to_string,
 )
 
@@ -15,5 +17,7 @@ __all__ = [
     "StreamInput",
     "Feedback",
     "FeedbackResponse",
+    "ChatHistoryInput",
+    "ChatHistory",
     "convert_message_content_to_string",
 ]

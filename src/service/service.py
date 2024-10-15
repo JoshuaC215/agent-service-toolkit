@@ -9,6 +9,7 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from langchain_core._api import LangChainBetaWarning
+from langchain_core.messages import AnyMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
@@ -21,6 +22,8 @@ from schema import (
     FeedbackResponse,
     StreamInput,
     UserInput,
+    ChatHistoryInput,
+    ChatHistory,
     convert_message_content_to_string,
 )
 
@@ -190,3 +193,26 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
         **kwargs,
     )
     return FeedbackResponse()
+
+
+@app.post("/history")
+def history(input: ChatHistoryInput):
+    """
+    Get chat history.
+    """
+    agent: CompiledStateGraph = app.state.agent
+    try:
+        state_snapshot = agent.get_state(
+            config=RunnableConfig(
+                configurable={
+                    "thread_id": input.thread_id,
+                }
+            )
+        )
+        messages: list[AnyMessage] = state_snapshot.values["messages"]
+        chat_messages: list[ChatMessage] = []
+        for message in messages:
+            chat_messages.append(ChatMessage.from_langchain(message))
+        return ChatHistory(messages=chat_messages)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
