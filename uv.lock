@@ -60,8 +60,8 @@ requires-dist = [
     { name = "langchain-groq", specifier = "~=0.2.0" },
     { name = "langchain-openai", specifier = "~=0.2.0" },
     { name = "langgraph", specifier = "~=0.2.22" },
-    { name = "langgraph-checkpoint", specifier = "~=1.0.10" },
-    { name = "langgraph-checkpoint-sqlite", specifier = "~=1.0.3" },
+    { name = "langgraph-checkpoint", specifier = "~=2.0.0" },
+    { name = "langgraph-checkpoint-sqlite", specifier = "~=2.0.0" },
     { name = "langsmith", specifier = "~=0.1.96" },
     { name = "numexpr", specifier = "~=2.10.1" },
     { name = "pre-commit", marker = "extra == 'dev'" },
@@ -826,6 +826,15 @@ wheels = [
 ]
 
 [[package]]
+name = "httpx-sse"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4c/60/8f4281fa9bbf3c8034fd54c0e7412e66edbab6bc74c4996bd616f8d0406e/httpx-sse-0.4.0.tar.gz", hash = "sha256:1e81a3a3070ce322add1d3529ed42eb5f70817f45ed6ec915ab753f961139721", size = 12624 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/9b/a181f281f65d776426002f330c31849b86b31fc9d848db62e16f03ff739f/httpx_sse-0.4.0-py3-none-any.whl", hash = "sha256:f329af6eae57eaa2bdfd962b42524764af68075ea87370a2de920af5341e318f", size = 7819 },
+]
+
+[[package]]
 name = "huggingface-hub"
 version = "0.25.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1106,41 +1115,56 @@ wheels = [
 
 [[package]]
 name = "langgraph"
-version = "0.2.22"
+version = "0.2.37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "langgraph-checkpoint" },
+    { name = "langgraph-sdk" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e8/93/d58a108222bfddc7dc85741ec088f6987a4315a439f98aaf3f10d1275545/langgraph-0.2.22.tar.gz", hash = "sha256:1913d2533cac6bed17f2322dc9b458871a6181ed3ab35bb5a91c1440e3c3cc0b", size = 80635 }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/f9/50c0615723cb2850b0f97ae686fc2b7deea3dbd5d94fcf7b25d56f45edc4/langgraph-0.2.37.tar.gz", hash = "sha256:ddccc7902f5608351b19fe56eb644d83e569fc72d18433338aedefe5f7c5ddbc", size = 93726 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/58/09/ce553961d11f723c1ae19e2b3ab24468b10f506247e88ffbdb64b8c17989/langgraph-0.2.22-py3-none-any.whl", hash = "sha256:0669e2520a88c0ffd26d9bc930f0bdd490106ca04f1dfc970d8ae4e3787c6fa3", size = 98451 },
+    { url = "https://files.pythonhosted.org/packages/35/22/36e97b98609ac9f0191106a9e2dffe337f05ae9952cf2d013246448ed560/langgraph-0.2.37-py3-none-any.whl", hash = "sha256:b61d687ab89b4a33f4d387ff409cafec9e44733b5bcecc8c78b4b9c6837ee7b8", size = 112729 },
 ]
 
 [[package]]
 name = "langgraph-checkpoint"
-version = "1.0.10"
+version = "2.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "msgpack" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4a/ca/55ddff402871d96cb9ec4f6bc0eb497bb6953f69538498f8cdea7066f35d/langgraph_checkpoint-1.0.10.tar.gz", hash = "sha256:f800f6d340a5301f4f0d3c17f1ec87b778ebe2c7a20c9ea5caf3d2eb0c6b464d", size = 15622 }
+sdist = { url = "https://files.pythonhosted.org/packages/93/c3/df07aac6f9741bf0dc5d4888c6b7afe8ef3e8d3bd5dcd619bcd91aebf186/langgraph_checkpoint-2.0.1.tar.gz", hash = "sha256:31c34952b11a93108d76e5ad05398bfc94d8aafda5b4da7d17c26a121acce8e0", size = 20263 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/48/70/6ed6129c82f15dd76cf6cb5c9ffc496c0b9949a46d84813c8fae412656c2/langgraph_checkpoint-1.0.10-py3-none-any.whl", hash = "sha256:3396734143fda0165964e4f0b73b39e77fbea9f13cb4da1ed16a5c41fc136e50", size = 17016 },
+    { url = "https://files.pythonhosted.org/packages/de/21/71950ea28cd66fcc192ad2f9117d157ae674cdf9c00e65fb18a67bedf5a6/langgraph_checkpoint-2.0.1-py3-none-any.whl", hash = "sha256:760edb722f6c64f2a39f41c7fbd56aaee47524f3399cf7c4bb8f5563b590ee68", size = 22851 },
 ]
 
 [[package]]
 name = "langgraph-checkpoint-sqlite"
-version = "1.0.3"
+version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiosqlite" },
     { name = "langgraph-checkpoint" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0b/1c/0902b6ee2b31de63748b538a0c69380315703ec517655bf8f2f868fcbd2e/langgraph_checkpoint_sqlite-1.0.3.tar.gz", hash = "sha256:91b53dff61905910f79f077d568c9f407860f037745ce39b84db93d5dd0df186", size = 9172 }
+sdist = { url = "https://files.pythonhosted.org/packages/22/4f/1c9ed7eb7ee30a3db7fbfdd93438665c49539d8cc801be3fe96b970fd765/langgraph_checkpoint_sqlite-2.0.0.tar.gz", hash = "sha256:e6bb27583e4d26f5c9aede40ea66eb6216bec9c2c8beb39408cd50a0b8bb9a7b", size = 9518 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7f/1e/1c9f9255bae1004184dd502b6bfcda7fabf4fb752f0340700a1231cb2f3c/langgraph_checkpoint_sqlite-1.0.3-py3-none-any.whl", hash = "sha256:4fcabc75f253d2a280b3d3bccb9a204fcfa5fd91485a0faec95b6034fada8d75", size = 12092 },
+    { url = "https://files.pythonhosted.org/packages/7e/4e/61d4ae86a9a0066875c0235f0cedb0919c22d30e67c3e7e4d54f431dcb33/langgraph_checkpoint_sqlite-2.0.0-py3-none-any.whl", hash = "sha256:55e796830ea7f4dda4cce53ee7d5cc9f8cc789a730378a980e47fcbdf2babde1", size = 12615 },
+]
+
+[[package]]
+name = "langgraph-sdk"
+version = "0.1.33"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "httpx-sse" },
+    { name = "orjson" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bc/34/82d44ed9ac501ce891474afe6e1bd75a586010ac35ee865bade0df384cde/langgraph_sdk-0.1.33.tar.gz", hash = "sha256:addffc33554b690e81525c12fe9b2656cc7b740678e4724bc706d1ca13b3de93", size = 27331 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c2/06/159d619a92019e6c3323526b9ab1776e451dd0a97bc0e21d3da9016cc2dd/langgraph_sdk-0.1.33-py3-none-any.whl", hash = "sha256:fe2311ebfe231219a7ad06c3dad4860a9e2917e780aaa2f228d1a9f5653da686", size = 28186 },
 ]
 
 [[package]]
