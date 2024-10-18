@@ -99,7 +99,10 @@ async def main() -> None:
                 "Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only."
             )
 
-        st.markdown(f"Chat ID: **{st.session_state.thread_id}**")
+        st.markdown(
+            f"Thread ID: **{st.session_state.thread_id}**",
+            help=f"Set URL query parameter ?thread_id={st.session_state.thread_id} to continue this conversation",
+        )
 
         "[View the source code](https://github.com/JoshuaC215/agent-service-toolkit)"
         st.caption(
