@@ -6,7 +6,7 @@ import streamlit as st
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient
-from schema import ChatMessage
+from schema import ChatHistory, ChatMessage
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:
@@ -53,6 +53,18 @@ async def main() -> None:
         await asyncio.sleep(0.1)
         st.rerun()
 
+    if "thread_id" not in st.session_state:
+        thread_id = st.query_params.get("thread_id")
+        if not thread_id:
+            thread_id = get_script_run_ctx().session_id
+            messages = []
+        else:
+            agent_client = get_agent_client()
+            history: ChatHistory = agent_client.get_history(thread_id=thread_id)
+            messages = history.messages
+        st.session_state.messages = messages
+        st.session_state.thread_id = thread_id
+
     models = {
         "OpenAI GPT-4o-mini (streaming)": "gpt-4o-mini",
         "Gemini 1.5 Flash (streaming)": "gemini-1.5-flash",
@@ -87,14 +99,17 @@ async def main() -> None:
                 "Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only."
             )
 
+        st.markdown(
+            f"Thread ID: **{st.session_state.thread_id}**",
+            help=f"Set URL query parameter ?thread_id={st.session_state.thread_id} to continue this conversation",
+        )
+
         "[View the source code](https://github.com/JoshuaC215/agent-service-toolkit)"
         st.caption(
             "Made with :material/favorite: by [Joshua](https://www.linkedin.com/in/joshua-k-carroll/) in Oakland"
         )
 
     # Draw existing messages
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
     messages: list[ChatMessage] = st.session_state.messages
 
     if len(messages) == 0:
@@ -118,14 +133,14 @@ async def main() -> None:
             stream = agent_client.astream(
                 message=user_input,
                 model=model,
-                thread_id=get_script_run_ctx().session_id,
+                thread_id=st.session_state.thread_id,
             )
             await draw_messages(stream, is_new=True)
         else:
             response = await agent_client.ainvoke(
                 message=user_input,
                 model=model,
-                thread_id=get_script_run_ctx().session_id,
+                thread_id=st.session_state.thread_id,
             )
             messages.append(response)
             st.chat_message("ai").write(response.content)
