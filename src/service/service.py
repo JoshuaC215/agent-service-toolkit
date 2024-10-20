@@ -196,7 +196,7 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
 
 
 @app.post("/history")
-def history(input: ChatHistoryInput):
+def history(input: ChatHistoryInput) -> ChatHistory:
     """
     Get chat history.
     """

@@ -228,7 +228,7 @@ class AgentClient:
     def get_history(
         self,
         thread_id: str,
-    ):
+    ) -> ChatHistory:
         """
         Get chat history.
 
