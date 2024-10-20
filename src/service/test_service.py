@@ -1,11 +1,12 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import langsmith
 from fastapi.testclient import TestClient
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.pregel.types import StateSnapshot
 
-from schema import ChatMessage
+from schema import ChatHistory, ChatMessage
 from service import app
 
 client = TestClient(app)
@@ -48,3 +49,32 @@ def test_feedback(mock_client: langsmith.Client) -> None:
         key="human-feedback-stars",
         score=0.8,
     )
+
+
+@patch("service.service.research_assistant")
+def test_history(mock_agent: CompiledStateGraph) -> None:
+    QUESTION = "What is the weather in Tokyo?"
+    ANSWER = "The weather in Tokyo is 70 degrees."
+    user_question = HumanMessage(content=QUESTION)
+    agent_response = AIMessage(content=ANSWER)
+    mock_agent.get_state = Mock(
+        return_value=StateSnapshot(
+            values={"messages": [user_question, agent_response]},
+            next=(),
+            config={},
+            metadata=None,
+            created_at=None,
+            parent_config=None,
+            tasks=(),
+        )
+    )
+
+    with client as c:
+        response = c.post("/history", json={"thread_id": "7bcc7cc1-99d7-4b1d-bdb5-e6f90ed44de6"})
+        assert response.status_code == 200
+
+    output = ChatHistory.model_validate(response.json())
+    assert output.messages[0].type == "human"
+    assert output.messages[0].content == QUESTION
+    assert output.messages[1].type == "ai"
+    assert output.messages[1].content == ANSWER
