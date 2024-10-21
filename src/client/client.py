@@ -1,14 +1,17 @@
 import json
 import os
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
+
 import httpx
-from typing import AsyncGenerator, Dict, Any, Generator
-from schema import ChatMessage, UserInput, StreamInput, Feedback
+
+from schema import ChatHistory, ChatHistoryInput, ChatMessage, Feedback, StreamInput, UserInput
 
 
 class AgentClient:
     """Client for interacting with the agent service."""
 
-    def __init__(self, base_url: str = "http://localhost:80", timeout: float | None = None):
+    def __init__(self, base_url: str = "http://localhost:80", timeout: float | None = None) -> None:
         """
         Initialize the client.
 
@@ -20,7 +23,7 @@ class AgentClient:
         self.timeout = timeout
 
     @property
-    def _headers(self):
+    def _headers(self) -> dict[str, str]:
         headers = {}
         if self.auth_secret:
             headers["Authorization"] = f"Bearer {self.auth_secret}"
@@ -48,14 +51,13 @@ class AgentClient:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}/invoke",
-                json=request.dict(),
+                json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
             )
             if response.status_code == 200:
                 return ChatMessage.model_validate(response.json())
-            else:
-                raise Exception(f"Error: {response.status_code} - {response.text}")
+            raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def invoke(
         self, message: str, model: str | None = None, thread_id: str | None = None
@@ -78,14 +80,13 @@ class AgentClient:
             request.model = model
         response = httpx.post(
             f"{self.base_url}/invoke",
-            json=request.dict(),
+            json=request.model_dump(),
             headers=self._headers,
             timeout=self.timeout,
         )
         if response.status_code == 200:
             return ChatMessage.model_validate(response.json())
-        else:
-            raise Exception(f"Error: {response.status_code} - {response.text}")
+        raise Exception(f"Error: {response.status_code} - {response.text}")
 
     def _parse_stream_line(self, line: str) -> ChatMessage | str | None:
         line = line.strip()
@@ -109,6 +110,7 @@ class AgentClient:
                     return parsed["content"]
                 case "error":
                     raise Exception(parsed["content"])
+        return None
 
     def stream(
         self,
@@ -142,7 +144,7 @@ class AgentClient:
         with httpx.stream(
             "POST",
             f"{self.base_url}/stream",
-            json=request.dict(),
+            json=request.model_dump(),
             headers=self._headers,
             timeout=self.timeout,
         ) as response:
@@ -188,7 +190,7 @@ class AgentClient:
             async with client.stream(
                 "POST",
                 f"{self.base_url}/stream",
-                json=request.dict(),
+                json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
             ) as response:
@@ -202,8 +204,8 @@ class AgentClient:
                         yield parsed
 
     async def acreate_feedback(
-        self, run_id: str, key: str, score: float, kwargs: Dict[str, Any] = {}
-    ):
+        self, run_id: str, key: str, score: float, kwargs: dict[str, Any] = {}
+    ) -> None:
         """
         Create a feedback record for a run.
 
@@ -215,10 +217,33 @@ class AgentClient:
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}/feedback",
-                json=request.dict(),
+                json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
             )
             if response.status_code != 200:
                 raise Exception(f"Error: {response.status_code} - {response.text}")
             response.json()
+
+    def get_history(
+        self,
+        thread_id: str,
+    ) -> ChatHistory:
+        """
+        Get chat history.
+
+        Args:
+            thread_id (str, optional): Thread ID for identifying a conversation
+        """
+        request = ChatHistoryInput(thread_id=thread_id)
+        response = httpx.post(
+            f"{self.base_url}/history",
+            json=request.model_dump(),
+            headers=self._headers,
+            timeout=self.timeout,
+        )
+        if response.status_code == 200:
+            response_object = response.json()
+            return ChatHistory.model_validate(response_object)
+        else:
+            raise Exception(f"Error: {response.status_code} - {response.text}")

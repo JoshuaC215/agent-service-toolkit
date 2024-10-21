@@ -1,11 +1,15 @@
 from schema.schema import (
-    UserInput,
     AgentResponse,
+    ChatHistory,
+    ChatHistoryInput,
     ChatMessage,
-    StreamInput,
     Feedback,
-    TaskMessage,
+    FeedbackResponse,
+    StreamInput,
     Task,
+    TaskMessage,
+    UserInput,
+    convert_message_content_to_string,
 )
 
 __all__ = [
@@ -16,4 +20,8 @@ __all__ = [
     "Feedback",
     "TaskMessage",
     "Task",
+    "FeedbackResponse",
+    "ChatHistoryInput",
+    "ChatHistory",
+    "convert_message_content_to_string",
 ]

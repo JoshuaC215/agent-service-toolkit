@@ -24,9 +24,10 @@ dependencies = [
     "langchain-openai ~=0.2.0",
     "langchain-groq ~=0.2.0",
     "langchain-google-genai ~=2.0.0",
+    "langchain-anthropic ~= 0.2.0",
     "langgraph ~=0.2.22",
-    "langgraph-checkpoint ~=1.0.10",
-    "langgraph-checkpoint-sqlite ~=1.0.3",
+    "langgraph-checkpoint ~=2.0.0",
+    "langgraph-checkpoint-sqlite ~=2.0.0",
     "langsmith ~=0.1.96",
     "numexpr ~=2.10.1",
     "pydantic ~=2.9.0",
@@ -48,6 +49,9 @@ dev = [
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+extend-select = ["I", "U"]
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-fake-openai-key"

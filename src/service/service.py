@@ -1,25 +1,38 @@
-from contextlib import asynccontextmanager
 import json
 import os
 import warnings
-from typing import AsyncGenerator, Dict, Any, Tuple
+from collections.abc import AsyncGenerator, Callable
+from contextlib import asynccontextmanager
+from typing import Any
 from uuid import uuid4
-from fastapi import FastAPI, HTTPException, Request, Response
+
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import StreamingResponse
 from langchain_core._api import LangChainBetaWarning
+from langchain_core.messages import AnyMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
-from langgraph.graph.graph import CompiledGraph
+from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
 
 from agent import research_assistant
-from schema import ChatMessage, Feedback, UserInput, StreamInput, TaskMessage
+from schema import (
+    ChatHistory,
+    ChatHistoryInput,
+    ChatMessage,
+    Feedback,
+    FeedbackResponse,
+    StreamInput,
+    TaskMessage,
+    UserInput,
+    convert_message_content_to_string,
+)
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Construct agent with Sqlite checkpointer
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as saver:
         research_assistant.checkpointer = saver
@@ -32,7 +45,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.middleware("http")
-async def check_auth_header(request: Request, call_next):
+async def check_auth_header(request: Request, call_next: Callable) -> Response:
     if auth_secret := os.getenv("AUTH_SECRET"):
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
@@ -42,18 +55,29 @@ async def check_auth_header(request: Request, call_next):
     return await call_next(request)
 
 
-def _parse_input(user_input: UserInput) -> Tuple[Dict[str, Any], str]:
+def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
     input_message = ChatMessage(type="human", content=user_input.message)
-    kwargs = dict(
-        input={"messages": [input_message.to_langchain()]},
-        config=RunnableConfig(
-            configurable={"thread_id": thread_id, "model": user_input.model},
-            run_id=run_id,
+    kwargs = {
+        "input": {"messages": [input_message.to_langchain()]},
+        "config": RunnableConfig(
+            configurable={"thread_id": thread_id, "model": user_input.model}, run_id=run_id
         ),
-    )
+    }
     return kwargs, run_id
+
+
+def _remove_tool_calls(content: str | list[str | dict]) -> str | list[str | dict]:
+    """Remove tool calls from content."""
+    if isinstance(content, str):
+        return content
+    # Currently only Anthropic models stream tool calls, using content item type tool_use.
+    return [
+        content_item
+        for content_item in content
+        if isinstance(content_item, str) or content_item["type"] != "tool_use"
+    ]
 
 
 @app.post("/invoke")
@@ -64,7 +88,7 @@ async def invoke(user_input: UserInput) -> ChatMessage:
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to messages for recording feedback.
     """
-    agent: CompiledGraph = app.state.agent
+    agent: CompiledStateGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
     try:
         response = await agent.ainvoke(**kwargs)
@@ -81,7 +105,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
 
     This is the workhorse method for the /stream endpoint.
     """
-    agent: CompiledGraph = app.state.agent
+    agent: CompiledStateGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
@@ -122,7 +146,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
             # by custom events.
             if chat_message.type == "task":
                 continue
-            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.dict()})}\n\n"
+            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
         # Yield tokens streamed from LLMs.
         if (
@@ -130,19 +154,33 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
             and user_input.stream_tokens
             and "llama_guard" not in event.get("tags", [])
         ):
-            content = event["data"]["chunk"].content
+            content = _remove_tool_calls(event["data"]["chunk"].content)
             if content:
-                # Empty content in the context of OpenAI or Anthropic usually means
+                # Empty content in the context of OpenAI usually means
                 # that the model is asking for a tool to be invoked.
                 # So we only print non-empty content.
-                yield f"data: {json.dumps({'type': 'token', 'content': content})}\n\n"
+                yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
             continue
 
     yield "data: [DONE]\n\n"
 
 
-@app.post("/stream")
-async def stream_agent(user_input: StreamInput):
+def _sse_response_example() -> dict[int, Any]:
+    return {
+        status.HTTP_200_OK: {
+            "description": "Server Sent Event Response",
+            "content": {
+                "text/event-stream": {
+                    "example": "data: {'type': 'token', 'content': 'Hello'}\n\ndata: {'type': 'token', 'content': ' World'}\n\ndata: [DONE]\n\n",
+                    "schema": {"type": "string"},
+                }
+            },
+        }
+    }
+
+
+@app.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
+async def stream_agent(user_input: StreamInput) -> StreamingResponse:
     """
     Stream the agent's response to a user input, including intermediate messages and tokens.
 
@@ -153,7 +191,7 @@ async def stream_agent(user_input: StreamInput):
 
 
 @app.post("/feedback")
-async def feedback(feedback: Feedback):
+async def feedback(feedback: Feedback) -> FeedbackResponse:
     """
     Record feedback for a run to LangSmith.
 
@@ -169,4 +207,27 @@ async def feedback(feedback: Feedback):
         score=feedback.score,
         **kwargs,
     )
-    return {"status": "success"}
+    return FeedbackResponse()
+
+
+@app.post("/history")
+def history(input: ChatHistoryInput) -> ChatHistory:
+    """
+    Get chat history.
+    """
+    agent: CompiledStateGraph = app.state.agent
+    try:
+        state_snapshot = agent.get_state(
+            config=RunnableConfig(
+                configurable={
+                    "thread_id": input.thread_id,
+                }
+            )
+        )
+        messages: list[AnyMessage] = state_snapshot.values["messages"]
+        chat_messages: list[ChatMessage] = []
+        for message in messages:
+            chat_messages.append(ChatMessage.from_langchain(message))
+        return ChatHistory(messages=chat_messages)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
