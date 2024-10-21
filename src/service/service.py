@@ -1,13 +1,14 @@
 import json
 import os
 import warnings
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Annotated, Any
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AnyMessage
 from langchain_core.runnables import RunnableConfig
@@ -30,6 +31,19 @@ from schema import (
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 
 
+def verify_bearer(
+    http_auth: Annotated[
+        HTTPAuthorizationCredentials,
+        Depends(HTTPBearer(description="Please provide AUTH_SECRET api key.")),
+    ],
+) -> None:
+    if http_auth.credentials != os.getenv("AUTH_SECRET"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+
+
+bearer_depend = [Depends(verify_bearer)] if os.getenv("AUTH_SECRET") else None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Construct agent with Sqlite checkpointer
@@ -41,17 +55,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(lifespan=lifespan)
-
-
-@app.middleware("http")
-async def check_auth_header(request: Request, call_next: Callable) -> Response:
-    if auth_secret := os.getenv("AUTH_SECRET"):
-        auth_header = request.headers.get("Authorization")
-        if not auth_header or not auth_header.startswith("Bearer "):
-            return Response(status_code=401, content="Missing or invalid token")
-        if auth_header[7:] != auth_secret:
-            return Response(status_code=401, content="Invalid token")
-    return await call_next(request)
+router = APIRouter(dependencies=bearer_depend)
 
 
 def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
@@ -79,7 +83,7 @@ def _remove_tool_calls(content: str | list[str | dict]) -> str | list[str | dict
     ]
 
 
-@app.post("/invoke")
+@router.post("/invoke")
 async def invoke(user_input: UserInput) -> ChatMessage:
     """
     Invoke the agent with user input to retrieve a final response.
@@ -164,7 +168,7 @@ def _sse_response_example() -> dict[int, Any]:
     }
 
 
-@app.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
+@router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
 async def stream_agent(user_input: StreamInput) -> StreamingResponse:
     """
     Stream the agent's response to a user input, including intermediate messages and tokens.
@@ -175,7 +179,7 @@ async def stream_agent(user_input: StreamInput) -> StreamingResponse:
     return StreamingResponse(message_generator(user_input), media_type="text/event-stream")
 
 
-@app.post("/feedback")
+@router.post("/feedback")
 async def feedback(feedback: Feedback) -> FeedbackResponse:
     """
     Record feedback for a run to LangSmith.
@@ -195,7 +199,7 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
     return FeedbackResponse()
 
 
-@app.post("/history")
+@router.post("/history")
 def history(input: ChatHistoryInput) -> ChatHistory:
     """
     Get chat history.
@@ -216,3 +220,6 @@ def history(input: ChatHistoryInput) -> ChatHistory:
         return ChatHistory(messages=chat_messages)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+app.include_router(router)
