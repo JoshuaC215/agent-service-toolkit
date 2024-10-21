@@ -50,7 +50,7 @@ class AgentClient:
             request.model = model
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{self.base_url}/invoke",
+                f"{self.base_url}/invoke/research-assistant",
                 json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
@@ -79,7 +79,7 @@ class AgentClient:
         if model:
             request.model = model
         response = httpx.post(
-            f"{self.base_url}/invoke",
+            f"{self.base_url}/invoke/research-assistant",
             json=request.model_dump(),
             headers=self._headers,
             timeout=self.timeout,
@@ -143,7 +143,7 @@ class AgentClient:
             request.model = model
         with httpx.stream(
             "POST",
-            f"{self.base_url}/stream",
+            f"{self.base_url}/stream/research-assistant",
             json=request.model_dump(),
             headers=self._headers,
             timeout=self.timeout,
@@ -189,7 +189,7 @@ class AgentClient:
         async with httpx.AsyncClient() as client:
             async with client.stream(
                 "POST",
-                f"{self.base_url}/stream",
+                f"{self.base_url}/stream/research-assistant",
                 json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
@@ -237,7 +237,7 @@ class AgentClient:
         """
         request = ChatHistoryInput(thread_id=thread_id)
         response = httpx.post(
-            f"{self.base_url}/history",
+            f"{self.base_url}/history/research-assistant",
             json=request.model_dump(),
             headers=self._headers,
             timeout=self.timeout,
