@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from schema import ChatMessage, Feedback, StreamInput, UserInput
+from schema import ChatHistory, ChatHistoryInput, ChatMessage, Feedback, StreamInput, UserInput
 
 
 class AgentClient:
@@ -224,3 +224,26 @@ class AgentClient:
             if response.status_code != 200:
                 raise Exception(f"Error: {response.status_code} - {response.text}")
             response.json()
+
+    def get_history(
+        self,
+        thread_id: str,
+    ) -> ChatHistory:
+        """
+        Get chat history.
+
+        Args:
+            thread_id (str, optional): Thread ID for identifying a conversation
+        """
+        request = ChatHistoryInput(thread_id=thread_id)
+        response = httpx.post(
+            f"{self.base_url}/history",
+            json=request.model_dump(),
+            headers=self._headers,
+            timeout=self.timeout,
+        )
+        if response.status_code == 200:
+            response_object = response.json()
+            return ChatHistory.model_validate(response_object)
+        else:
+            raise Exception(f"Error: {response.status_code} - {response.text}")

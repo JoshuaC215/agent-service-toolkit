@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
+from langchain_core.messages import AnyMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
@@ -17,6 +18,8 @@ from langsmith import Client as LangsmithClient
 
 from agent import research_assistant
 from schema import (
+    ChatHistory,
+    ChatHistoryInput,
     ChatMessage,
     Feedback,
     FeedbackResponse,
@@ -194,6 +197,29 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
         **kwargs,
     )
     return FeedbackResponse()
+
+
+@router.post("/history")
+def history(input: ChatHistoryInput) -> ChatHistory:
+    """
+    Get chat history.
+    """
+    agent: CompiledStateGraph = app.state.agent
+    try:
+        state_snapshot = agent.get_state(
+            config=RunnableConfig(
+                configurable={
+                    "thread_id": input.thread_id,
+                }
+            )
+        )
+        messages: list[AnyMessage] = state_snapshot.values["messages"]
+        chat_messages: list[ChatMessage] = []
+        for message in messages:
+            chat_messages.append(ChatMessage.from_langchain(message))
+        return ChatHistory(messages=chat_messages)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 app.include_router(router)
