@@ -15,7 +15,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
 
-from agent import research_assistant, research_assistant_bg_tasks
+from agent import research_assistant
 from schema import (
     ChatHistory,
     ChatHistoryInput,
@@ -23,7 +23,6 @@ from schema import (
     Feedback,
     FeedbackResponse,
     StreamInput,
-    TaskMessage,
     UserInput,
     convert_message_content_to_string,
 )
@@ -36,9 +35,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Construct agent with Sqlite checkpointer
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as saver:
         research_assistant.checkpointer = saver
-        app.state.agent_research_assistant = research_assistant
-        research_assistant_bg_tasks.checkpointer = saver
-        app.state.agent_research_assistant_bg_tasks = research_assistant_bg_tasks
+        app.state.agent = research_assistant
         yield
     # context manager will clean up the AsyncSqliteSaver on exit
 
@@ -82,13 +79,15 @@ def _remove_tool_calls(content: str | list[str | dict]) -> str | list[str | dict
     ]
 
 
-async def _invoke(agent: CompiledStateGraph, user_input: UserInput) -> ChatMessage:
+@app.post("/invoke")
+async def invoke(user_input: UserInput) -> ChatMessage:
     """
     Invoke the agent with user input to retrieve a final response.
 
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to messages for recording feedback.
     """
+    agent: CompiledStateGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
     try:
         response = await agent.ainvoke(**kwargs)
@@ -99,24 +98,13 @@ async def _invoke(agent: CompiledStateGraph, user_input: UserInput) -> ChatMessa
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/invoke/research-assistant")
-async def invoke_research_assistant(user_input: UserInput) -> ChatMessage:
-    return await _invoke(app.state.agent_research_assistant, user_input)
-
-
-@app.post("/invoke/research-assistant-bg-tasks")
-async def invoke_research_assistant_bg_tasks(user_input: UserInput) -> ChatMessage:
-    return await _invoke(app.state.agent_research_assistant_bg_tasks, user_input)
-
-
-async def _message_generator(
-    agent: CompiledStateGraph, message_field: str, user_input: StreamInput
-) -> AsyncGenerator[str, None]:
+async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None]:
     """
     Generate a stream of messages from the agent.
 
     This is the workhorse method for the /stream endpoint.
     """
+    agent: CompiledStateGraph = app.state.agent
     kwargs, run_id = _parse_input(user_input)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
@@ -124,25 +112,15 @@ async def _message_generator(
         if not event:
             continue
 
-        if event["event"] == "on_custom_event":
-            if isinstance(event["data"], TaskMessage):
-                try:
-                    chat_message = ChatMessage.from_langchain(event["data"])
-                    chat_message.run_id = str(run_id)
-                except Exception as e:
-                    yield f"data: {json.dumps({'type': 'error', 'content': f'Error parsing message: {e}'})}\n\n"
-                    continue
-                yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
-
         # Yield messages written to the graph state after node execution finishes.
         if (
             event["event"] == "on_chain_end"
             # on_chain_end gets called a bunch of times in a graph execution
             # This filters out everything except for "graph node finished"
             and any(t.startswith("graph:step:") for t in event.get("tags", []))
-            and message_field in event["data"]["output"]
+            and "messages" in event["data"]["output"]
         ):
-            new_messages = event["data"]["output"][message_field]
+            new_messages = event["data"]["output"]["messages"]
             for message in new_messages:
                 try:
                     chat_message = ChatMessage.from_langchain(message)
@@ -152,10 +130,6 @@ async def _message_generator(
                     continue
                 # LangGraph re-sends the input message, which feels weird, so drop it
             if chat_message.type == "human" and chat_message.content == user_input.message:
-                continue
-            # Task messages are only stored in 'messages' list  for chat history purposes. They are emitted
-            # by custom events.
-            if chat_message.type == "task":
                 continue
             yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
@@ -190,42 +164,15 @@ def _sse_response_example() -> dict[int, Any]:
     }
 
 
-@app.post(
-    "/stream/research-assistant",
-    response_class=StreamingResponse,
-    responses=_sse_response_example(),
-)
-async def stream_agent_research_assistant(user_input: StreamInput) -> StreamingResponse:
+@app.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
+async def stream_agent(user_input: StreamInput) -> StreamingResponse:
     """
     Stream the agent's response to a user input, including intermediate messages and tokens.
 
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to all messages for recording feedback.
     """
-    return StreamingResponse(
-        _message_generator(app.state.agent_research_assistant, "messages", user_input),
-        media_type="text/event-stream",
-    )
-
-
-@app.post(
-    "/stream/research-assistant-bg-tasks",
-    response_class=StreamingResponse,
-    responses=_sse_response_example(),
-)
-async def stream_agent_research_assistant_bg_tasks(user_input: StreamInput) -> StreamingResponse:
-    """
-    Stream the agent's response to a user input, including intermediate messages and tokens.
-
-    Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
-    is also attached to all messages for recording feedback.
-    """
-    return StreamingResponse(
-        _message_generator(
-            app.state.agent_research_assistant_bg_tasks, "detailed_messages", user_input
-        ),
-        media_type="text/event-stream",
-    )
+    return StreamingResponse(message_generator(user_input), media_type="text/event-stream")
 
 
 @app.post("/feedback")
@@ -248,10 +195,12 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
     return FeedbackResponse()
 
 
-def _history(agent: CompiledStateGraph, message_field: str, input: ChatHistoryInput) -> ChatHistory:
+@app.post("/history")
+def history(input: ChatHistoryInput) -> ChatHistory:
     """
     Get chat history.
     """
+    agent: CompiledStateGraph = app.state.agent
     try:
         state_snapshot = agent.get_state(
             config=RunnableConfig(
@@ -260,20 +209,10 @@ def _history(agent: CompiledStateGraph, message_field: str, input: ChatHistoryIn
                 }
             )
         )
-        messages: list[AnyMessage] = state_snapshot.values[message_field]
+        messages: list[AnyMessage] = state_snapshot.values["messages"]
         chat_messages: list[ChatMessage] = []
         for message in messages:
             chat_messages.append(ChatMessage.from_langchain(message))
         return ChatHistory(messages=chat_messages)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/history/research-assistant")
-def history_research_assistant(input: ChatHistoryInput) -> ChatHistory:
-    return _history(app.state.agent_research_assistant, "messages", input)
-
-
-@app.post("/history/research-assistant-bg-tasks")
-def history_research_assistant_bg_tasks(input: ChatHistoryInput) -> ChatHistory:
-    return _history(app.state.agent_research_assistant_bg_tasks, "detailed_messages", input)

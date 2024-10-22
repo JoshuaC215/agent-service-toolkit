@@ -20,7 +20,7 @@ def test_invoke(mock_agent: CompiledStateGraph) -> None:
     mock_agent.ainvoke = AsyncMock(return_value=agent_response)
 
     with client as c:
-        response = c.post("/invoke/research-assistant", json={"message": QUESTION})
+        response = c.post("/invoke", json={"message": QUESTION})
         assert response.status_code == 200
 
     mock_agent.ainvoke.assert_awaited_once()
@@ -70,10 +70,7 @@ def test_history(mock_agent: CompiledStateGraph) -> None:
     )
 
     with client as c:
-        response = c.post(
-            "/history/research-assistant",
-            json={"thread_id": "7bcc7cc1-99d7-4b1d-bdb5-e6f90ed44de6"},
-        )
+        response = c.post("/history", json={"thread_id": "7bcc7cc1-99d7-4b1d-bdb5-e6f90ed44de6"})
         assert response.status_code == 200
 
     output = ChatHistory.model_validate(response.json())
