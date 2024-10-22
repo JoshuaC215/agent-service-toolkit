@@ -211,6 +211,13 @@ To customize the agent for your own use case:
 1. Modify the `src/agent/research_assistant.py` file to change the agent's behavior and tools. Or, build a new agent from scratch.
 2. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
 
+## Background Task Notifications
+
+If your agent performs long-running processing, like document retrieval, before displaying response to the user and you wish to display intermediate progress to users, you can utilize background tasks notification functionality, which is demonstrated in `guard_input` node in `src/agent/research_assistant_bg_tasks.py`. For this agent to work properly, you have to make two changes in `src/service/service.py`:
+1. In `lifespan` function, switch `research_agent` for `research_agent_bg_tools`.
+2. In `message_generator` function, use `event["data"]["output"]["detailed_messages"]` instead of `event["data"]["output"]["messages"]`.
+3. In `history` function, use `state_snapshot.values["detailed_messages"]` instaed of `state_snapshot.values["messages"]`.
+
 ## Building other apps on the AgentClient
 
 The repo includes a generic `src/client/client.AgentClient` that can be used to interact with the agent service. This client is designed to be flexible and can be used to build other apps on top of the agent. It supports both synchronous and asynchronous invocations, and streaming and non-streaming requests.
