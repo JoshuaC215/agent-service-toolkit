@@ -50,7 +50,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "duckduckgo-search", specifier = "~=6.2.6" },
+    { name = "duckduckgo-search", specifier = ">=6.3" },
     { name = "fastapi", specifier = "~=0.115.0" },
     { name = "httpx", specifier = "~=0.26.0" },
     { name = "langchain-anthropic", specifier = "~=0.2.0" },
@@ -416,15 +416,15 @@ wheels = [
 
 [[package]]
 name = "duckduckgo-search"
-version = "6.2.12"
+version = "6.3.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
     { name = "primp" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/94/dc/5240532f40e690f395b9bb95bcdce41243f4a41baf998bda42bc1eb157c1/duckduckgo_search-6.2.12.tar.gz", hash = "sha256:04f9f1459763668d268344c7a32d943173d0e060dad53a5c2df4b4d3ca9a74cf", size = 33044 }
+sdist = { url = "https://files.pythonhosted.org/packages/bb/9a/f9ad24e7296e85be0099e29711a6b719fc7463ec639831dc130637077a27/duckduckgo_search-6.3.2.tar.gz", hash = "sha256:53dbf45f8749bfc67483eb9f281f2e722a5fe644d61c54ed9e551d26cb6bcbf2", size = 33343 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e1/c5/5eaff940cf0d9a6d080397d07d7071eafa6c191af5e34f1da9776b3094f9/duckduckgo_search-6.2.12-py3-none-any.whl", hash = "sha256:0d379c1f845b632a41553efb13d571788f19ad289229e641a27b5710d92097a6", size = 27453 },
+    { url = "https://files.pythonhosted.org/packages/7c/86/62612f5db59ec34b45cf55bc13643ddc141bad22d41cfe4db9d5200b6249/duckduckgo_search-6.3.2-py3-none-any.whl", hash = "sha256:cd631275292460d590d1d496995d002bf2fe6db9752713fab17b9e95924ced98", size = 27704 },
 ]
 
 [[package]]
@@ -1670,17 +1670,17 @@ wheels = [
 
 [[package]]
 name = "primp"
-version = "0.6.2"
+version = "0.6.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2f/b3/a2f985fd290c073b5d6f3b4fbb272be3170fa6794855679ad4ff2e4a4a0e/primp-0.6.2.tar.gz", hash = "sha256:5a96a6b65195a8a989157e67d23bd171c49be238654e02bdf1b1fda36cbcc068", size = 79375 }
+sdist = { url = "https://files.pythonhosted.org/packages/12/52/93b448d711f33319408a796a6ca92796589b522ebe6b4ec81e41ed49b0f0/primp-0.6.4.tar.gz", hash = "sha256:0a3de63e46a50664bcdc76e7aaf7060bf8443698efa902864669c5fca0d1abdd", size = 79073 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a5/c3/cd3f64b163f6a4ef1eaa76bbf7faf4bc2c5028a1042ae2636c2ff7c072b6/primp-0.6.2-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:4a35d441462a55d9a9525bf170e2ffd2fcb3db6039b23e802859fa22c18cdd51", size = 2712374 },
-    { url = "https://files.pythonhosted.org/packages/f3/b7/377f650f12e94b2a02bbdba445663c19dc87d229dc83d8f71aa91563864d/primp-0.6.2-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:f67ccade95bdbca3cf9b96b93aa53f9617d85ddbf988da4e9c523aa785fd2d54", size = 2506432 },
-    { url = "https://files.pythonhosted.org/packages/21/36/6fe79877d6b0762dd3a7a6996483720a664f6502a7b9ddcbb99a6dbfb50a/primp-0.6.2-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8074b93befaf36567e4cf3d4a1a8cd6ab9cc6e4dd4ff710650678daa405aee71", size = 2816165 },
-    { url = "https://files.pythonhosted.org/packages/fd/aa/1c6d77a840a2101ec2d840788a85d3c70882eaa5060c19c64ed1fb8c64c0/primp-0.6.2-cp38-abi3-manylinux_2_34_aarch64.whl", hash = "sha256:7d3e2a3f8c6262e9b883651b79c4ff2b7677a76f47293a139f541c9ea333ce3b", size = 2731826 },
-    { url = "https://files.pythonhosted.org/packages/c0/48/3d6740f4f7309e1bed7a1e6d7abda7271127b2c723655c77ff3d9df908b5/primp-0.6.2-cp38-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:a460ea389371c6d04839b4b50b5805d99da8ebe281a2e8b534d27377c6d44f0e", size = 2888911 },
-    { url = "https://files.pythonhosted.org/packages/af/8f/b2bbb28276a2627218dcb6bb484cd9b40acef174874f18135b890e9f562e/primp-0.6.2-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:5b6b27e89d3c05c811aff0e4fde7a36d6957b15b3112f4ce28b6b99e8ca1e725", size = 3045916 },
-    { url = "https://files.pythonhosted.org/packages/b4/db/8afca5565704aefd003ea220f0b7669adb69d1aee7dce2b0bce0dee7bace/primp-0.6.2-cp38-abi3-win_amd64.whl", hash = "sha256:1006a40a85f88a4c5222094813a1ebc01f85a63e9a33d2c443288c0720bed321", size = 2746768 },
+    { url = "https://files.pythonhosted.org/packages/0a/ff/772fefb7ba0f6a33efe17be6eb4a7e5230d336c3ad44e80ae001510cb8a5/primp-0.6.4-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:e627330c1f2b723b523dc2e47caacbc5b5d0cd51ca11583b42fb8cde4da60d7d", size = 2860909 },
+    { url = "https://files.pythonhosted.org/packages/b3/65/b5d1b580fc3c90853b65927438343634904e4229bc0397d3036c6ac8e120/primp-0.6.4-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:e0cb7c05dd56c8b9741042fd568c0983fc19b0f3aa209a3940ecc04b4fd60314", size = 2665664 },
+    { url = "https://files.pythonhosted.org/packages/41/27/f9e6eecd25fad9adc2784a95f2c4ec06ab630c1ddece7d2aeeb0252a4937/primp-0.6.4-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a4adc200ccb39e130c478d8b1a94f43a5b359068c6cb65b7c848812f96d96992", size = 2972386 },
+    { url = "https://files.pythonhosted.org/packages/d1/a2/3cad4f1d58ca654d007f0a614d64cb18ac03dbb4a6d4446f9657a6a37261/primp-0.6.4-cp38-abi3-manylinux_2_34_aarch64.whl", hash = "sha256:0ebae2d3aa36b04028e4accf2609d31d2e6981659e8e2effb09ee8ba960192e1", size = 2883232 },
+    { url = "https://files.pythonhosted.org/packages/50/2c/ca6caa67b31a47591bddf74be047368a18efec9efc016266cad1e931c58e/primp-0.6.4-cp38-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:77f5fa5b34eaf251815622258419a484a2a9179dcbae2a1e702a254d91f613f1", size = 3044107 },
+    { url = "https://files.pythonhosted.org/packages/16/44/320346afc08b2c646a46eb93046f84a6310365e22b70f2a642f1bf36c37a/primp-0.6.4-cp38-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:14cddf535cd2c4987412e90ca3ca35ae52cddbee6e0f0953d26b33a652a95692", size = 3205782 },
+    { url = "https://files.pythonhosted.org/packages/dd/3b/90a1675b81b9f130345f28d4095179c5d79702673c03e5b804330aa875d6/primp-0.6.4-cp38-abi3-win_amd64.whl", hash = "sha256:96177ec2dadc47eaecbf0b22d2e93aeaf964a1be9a71e6e318d2ffb9e4242743", size = 2907474 },
 ]
 
 [[package]]
