@@ -53,22 +53,6 @@ class StreamInput(UserInput):
     )
 
 
-class AgentResponse(BaseModel):
-    """Response from the agent when called via /invoke."""
-
-    message: dict[str, Any] = Field(
-        description="Final response from the agent, as a serialized LangChain message.",
-        examples=[
-            {
-                "message": {
-                    "type": "ai",
-                    "data": {"content": "The weather in Tokyo is 70 degrees.", "type": "ai"},
-                }
-            }
-        ],
-    )
-
-
 class ChatMessage(BaseModel):
     """Message in a chat."""
 
