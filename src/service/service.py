@@ -133,9 +133,9 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
                     yield f"data: {json.dumps({'type': 'error', 'content': f'Error parsing message: {e}'})}\n\n"
                     continue
                 # LangGraph re-sends the input message, which feels weird, so drop it
-            if chat_message.type == "human" and chat_message.content == user_input.message:
-                continue
-            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
+                if chat_message.type == "human" and chat_message.content == user_input.message:
+                    continue
+                yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
         # Yield tokens streamed from LLMs.
         if (
