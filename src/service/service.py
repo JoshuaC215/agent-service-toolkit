@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 from uuid import uuid4
-
+import logging
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -130,7 +130,9 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
                     chat_message = ChatMessage.from_langchain(message)
                     chat_message.run_id = str(run_id)
                 except Exception as e:
-                    yield f"data: {json.dumps({'type': 'error', 'content': f'Error parsing message: {e}'})}\n\n"
+                    # Log the detailed exception message
+                    logging.error(f"Error parsing message: {e}")
+                    yield f"data: {json.dumps({'type': 'error', 'content': 'An internal error has occurred while parsing the message.'})}\n\n"
                     continue
                 # LangGraph re-sends the input message, which feels weird, so drop it
                 if chat_message.type == "human" and chat_message.content == user_input.message:
