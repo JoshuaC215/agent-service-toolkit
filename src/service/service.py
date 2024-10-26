@@ -169,12 +169,14 @@ def _sse_response_example() -> dict[int, Any]:
 
 
 @router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
-async def stream_agent(user_input: StreamInput) -> StreamingResponse:
+async def stream(user_input: StreamInput) -> StreamingResponse:
     """
     Stream the agent's response to a user input, including intermediate messages and tokens.
 
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to all messages for recording feedback.
+
+    Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
     return StreamingResponse(message_generator(user_input), media_type="text/event-stream")
 
