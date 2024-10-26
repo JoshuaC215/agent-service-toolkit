@@ -23,12 +23,6 @@ APP_TITLE = "Agent Service Toolkit"
 APP_ICON = "🧰"
 
 
-@st.cache_resource
-def get_agent_client() -> AgentClient:
-    agent_url = os.getenv("AGENT_URL", "http://localhost")
-    return AgentClient(agent_url)
-
-
 async def main() -> None:
     st.set_page_config(
         page_title=APP_TITLE,
@@ -53,13 +47,17 @@ async def main() -> None:
         await asyncio.sleep(0.1)
         st.rerun()
 
+    if "agent_client" not in st.session_state:
+        agent_url = os.getenv("AGENT_URL", "http://localhost")
+        st.session_state.agent_client = AgentClient(agent_url)
+    agent_client: AgentClient = st.session_state.agent_client
+
     if "thread_id" not in st.session_state:
         thread_id = st.query_params.get("thread_id")
         if not thread_id:
             thread_id = get_script_run_ctx().session_id
             messages = []
         else:
-            agent_client = get_agent_client()
             history: ChatHistory = agent_client.get_history(thread_id=thread_id)
             messages = history.messages
         st.session_state.messages = messages
@@ -128,7 +126,6 @@ async def main() -> None:
     if user_input := st.chat_input():
         messages.append(ChatMessage(type="human", content=user_input))
         st.chat_message("human").write(user_input)
-        agent_client = get_agent_client()
         if use_streaming:
             stream = agent_client.astream(
                 message=user_input,
@@ -284,7 +281,7 @@ async def handle_feedback() -> None:
         # Normalize the feedback value (an index) to a score between 0 and 1
         normalized_score = (feedback + 1) / 5.0
 
-        agent_client = get_agent_client()
+        agent_client: AgentClient = st.session_state.agent_client
         await agent_client.acreate_feedback(
             run_id=latest_run_id,
             key="human-feedback-stars",
