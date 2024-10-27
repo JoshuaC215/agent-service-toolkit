@@ -7,7 +7,7 @@ from schema.schema import (
     FeedbackResponse,
     StreamInput,
     Task,
-    TaskMessage,
+    TaskMessageData,
     UserInput,
     convert_message_content_to_string,
 )
@@ -18,8 +18,8 @@ __all__ = [
     "ChatMessage",
     "StreamInput",
     "Feedback",
-    "TaskMessage",
     "Task",
+    "TaskMessageData",
     "FeedbackResponse",
     "ChatHistoryInput",
     "ChatHistory",

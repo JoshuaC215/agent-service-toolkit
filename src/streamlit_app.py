@@ -6,7 +6,7 @@ import streamlit as st
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient
-from schema import ChatHistory, ChatMessage
+from schema import ChatHistory, ChatMessage, TaskMessageData
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:
@@ -262,7 +262,12 @@ async def draw_messages(
                             status.write(tool_result.content)
                             status.update(state="complete")
 
-            case "task":
+            case "custom":
+                try:
+                    task_data = TaskMessageData.model_validate(msg.custom_data)
+                except Exception:
+                    continue
+
                 # If we're rendering new messages, store the message in session state
                 if is_new:
                     st.session_state.messages.append(msg)
@@ -278,31 +283,31 @@ async def draw_messages(
                         status = st.status("")
                     task_messages: dict[str, ChatMessage] = {}
 
-                match msg.task_state:
+                match task_data.state:
                     case "new":
-                        status.write(f"Task **{msg.task_name}** has :blue[started]. Input:")
+                        status.write(f"Task **{task_data.name}** has :blue[started]. Input:")
                     case "running":
-                        status.write(f"Task **{msg.task_name}** wrote:")
+                        status.write(f"Task **{task_data.name}** wrote:")
                     case "complete":
                         result_text = (
                             ":green[completed successfully]"
-                            if msg.task_result == "success"
+                            if task_data.result == "success"
                             else ":red[ended with error]"
                         )
-                        status.write(f"Task **{msg.task_name}** {result_text}. Output:")
-                status.write(msg.task_data)
+                        status.write(f"Task **{task_data.name}** {result_text}. Output:")
+                status.write(task_data.data)
                 status.write("---")
-                task_messages[msg.task_run_id] = msg
+                task_messages[task_data.run_id] = msg
                 state = "complete"
                 for message in task_messages.values():
-                    if message.task_state != "complete":
+                    if task_data.state != "complete":
                         state = "running"
                         break
-                    if message.task_state == "complete" and message.task_result == "error":
+                    if task_data.state == "complete" and task_data.result == "error":
                         state = "error"
                         break
                 status.update(
-                    label=f"""Task: {msg.task_name}""",
+                    label=f"""Task: {task_data.name}""",
                     state=state,
                 )
 
