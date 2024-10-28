@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import AnyMessage
+from langchain_core.messages import AnyMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
@@ -63,9 +63,8 @@ router = APIRouter(dependencies=bearer_depend)
 def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
-    input_message = ChatMessage(type="human", content=user_input.message)
     kwargs = {
-        "input": {"messages": [input_message.to_langchain()]},
+        "input": {"messages": [HumanMessage(content=user_input.message)]},
         "config": RunnableConfig(
             configurable={"thread_id": thread_id, "model": user_input.model}, run_id=run_id
         ),

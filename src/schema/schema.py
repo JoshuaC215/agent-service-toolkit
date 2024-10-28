@@ -6,8 +6,6 @@ from langchain_core.messages import (
     HumanMessage,
     ToolCall,
     ToolMessage,
-    message_to_dict,
-    messages_from_dict,
 )
 from langchain_core.messages import (
     ChatMessage as LangchainChatMessage,
@@ -81,8 +79,8 @@ class ChatMessage(BaseModel):
         default=None,
         examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
     )
-    original: dict[str, Any] = Field(
-        description="Original LangChain message in serialized form.",
+    response_metadata: dict[str, Any] = Field(
+        description="Response metadata. For example: response headers, logprobs, token counts.",
         default={},
     )
     custom_data: dict[str, Any] = Field(
@@ -93,30 +91,28 @@ class ChatMessage(BaseModel):
     @classmethod
     def from_langchain(cls, message: BaseMessage) -> "ChatMessage":
         """Create a ChatMessage from a LangChain message."""
-        original = message_to_dict(message)
         match message:
             case HumanMessage():
                 human_message = cls(
                     type="human",
                     content=convert_message_content_to_string(message.content),
-                    original=original,
                 )
                 return human_message
             case AIMessage():
                 ai_message = cls(
                     type="ai",
                     content=convert_message_content_to_string(message.content),
-                    original=original,
                 )
                 if message.tool_calls:
                     ai_message.tool_calls = message.tool_calls
+                if message.response_metadata:
+                    ai_message.response_metadata = message.response_metadata
                 return ai_message
             case ToolMessage():
                 tool_message = cls(
                     type="tool",
                     content=convert_message_content_to_string(message.content),
                     tool_call_id=message.tool_call_id,
-                    original=original,
                 )
                 return tool_message
             case LangchainChatMessage():
@@ -125,7 +121,6 @@ class ChatMessage(BaseModel):
                         type="custom",
                         content="",
                         custom_data=message.content[0],
-                        original=original,
                     )
                     return custom_message
                 else:
@@ -141,27 +136,18 @@ class ChatMessage(BaseModel):
             custom_data=data,
         )
 
-    def to_langchain(self) -> BaseMessage:
-        """Convert the ChatMessage to a LangChain message."""
-        if self.original:
-            raw_original = messages_from_dict([self.original])[0]
-            raw_original.content = self.content
-            return raw_original
-        match self.type:
-            case "human":
-                return HumanMessage(content=self.content)
-            case "custom":
-                return LangchainChatMessage(
-                    content=[self.custom_data],
-                    role="custom",
-                )
-            case _:
-                raise NotImplementedError(f"Unsupported message type: {self.type}")
+    def pretty_repr(self) -> str:
+        """Get a pretty representation of the message."""
+        base_title = self.type.title() + " Message"
+        padded = " " + base_title + " "
+        sep_len = (80 - len(padded)) // 2
+        sep = "=" * sep_len
+        second_sep = sep + "=" if len(padded) % 2 else sep
+        title = f"{sep}{padded}{second_sep}"
+        return f"{title}\n\n{self.content}"
 
     def pretty_print(self) -> None:
-        """Pretty print the ChatMessage."""
-        lc_msg = self.to_langchain()
-        lc_msg.pretty_print()
+        print(self.pretty_repr())  # noqa: T201
 
 
 class Feedback(BaseModel):

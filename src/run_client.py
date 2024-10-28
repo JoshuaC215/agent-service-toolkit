@@ -17,6 +17,7 @@ async def amain() -> None:
         if isinstance(message, str):
             print(message, flush=True, end="|")
         elif isinstance(message, ChatMessage):
+            print("\n", flush=True)
             message.pretty_print()
         else:
             print(f"ERROR: Unknown type - {type(message)}")
@@ -36,6 +37,7 @@ for message in client.stream("Share a quick fun fact?"):
     if isinstance(message, str):
         print(message, flush=True, end="|")
     elif isinstance(message, ChatMessage):
+        print("\n", flush=True)
         message.pretty_print()
     else:
         print(f"ERROR: Unknown type - {type(message)}")
