@@ -53,5 +53,10 @@ target-version = "py310"
 [tool.ruff.lint]
 extend-select = ["I", "U"]
 
+[tool.pytest.ini_options]
+pythonpath = [
+  "src"
+]
+
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-fake-openai-key"
