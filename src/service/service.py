@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import warnings
 from collections.abc import AsyncGenerator
@@ -29,6 +30,7 @@ from schema import (
 )
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
+logger = logging.getLogger(__name__)
 
 
 def verify_bearer(
@@ -99,7 +101,8 @@ async def invoke(user_input: UserInput) -> ChatMessage:
         output.run_id = str(run_id)
         return output
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"An exception occurred: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error")
 
 
 async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None]:
@@ -130,7 +133,8 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
                     chat_message = ChatMessage.from_langchain(message)
                     chat_message.run_id = str(run_id)
                 except Exception as e:
-                    yield f"data: {json.dumps({'type': 'error', 'content': f'Error parsing message: {e}'})}\n\n"
+                    logger.error(f"Error parsing message: {e}")
+                    yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
                     continue
                 # LangGraph re-sends the input message, which feels weird, so drop it
                 if chat_message.type == "human" and chat_message.content == user_input.message:
@@ -221,7 +225,8 @@ def history(input: ChatHistoryInput) -> ChatHistory:
             chat_messages.append(ChatMessage.from_langchain(message))
         return ChatHistory(messages=chat_messages)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"An exception occurred: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error")
 
 
 app.include_router(router)
