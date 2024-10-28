@@ -26,7 +26,11 @@ from schema import (
     FeedbackResponse,
     StreamInput,
     UserInput,
+)
+from service.utils import (
     convert_message_content_to_string,
+    langchain_to_chat_message,
+    remove_tool_calls,
 )
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
@@ -72,18 +76,6 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     return kwargs, run_id
 
 
-def _remove_tool_calls(content: str | list[str | dict]) -> str | list[str | dict]:
-    """Remove tool calls from content."""
-    if isinstance(content, str):
-        return content
-    # Currently only Anthropic models stream tool calls, using content item type tool_use.
-    return [
-        content_item
-        for content_item in content
-        if isinstance(content_item, str) or content_item["type"] != "tool_use"
-    ]
-
-
 @router.post("/invoke")
 async def invoke(user_input: UserInput) -> ChatMessage:
     """
@@ -96,7 +88,7 @@ async def invoke(user_input: UserInput) -> ChatMessage:
     kwargs, run_id = _parse_input(user_input)
     try:
         response = await agent.ainvoke(**kwargs)
-        output = ChatMessage.from_langchain(response["messages"][-1])
+        output = langchain_to_chat_message(response["messages"][-1])
         output.run_id = str(run_id)
         return output
     except Exception as e:
@@ -129,7 +121,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
             new_messages = event["data"]["output"]["messages"]
             for message in new_messages:
                 try:
-                    chat_message = ChatMessage.from_langchain(message)
+                    chat_message = langchain_to_chat_message(message)
                     chat_message.run_id = str(run_id)
                 except Exception as e:
                     logger.error(f"Error parsing message: {e}")
@@ -146,7 +138,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
             and user_input.stream_tokens
             and "llama_guard" not in event.get("tags", [])
         ):
-            content = _remove_tool_calls(event["data"]["chunk"].content)
+            content = remove_tool_calls(event["data"]["chunk"].content)
             if content:
                 # Empty content in the context of OpenAI usually means
                 # that the model is asking for a tool to be invoked.
@@ -219,9 +211,7 @@ def history(input: ChatHistoryInput) -> ChatHistory:
             )
         )
         messages: list[AnyMessage] = state_snapshot.values["messages"]
-        chat_messages: list[ChatMessage] = []
-        for message in messages:
-            chat_messages.append(ChatMessage.from_langchain(message))
+        chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
         return ChatHistory(messages=chat_messages)
     except Exception as e:
         logger.error(f"An exception occurred: {e}")

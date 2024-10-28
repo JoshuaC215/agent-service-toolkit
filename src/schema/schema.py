@@ -1,29 +1,7 @@
 from typing import Any, Literal
 
-from langchain_core.messages import (
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    ToolCall,
-    ToolMessage,
-)
-from langchain_core.messages import (
-    ChatMessage as LangchainChatMessage,
-)
+from langchain_core.messages import ToolCall
 from pydantic import BaseModel, Field
-
-
-def convert_message_content_to_string(content: str | list[str | dict]) -> str:
-    if isinstance(content, str):
-        return content
-    text: list[str] = []
-    for content_item in content:
-        if isinstance(content_item, str):
-            text.append(content_item)
-            continue
-        if content_item["type"] == "text":
-            text.append(content_item["text"])
-    return "".join(text)
 
 
 class UserInput(BaseModel):
@@ -87,46 +65,6 @@ class ChatMessage(BaseModel):
         description="Custom message data.",
         default={},
     )
-
-    @classmethod
-    def from_langchain(cls, message: BaseMessage) -> "ChatMessage":
-        """Create a ChatMessage from a LangChain message."""
-        match message:
-            case HumanMessage():
-                human_message = cls(
-                    type="human",
-                    content=convert_message_content_to_string(message.content),
-                )
-                return human_message
-            case AIMessage():
-                ai_message = cls(
-                    type="ai",
-                    content=convert_message_content_to_string(message.content),
-                )
-                if message.tool_calls:
-                    ai_message.tool_calls = message.tool_calls
-                if message.response_metadata:
-                    ai_message.response_metadata = message.response_metadata
-                return ai_message
-            case ToolMessage():
-                tool_message = cls(
-                    type="tool",
-                    content=convert_message_content_to_string(message.content),
-                    tool_call_id=message.tool_call_id,
-                )
-                return tool_message
-            case LangchainChatMessage():
-                if message.role == "custom":
-                    custom_message = cls(
-                        type="custom",
-                        content="",
-                        custom_data=message.content[0],
-                    )
-                    return custom_message
-                else:
-                    raise ValueError(f"Unsupported chat message role: {message.role}")
-            case _:
-                raise ValueError(f"Unsupported message type: {message.__class__.__name__}")
 
     @classmethod
     def from_custom_data(cls, data: dict[str, Any]) -> "ChatMessage":
