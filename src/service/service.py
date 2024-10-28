@@ -236,6 +236,7 @@ def history(input: ChatHistoryInput) -> ChatHistory:
     """
     Get chat history.
     """
+    # TODO: Hard-coding DEFAULT_AGENT here is wonky
     agent: CompiledStateGraph = agents[DEFAULT_AGENT]
     try:
         state_snapshot = agent.get_state(
