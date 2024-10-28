@@ -60,8 +60,8 @@ docker compose watch
 
 The repository is structured as follows:
 
-- `src/agent/research_assistant.py`: Defines the LangGraph agent
-- `src/agent/llama_guard.py`: Defines the LlamaGuard content moderation
+- `src/agents/research_assistant.py`: Defines the LangGraph agent
+- `src/agents/llama_guard.py`: Defines the LlamaGuard content moderation
 - `src/schema/schema.py`: Defines the service schema
 - `src/service/service.py`: FastAPI service to serve the agent
 - `src/client/client.py`: Client to interact with the agent service
@@ -208,7 +208,7 @@ Currently the tests need to be run using the local development without Docker se
 
 To customize the agent for your own use case:
 
-1. Modify the `src/agent/research_assistant.py` file to change the agent's behavior and tools. Or, build a new agent from scratch.
+1. Modify the `src/agents/research_assistant.py` file to change the agent's behavior and tools. Or, build a new agent from scratch.
 2. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
 
 ## Building other apps on the AgentClient

@@ -17,7 +17,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
 
-from agent import research_assistant
+from agents import DEFAULT_AGENT, agents
 from schema import (
     ChatHistory,
     ChatHistoryInput,
@@ -48,14 +48,15 @@ def verify_bearer(
 
 
 bearer_depend = [Depends(verify_bearer)] if os.getenv("AUTH_SECRET") else None
+default_agent = agents[DEFAULT_AGENT]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Construct agent with Sqlite checkpointer
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as saver:
-        research_assistant.checkpointer = saver
-        app.state.agent = research_assistant
+        default_agent.checkpointer = saver
+        app.state.agent = default_agent
         yield
     # context manager will clean up the AsyncSqliteSaver on exit
 

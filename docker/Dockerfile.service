@@ -10,7 +10,7 @@ COPY uv.lock .
 RUN pip install --no-cache-dir uv
 RUN uv sync --frozen --no-install-project --no-dev
 
-COPY src/agent/ ./agent/
+COPY src/agents/ ./agents/
 COPY src/schema/ ./schema/
 COPY src/service/ ./service/
 COPY src/run_service.py .

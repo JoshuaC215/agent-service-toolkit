@@ -12,7 +12,7 @@ from service import app
 client = TestClient(app)
 
 
-@patch("service.service.research_assistant")
+@patch("service.service.default_agent")
 def test_invoke(mock_agent: CompiledStateGraph) -> None:
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is 70 degrees."
@@ -51,7 +51,7 @@ def test_feedback(mock_client: langsmith.Client) -> None:
     )
 
 
-@patch("service.service.research_assistant")
+@patch("service.service.default_agent")
 def test_history(mock_agent: CompiledStateGraph) -> None:
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is 70 degrees."

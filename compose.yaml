@@ -9,9 +9,9 @@ services:
       - .env
     develop:
       watch:
-        - path: src/agent/
+        - path: src/agents/
           action: sync+restart
-          target: /app/agent/
+          target: /app/agents/
         - path: src/schema/
           action: sync+restart
           target: /app/schema/
