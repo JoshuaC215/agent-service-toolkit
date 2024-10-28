@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import AnyMessage
+from langchain_core.messages import AnyMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
@@ -26,7 +26,11 @@ from schema import (
     FeedbackResponse,
     StreamInput,
     UserInput,
+)
+from service.utils import (
     convert_message_content_to_string,
+    langchain_to_chat_message,
+    remove_tool_calls,
 )
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
@@ -63,26 +67,13 @@ router = APIRouter(dependencies=bearer_depend)
 def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
-    input_message = ChatMessage(type="human", content=user_input.message)
     kwargs = {
-        "input": {"messages": [input_message.to_langchain()]},
+        "input": {"messages": [HumanMessage(content=user_input.message)]},
         "config": RunnableConfig(
             configurable={"thread_id": thread_id, "model": user_input.model}, run_id=run_id
         ),
     }
     return kwargs, run_id
-
-
-def _remove_tool_calls(content: str | list[str | dict]) -> str | list[str | dict]:
-    """Remove tool calls from content."""
-    if isinstance(content, str):
-        return content
-    # Currently only Anthropic models stream tool calls, using content item type tool_use.
-    return [
-        content_item
-        for content_item in content
-        if isinstance(content_item, str) or content_item["type"] != "tool_use"
-    ]
 
 
 @router.post("/invoke")
@@ -97,7 +88,7 @@ async def invoke(user_input: UserInput) -> ChatMessage:
     kwargs, run_id = _parse_input(user_input)
     try:
         response = await agent.ainvoke(**kwargs)
-        output = ChatMessage.from_langchain(response["messages"][-1])
+        output = langchain_to_chat_message(response["messages"][-1])
         output.run_id = str(run_id)
         return output
     except Exception as e:
@@ -130,7 +121,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
             new_messages = event["data"]["output"]["messages"]
             for message in new_messages:
                 try:
-                    chat_message = ChatMessage.from_langchain(message)
+                    chat_message = langchain_to_chat_message(message)
                     chat_message.run_id = str(run_id)
                 except Exception as e:
                     logger.error(f"Error parsing message: {e}")
@@ -147,7 +138,7 @@ async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None
             and user_input.stream_tokens
             and "llama_guard" not in event.get("tags", [])
         ):
-            content = _remove_tool_calls(event["data"]["chunk"].content)
+            content = remove_tool_calls(event["data"]["chunk"].content)
             if content:
                 # Empty content in the context of OpenAI usually means
                 # that the model is asking for a tool to be invoked.
@@ -220,9 +211,7 @@ def history(input: ChatHistoryInput) -> ChatHistory:
             )
         )
         messages: list[AnyMessage] = state_snapshot.values["messages"]
-        chat_messages: list[ChatMessage] = []
-        for message in messages:
-            chat_messages.append(ChatMessage.from_langchain(message))
+        chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
         return ChatHistory(messages=chat_messages)
     except Exception as e:
         logger.error(f"An exception occurred: {e}")

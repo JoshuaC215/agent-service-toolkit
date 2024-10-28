@@ -3,6 +3,5 @@
 # USE PYPROJECT.TOML AND UV.LOCK FOR YOUR OWN INSTALL!
 
 httpx~=0.26.0
-langchain-core~=0.3
 pydantic ~=2.9.0
 streamlit~=1.37.0
