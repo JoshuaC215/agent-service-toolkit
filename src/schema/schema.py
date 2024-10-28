@@ -1,7 +1,7 @@
 from typing import Any, Literal
 
-from langchain_core.messages import ToolCall
 from pydantic import BaseModel, Field
+from typing_extensions import NotRequired, TypedDict
 
 
 class UserInput(BaseModel):
@@ -30,6 +30,18 @@ class StreamInput(UserInput):
         description="Whether to stream LLM tokens to the client.",
         default=True,
     )
+
+
+class ToolCall(TypedDict):
+    """Represents a request to call a tool."""
+
+    name: str
+    """The name of the tool to be called."""
+    args: dict[str, Any]
+    """The arguments to the tool call."""
+    id: str | None
+    """An identifier associated with the tool call."""
+    type: NotRequired[Literal["tool_call"]]
 
 
 class ChatMessage(BaseModel):
