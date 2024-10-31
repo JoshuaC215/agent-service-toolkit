@@ -128,6 +128,7 @@ async def message_generator(
         if not event:
             continue
 
+        new_messages = []
         # Yield messages written to the graph state after node execution finishes.
         if (
             event["event"] == "on_chain_end"
@@ -137,18 +138,23 @@ async def message_generator(
             and "messages" in event["data"]["output"]
         ):
             new_messages = event["data"]["output"]["messages"]
-            for message in new_messages:
-                try:
-                    chat_message = langchain_to_chat_message(message)
-                    chat_message.run_id = str(run_id)
-                except Exception as e:
-                    logger.error(f"Error parsing message: {e}")
-                    yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
-                    continue
-                # LangGraph re-sends the input message, which feels weird, so drop it
-                if chat_message.type == "human" and chat_message.content == user_input.message:
-                    continue
-                yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
+
+        # Also yield intermediate messages from agents.utils.CustomData.adispatch().
+        if event["event"] == "on_custom_event" and "custom_data_dispatch" in event.get("tags", []):
+            new_messages = [event["data"]]
+
+        for message in new_messages:
+            try:
+                chat_message = langchain_to_chat_message(message)
+                chat_message.run_id = str(run_id)
+            except Exception as e:
+                logger.error(f"Error parsing message: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
+                continue
+            # LangGraph re-sends the input message, which feels weird, so drop it
+            if chat_message.type == "human" and chat_message.content == user_input.message:
+                continue
+            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
         # Yield tokens streamed from LLMs.
         if (
