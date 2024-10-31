@@ -7,6 +7,7 @@ from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient
 from schema import ChatHistory, ChatMessage
+from schema.task_data import TaskData
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:
@@ -82,6 +83,7 @@ async def main() -> None:
                 options=[
                     "research-assistant",
                     "chatbot",
+                    "bg-task-agent",
                 ],
             )
             use_streaming = st.toggle("Stream results", value=True)
@@ -265,6 +267,53 @@ async def draw_messages(
                             status.write("Output:")
                             status.write(tool_result.content)
                             status.update(state="complete")
+
+            case "custom":
+                task_data = TaskData.model_validate(msg.custom_data)
+
+                # If we're rendering new messages, store the message in session state
+                if is_new:
+                    st.session_state.messages.append(msg)
+
+                # If the last message type was not Task, create a new chat message
+                # and container for task messages
+                if last_message_type != "task":
+                    last_message_type = "task"
+                    st.session_state.last_message = st.chat_message(
+                        name="task", avatar=":material/manufacturing:"
+                    )
+                    with st.session_state.last_message:
+                        status = st.status("")
+                    task_messages: dict[str, ChatMessage] = {}
+
+                match task_data.state:
+                    case "new":
+                        status.write(f"Task **{task_data.name}** has :blue[started]. Input:")
+                    case "running":
+                        status.write(f"Task **{task_data.name}** wrote:")
+                    case "complete":
+                        result_text = (
+                            ":green[completed successfully]"
+                            if task_data.result == "success"
+                            else ":red[ended with error]"
+                        )
+                        status.write(f"Task **{task_data.name}** {result_text}. Output:")
+                status.write(task_data.data)
+                status.write("---")
+                # TODO: I don't think this code is working the way the author intended
+                task_messages[task_data.run_id] = msg
+                state = "complete"
+                for message in task_messages.values():
+                    if task_data.state != "complete":
+                        state = "running"
+                        break
+                    if task_data.state == "complete" and task_data.result == "error":
+                        state = "error"
+                        break
+                status.update(
+                    label=f"""Task: {task_data.name}""",
+                    state=state,
+                )
 
             # In case of an unexpected message type, log an error and stop
             case _:
