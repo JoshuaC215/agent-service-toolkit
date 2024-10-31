@@ -52,6 +52,7 @@ docker compose watch
 1. **Advanced Streaming**: A novel approach to support both token-based and message-based streaming.
 1. **Content Moderation**: Implements LlamaGuard for content moderation (requires Groq API key).
 1. **Streamlit Interface**: Provides a user-friendly chat interface for interacting with the agent.
+1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
@@ -60,10 +61,12 @@ docker compose watch
 
 The repository is structured as follows:
 
-- `src/agent/research_assistant.py`: Defines the LangGraph agent
-- `src/agent/llama_guard.py`: Defines the LlamaGuard content moderation
-- `src/schema/schema.py`: Defines the service schema
-- `src/service/service.py`: FastAPI service to serve the agent
+- `src/agents/research_assistant.py`: Defines the main LangGraph agent
+- `src/agents/llama_guard.py`: Defines the LlamaGuard content moderation
+- `src/agents/models.py`: Configures available models based on ENV
+- `src/agents/agents.py`: Mapping of all agents provided by the service
+- `src/schema/schema.py`: Defines the protocol schema
+- `src/service/service.py`: FastAPI service to serve the agents
 - `src/client/client.py`: Client to interact with the agent service
 - `src/streamlit_app.py`: Streamlit app providing a chat interface
 
@@ -208,8 +211,9 @@ Currently the tests need to be run using the local development without Docker se
 
 To customize the agent for your own use case:
 
-1. Modify the `src/agent/research_assistant.py` file to change the agent's behavior and tools. Or, build a new agent from scratch.
-2. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
+1. Add your new agent to the `src/agents` directory. You can copy `research_assistant.py` or `chatbot.py` and modify it to change the agent's behavior and tools.
+1. Import and add your new agent to the `agents` dictionary in `src/agents/agents.py`. Your agent can be called by `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`.
+1. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
 
 ## Building other apps on the AgentClient
 
@@ -239,7 +243,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [x] Get LlamaGuard working for content moderation (anyone know a reliable and fast hosted version?)
 - [x] Add more sophisticated tools for the research assistant
 - [x] Increase test coverage and add CI pipeline
-- [ ] Add support for multiple agents running on the same service, including non-chat agent
+- [x] Add support for multiple agents running on the same service, including non-chat agent
 - [ ] Deployment instructions and configuration for cloud providers
 - [ ] More ideas? File an issue or create a discussion!
 

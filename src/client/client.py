@@ -11,7 +11,12 @@ from schema import ChatHistory, ChatHistoryInput, ChatMessage, Feedback, StreamI
 class AgentClient:
     """Client for interacting with the agent service."""
 
-    def __init__(self, base_url: str = "http://localhost:80", timeout: float | None = None) -> None:
+    def __init__(
+        self,
+        base_url: str = "http://localhost:80",
+        agent: str = "research-assistant",
+        timeout: float | None = None,
+    ) -> None:
         """
         Initialize the client.
 
@@ -19,6 +24,7 @@ class AgentClient:
             base_url (str): The base URL of the agent service.
         """
         self.base_url = base_url
+        self.agent = agent
         self.auth_secret = os.getenv("AUTH_SECRET")
         self.timeout = timeout
 
@@ -50,7 +56,7 @@ class AgentClient:
             request.model = model
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                f"{self.base_url}/invoke",
+                f"{self.base_url}/{self.agent}/invoke",
                 json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,
@@ -79,7 +85,7 @@ class AgentClient:
         if model:
             request.model = model
         response = httpx.post(
-            f"{self.base_url}/invoke",
+            f"{self.base_url}/{self.agent}/invoke",
             json=request.model_dump(),
             headers=self._headers,
             timeout=self.timeout,
@@ -143,7 +149,7 @@ class AgentClient:
             request.model = model
         with httpx.stream(
             "POST",
-            f"{self.base_url}/stream",
+            f"{self.base_url}/{self.agent}/stream",
             json=request.model_dump(),
             headers=self._headers,
             timeout=self.timeout,
@@ -189,7 +195,7 @@ class AgentClient:
         async with httpx.AsyncClient() as client:
             async with client.stream(
                 "POST",
-                f"{self.base_url}/stream",
+                f"{self.base_url}/{self.agent}/stream",
                 json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,

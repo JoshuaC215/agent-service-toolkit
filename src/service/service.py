@@ -17,7 +17,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
 
-from agent import research_assistant
+from agents import DEFAULT_AGENT, agents
 from schema import (
     ChatHistory,
     ChatHistoryInput,
@@ -53,9 +53,10 @@ bearer_depend = [Depends(verify_bearer)] if os.getenv("AUTH_SECRET") else None
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Construct agent with Sqlite checkpointer
+    # TODO: It's probably dangerous to share the same checkpointer on multiple agents
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as saver:
-        research_assistant.checkpointer = saver
-        app.state.agent = research_assistant
+        for a in agents.values():
+            a.checkpointer = saver
         yield
     # context manager will clean up the AsyncSqliteSaver on exit
 
@@ -76,15 +77,8 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     return kwargs, run_id
 
 
-@router.post("/invoke")
-async def invoke(user_input: UserInput) -> ChatMessage:
-    """
-    Invoke the agent with user input to retrieve a final response.
-
-    Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
-    is also attached to messages for recording feedback.
-    """
-    agent: CompiledStateGraph = app.state.agent
+async def ainvoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
+    agent: CompiledStateGraph = agents[agent_id]
     kwargs, run_id = _parse_input(user_input)
     try:
         response = await agent.ainvoke(**kwargs)
@@ -96,13 +90,37 @@ async def invoke(user_input: UserInput) -> ChatMessage:
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
-async def message_generator(user_input: StreamInput) -> AsyncGenerator[str, None]:
+@router.post("/invoke")
+async def invoke(user_input: UserInput) -> ChatMessage:
+    """
+    Invoke the default agent with user input to retrieve a final response.
+
+    Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
+    is also attached to messages for recording feedback.
+    """
+    return await ainvoke(user_input=user_input)
+
+
+@router.post("/{agent_id}/invoke")
+async def agent_invoke(user_input: UserInput, agent_id: str) -> ChatMessage:
+    """
+    Invoke an agent with user input to retrieve a final response.
+
+    Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
+    is also attached to messages for recording feedback.
+    """
+    return await ainvoke(user_input=user_input, agent_id=agent_id)
+
+
+async def message_generator(
+    user_input: StreamInput, agent_id: str = DEFAULT_AGENT
+) -> AsyncGenerator[str, None]:
     """
     Generate a stream of messages from the agent.
 
     This is the workhorse method for the /stream endpoint.
     """
-    agent: CompiledStateGraph = app.state.agent
+    agent: CompiledStateGraph = agents[agent_id]
     kwargs, run_id = _parse_input(user_input)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
@@ -166,7 +184,7 @@ def _sse_response_example() -> dict[int, Any]:
 @router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
 async def stream(user_input: StreamInput) -> StreamingResponse:
     """
-    Stream the agent's response to a user input, including intermediate messages and tokens.
+    Stream the default agent's response to a user input, including intermediate messages and tokens.
 
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to all messages for recording feedback.
@@ -174,6 +192,23 @@ async def stream(user_input: StreamInput) -> StreamingResponse:
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
     return StreamingResponse(message_generator(user_input), media_type="text/event-stream")
+
+
+@router.post(
+    "/{agent_id}/stream", response_class=StreamingResponse, responses=_sse_response_example()
+)
+async def agent_stream(user_input: StreamInput, agent_id: str) -> StreamingResponse:
+    """
+    Stream an agent's response to a user input, including intermediate messages and tokens.
+
+    Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
+    is also attached to all messages for recording feedback.
+
+    Set `stream_tokens=false` to return intermediate messages but not token-by-token.
+    """
+    return StreamingResponse(
+        message_generator(user_input, agent_id=agent_id), media_type="text/event-stream"
+    )
 
 
 @router.post("/feedback")
@@ -201,7 +236,8 @@ def history(input: ChatHistoryInput) -> ChatHistory:
     """
     Get chat history.
     """
-    agent: CompiledStateGraph = app.state.agent
+    # TODO: Hard-coding DEFAULT_AGENT here is wonky
+    agent: CompiledStateGraph = agents[DEFAULT_AGENT]
     try:
         state_snapshot = agent.get_state(
             config=RunnableConfig(

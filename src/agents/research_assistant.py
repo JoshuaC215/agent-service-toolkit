@@ -2,21 +2,18 @@ import os
 from datetime import datetime
 from typing import Literal
 
-from langchain_anthropic import ChatAnthropic
 from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_groq import ChatGroq
-from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import IsLastStep
 from langgraph.prebuilt import ToolNode
 
-from agent.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
-from agent.tools import calculator
+from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
+from agents.models import models
+from agents.tools import calculator
 
 
 class AgentState(MessagesState, total=False):
@@ -27,29 +24,6 @@ class AgentState(MessagesState, total=False):
 
     safety: LlamaGuardOutput
     is_last_step: IsLastStep
-
-
-# NOTE: models with streaming=True will send tokens as they are generated
-# if the /stream endpoint is called with stream_tokens=True (the default)
-models: dict[str, BaseChatModel] = {}
-if os.getenv("OPENAI_API_KEY") is not None:
-    models["gpt-4o-mini"] = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, streaming=True)
-if os.getenv("GROQ_API_KEY") is not None:
-    models["llama-3.1-70b"] = ChatGroq(model="llama-3.1-70b-versatile", temperature=0.5)
-if os.getenv("GOOGLE_API_KEY") is not None:
-    models["gemini-1.5-flash"] = ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash", temperature=0.5, streaming=True
-    )
-if os.getenv("ANTHROPIC_API_KEY") is not None:
-    models["claude-3-haiku"] = ChatAnthropic(
-        model="claude-3-haiku-20240307", temperature=0.5, streaming=True
-    )
-
-if not models:
-    print("No LLM available. Please set API keys to enable at least one LLM.")
-    if os.getenv("MODE") == "dev":
-        print("FastAPI initialized failed. Please use Ctrl + C to exit uvicorn.")
-    exit(1)
 
 
 web_search = DuckDuckGoSearchResults(name="WebSearch")
@@ -171,31 +145,3 @@ agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", "don
 research_assistant = agent.compile(
     checkpointer=MemorySaver(),
 )
-
-
-if __name__ == "__main__":
-    import asyncio
-    from uuid import uuid4
-
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    async def main() -> None:
-        inputs = {"messages": [("user", "Find me a recipe for chocolate chip cookies")]}
-        result = await research_assistant.ainvoke(
-            inputs,
-            config=RunnableConfig(configurable={"thread_id": uuid4()}),
-        )
-        result["messages"][-1].pretty_print()
-
-        # Draw the agent graph as png
-        # requires:
-        # brew install graphviz
-        # export CFLAGS="-I $(brew --prefix graphviz)/include"
-        # export LDFLAGS="-L $(brew --prefix graphviz)/lib"
-        # pip install pygraphviz
-        #
-        # research_assistant.get_graph().draw_png("agent_diagram.png")
-
-    asyncio.run(main())
