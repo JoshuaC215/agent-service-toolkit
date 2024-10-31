@@ -77,6 +77,13 @@ async def main() -> None:
         with st.popover(":material/settings: Settings", use_container_width=True):
             m = st.radio("LLM to use", options=models.keys())
             model = models[m]
+            agent_client.agent = st.selectbox(
+                "Agent to use",
+                options=[
+                    "research-assistant",
+                    "chatbot",
+                ],
+            )
             use_streaming = st.toggle("Stream results", value=True)
 
         @st.dialog("Architecture")

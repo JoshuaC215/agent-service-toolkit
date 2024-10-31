@@ -78,14 +78,6 @@ class ChatMessage(BaseModel):
         default={},
     )
 
-    @classmethod
-    def from_custom_data(cls, data: dict[str, Any]) -> "ChatMessage":
-        return cls(
-            type="custom",
-            content="",
-            custom_data=data,
-        )
-
     def pretty_repr(self) -> str:
         """Get a pretty representation of the message."""
         base_title = self.type.title() + " Message"
