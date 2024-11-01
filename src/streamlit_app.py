@@ -284,7 +284,7 @@ async def draw_messages(
                     )
                     with st.session_state.last_message:
                         status = st.status("")
-                    task_messages: dict[str, ChatMessage] = {}
+                    current_task_data: dict[str, TaskData] = {}
 
                 match task_data.state:
                     case "new":
@@ -300,16 +300,14 @@ async def draw_messages(
                         status.write(f"Task **{task_data.name}** {result_text}. Output:")
                 status.write(task_data.data)
                 status.write("---")
-                # TODO: I don't think this code is working the way the author intended
-                task_messages[task_data.run_id] = msg
+                current_task_data[task_data.run_id] = task_data
                 state = "complete"
-                for message in task_messages.values():
-                    if task_data.state != "complete":
+                for entry in current_task_data.values():
+                    if entry.state != "complete":
                         state = "running"
                         break
-                    if task_data.state == "complete" and task_data.result == "error":
+                    if entry.state == "complete" and task_data.result == "error":
                         state = "error"
-                        break
                 status.update(
                     label=f"""Task: {task_data.name}""",
                     state=state,
