@@ -32,7 +32,7 @@ class Task:
         return task_message
 
     async def write_data(self, config: RunnableConfig, data: dict) -> BaseMessage:
-        if self.state != "complete":
+        if self.state == "complete":
             raise ValueError("Only incomplete tasks can output data.")
         self.state = "running"
         task_message = await self._generate_and_dispatch_message(config, data)

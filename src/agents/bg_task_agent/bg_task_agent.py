@@ -35,10 +35,11 @@ async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
 
 
 async def bg_task(state: AgentState, config: RunnableConfig) -> AgentState:
-    task = Task("Running a task...")
+    task = Task("Simple task")
 
     await task.start(config=config)
     await asyncio.sleep(2)
+    await task.write_data(config=config, data={"status": "Still running..."})
     await task.finish(result="success", config=config, data={"output": 42})
     return {"messages": []}
 

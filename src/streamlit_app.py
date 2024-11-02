@@ -283,8 +283,8 @@ async def draw_messages(
                         name="task", avatar=":material/manufacturing:"
                     )
                     with st.session_state.last_message:
-                        status = st.status("")
-                    current_task_data: dict[str, TaskData] = {}
+                        # Note: Parallel bg tasks are NOT supported with this approach
+                        status = st.status(f"""Task: {task_data.name}""")
 
                 match task_data.state:
                     case "new":
@@ -292,26 +292,18 @@ async def draw_messages(
                     case "running":
                         status.write(f"Task **{task_data.name}** wrote:")
                     case "complete":
-                        result_text = (
-                            ":green[completed successfully]"
-                            if task_data.result == "success"
-                            else ":red[ended with error]"
-                        )
-                        status.write(f"Task **{task_data.name}** {result_text}. Output:")
+                        if task_data.result == "success":
+                            status.write(
+                                f"Task **{task_data.name}** :green[completed successfully]. Output:"
+                            )
+                            status.update(state="complete")
+                        else:
+                            status.write(
+                                f"Task **{task_data.name}** :red[ended with error]. Output:"
+                            )
+                            status.update(state="error")
                 status.write(task_data.data)
                 status.write("---")
-                current_task_data[task_data.run_id] = task_data
-                state = "complete"
-                for entry in current_task_data.values():
-                    if entry.state != "complete":
-                        state = "running"
-                        break
-                    if entry.state == "complete" and task_data.result == "error":
-                        state = "error"
-                status.update(
-                    label=f"""Task: {task_data.name}""",
-                    state=state,
-                )
 
             # In case of an unexpected message type, log an error and stop
             case _:
