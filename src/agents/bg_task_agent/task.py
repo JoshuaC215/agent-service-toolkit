@@ -13,7 +13,7 @@ class Task:
         self.name = task_name
         self.id = str(uuid4())
         self.state: Literal["new", "running", "complete"] = "new"
-        self.result = None
+        self.result: Literal["success", "error"] | None = None
 
     async def _generate_and_dispatch_message(self, config: RunnableConfig, data: dict):
         task_data = TaskData(name=self.name, run_id=self.id, state=self.state, data=data)

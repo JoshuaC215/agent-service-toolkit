@@ -283,8 +283,8 @@ async def draw_messages(
                         name="task", avatar=":material/manufacturing:"
                     )
                     with st.session_state.last_message:
-                        # Note: Parallel bg tasks are NOT supported with this approach
-                        status = st.status(f"""Task: {task_data.name}""")
+                        status = st.status("")
+                    current_task_data: dict[str, TaskData] = {}
 
                 match task_data.state:
                     case "new":
@@ -304,6 +304,19 @@ async def draw_messages(
                             status.update(state="error")
                 status.write(task_data.data)
                 status.write("---")
+                if task_data.run_id not in current_task_data:
+                    status.update(label=f"""Task: {task_data.name}""")
+                current_task_data[task_data.run_id] = task_data
+                state = "complete"
+                for entry in current_task_data.values():
+                    if not entry.completed():
+                        state = "running"
+                        break
+                    if entry.completed_with_error():
+                        state = "error"
+                status.update(
+                    state=state,
+                )
 
             # In case of an unexpected message type, log an error and stop
             case _:

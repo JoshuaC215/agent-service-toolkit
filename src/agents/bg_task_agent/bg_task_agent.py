@@ -35,12 +35,18 @@ async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
 
 
 async def bg_task(state: AgentState, config: RunnableConfig) -> AgentState:
-    task = Task("Simple task")
+    task1 = Task("Simple task 1...")
+    task2 = Task("Simple task 2...")
 
-    await task.start(config=config)
+    await task1.start(config=config)
     await asyncio.sleep(2)
-    await task.write_data(config=config, data={"status": "Still running..."})
-    await task.finish(result="success", config=config, data={"output": 42})
+    await task2.start(config=config)
+    await asyncio.sleep(2)
+    await task1.write_data(config=config, data={"status": "Still running..."})
+    await asyncio.sleep(2)
+    await task2.finish(result="error", config=config, data={"output": 42})
+    await asyncio.sleep(2)
+    await task1.finish(result="success", config=config, data={"output": 42})
     return {"messages": []}
 
 
