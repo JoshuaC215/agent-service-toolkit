@@ -7,6 +7,7 @@ from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient
 from schema import ChatHistory, ChatMessage
+from schema.task_data import TaskData
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:
@@ -82,6 +83,7 @@ async def main() -> None:
                 options=[
                     "research-assistant",
                     "chatbot",
+                    "bg-task-agent",
                 ],
             )
             use_streaming = st.toggle("Stream results", value=True)
@@ -265,6 +267,61 @@ async def draw_messages(
                             status.write("Output:")
                             status.write(tool_result.content)
                             status.update(state="complete")
+
+            case "custom":
+                # This is an implementation of the TaskData example for CustomData.
+                # An agent can write a CustomData object to the message stream, and
+                # it's passed to the client for rendering. To see this in practice,
+                # run the app with the `bg-task-agent` agent.
+
+                # This is provided as an example, you may want to write your own
+                # CustomData types and handlers. This section will be skipped for
+                # any other agents that don't send CustomData.
+                task_data = TaskData.model_validate(msg.custom_data)
+
+                # If we're rendering new messages, store the message in session state
+                if is_new:
+                    st.session_state.messages.append(msg)
+
+                # If the last message type was not Task, create a new chat message
+                # and container for task messages
+                if last_message_type != "task":
+                    last_message_type = "task"
+                    st.session_state.last_message = st.chat_message(
+                        name="task", avatar=":material/manufacturing:"
+                    )
+                    with st.session_state.last_message:
+                        status = st.status("")
+                    current_task_data: dict[str, TaskData] = {}
+
+                status_str = f"Task **{task_data.name}** "
+                match task_data.state:
+                    case "new":
+                        status_str += "has :blue[started]. Input:"
+                    case "running":
+                        status_str += "wrote:"
+                    case "complete":
+                        if task_data.result == "success":
+                            status_str += ":green[completed successfully]. Output:"
+                        else:
+                            status_str += ":red[ended with error]. Output:"
+                status.write(status_str)
+                status.write(task_data.data)
+                status.write("---")
+                if task_data.run_id not in current_task_data:
+                    # Status label always shows the last newly started task
+                    status.update(label=f"""Task: {task_data.name}""")
+                current_task_data[task_data.run_id] = task_data
+                # Status is "running" until all tasks have completed
+                if not any(entry.completed() for entry in current_task_data.values()):
+                    state = "running"
+                # Status is "error" if any task has errored
+                elif any(entry.completed_with_error() for entry in current_task_data.values()):
+                    state = "error"
+                # Status is "complete" if all tasks have completed successfully
+                else:
+                    state = "complete"
+                status.update(state=state)
 
             # In case of an unexpected message type, log an error and stop
             case _:
