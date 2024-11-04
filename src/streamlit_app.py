@@ -269,6 +269,14 @@ async def draw_messages(
                             status.update(state="complete")
 
             case "custom":
+                # This is an implementation of the TaskData example for CustomData.
+                # An agent can write a CustomData object to the message stream, and
+                # it's passed to the client for rendering. To see this in practice,
+                # run the app with the `bg-task-agent` agent.
+
+                # This is provided as an example, you may want to write your own
+                # CustomData types and handlers. This section will be skipped for
+                # any other agents that don't send CustomData.
                 task_data = TaskData.model_validate(msg.custom_data)
 
                 # If we're rendering new messages, store the message in session state
@@ -284,36 +292,36 @@ async def draw_messages(
                     )
                     with st.session_state.last_message:
                         status = st.status("")
-                    task_messages: dict[str, ChatMessage] = {}
+                    current_task_data: dict[str, TaskData] = {}
 
+                status_str = f"Task **{task_data.name}** "
                 match task_data.state:
                     case "new":
-                        status.write(f"Task **{task_data.name}** has :blue[started]. Input:")
+                        status_str += "has :blue[started]. Input:"
                     case "running":
-                        status.write(f"Task **{task_data.name}** wrote:")
+                        status_str += "wrote:"
                     case "complete":
-                        result_text = (
-                            ":green[completed successfully]"
-                            if task_data.result == "success"
-                            else ":red[ended with error]"
-                        )
-                        status.write(f"Task **{task_data.name}** {result_text}. Output:")
+                        if task_data.result == "success":
+                            status_str += ":green[completed successfully]. Output:"
+                        else:
+                            status_str += ":red[ended with error]. Output:"
+                status.write(status_str)
                 status.write(task_data.data)
                 status.write("---")
-                # TODO: I don't think this code is working the way the author intended
-                task_messages[task_data.run_id] = msg
-                state = "complete"
-                for message in task_messages.values():
-                    if task_data.state != "complete":
-                        state = "running"
-                        break
-                    if task_data.state == "complete" and task_data.result == "error":
-                        state = "error"
-                        break
-                status.update(
-                    label=f"""Task: {task_data.name}""",
-                    state=state,
-                )
+                if task_data.run_id not in current_task_data:
+                    # Status label always shows the last newly started task
+                    status.update(label=f"""Task: {task_data.name}""")
+                current_task_data[task_data.run_id] = task_data
+                # Status is "running" until all tasks have completed
+                if not any(entry.completed() for entry in current_task_data.values()):
+                    state = "running"
+                # Status is "error" if any task has errored
+                elif any(entry.completed_with_error() for entry in current_task_data.values()):
+                    state = "error"
+                # Status is "complete" if all tasks have completed successfully
+                else:
+                    state = "complete"
+                status.update(state=state)
 
             # In case of an unexpected message type, log an error and stop
             case _:

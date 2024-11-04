@@ -13,7 +13,7 @@ class Task:
         self.name = task_name
         self.id = str(uuid4())
         self.state: Literal["new", "running", "complete"] = "new"
-        self.result = None
+        self.result: Literal["success", "error"] | None = None
 
     async def _generate_and_dispatch_message(self, config: RunnableConfig, data: dict):
         task_data = TaskData(name=self.name, run_id=self.id, state=self.state, data=data)
@@ -27,13 +27,14 @@ class Task:
         return task_custom_data.to_langchain()
 
     async def start(self, config: RunnableConfig, data: dict = {}) -> BaseMessage:
-        self.state = "running"
+        self.state = "new"
         task_message = await self._generate_and_dispatch_message(config, data)
         return task_message
 
     async def write_data(self, config: RunnableConfig, data: dict) -> BaseMessage:
-        if self.state != "running":
-            raise ValueError("Only running tasks can output data.")
+        if self.state == "complete":
+            raise ValueError("Only incomplete tasks can output data.")
+        self.state = "running"
         task_message = await self._generate_and_dispatch_message(config, data)
         return task_message
 
