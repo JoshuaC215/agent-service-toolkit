@@ -69,6 +69,7 @@ async def main() -> None:
         "Gemini 1.5 Flash (streaming)": "gemini-1.5-flash",
         "Claude 3 Haiku (streaming)": "claude-3-haiku",
         "llama-3.1-70b on Groq": "llama-3.1-70b",
+        "AWS Bedrock Haiku (streaming)": "bedrock-haiku",
     }
     # Config options
     with st.sidebar:

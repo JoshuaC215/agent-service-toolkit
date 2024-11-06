@@ -111,6 +111,10 @@ With that said, there are several other interesting projects in this space that 
    # See: https://docs.anthropic.com/en/api/getting-started
    ANTHROPIC_API_KEY=your_anthropic_key
 
+   # Optional, to enable AWS Bedrock models Haiku
+   # See: https://docs.aws.amazon.com/bedrock/latest/userguide/setting-up.html
+   USE_AWS_BEDROCK=true
+
    # Optional, to enable simple header-based auth on the service
    AUTH_SECRET=any_string_you_choose
 
