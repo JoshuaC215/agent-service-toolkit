@@ -27,7 +27,7 @@ if os.getenv("USE_AWS_BEDROCK") == "true":
     )
 
 if not models:
-    print("No LLM available. Please set API keys to enable at least one LLM or enable Bedrock with USE_BEDROCK=true.")
+    print("No LLM available. Please set API keys to enable at least one LLM or enable Bedrock with USE_AWS_BEDROCK=true.")
     if os.getenv("MODE") == "dev":
         print("FastAPI initialization failed. Please use Ctrl + C to exit uvicorn.")
     exit(1)
