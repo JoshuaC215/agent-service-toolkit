@@ -36,6 +36,7 @@ dependencies = [
     "setuptools ~=74.0.0",
     "streamlit ~=1.37.0",
     "uvicorn ~=0.30.5",
+    "langchain-aws>=0.2.6",
 ]
 
 [project.optional-dependencies]
