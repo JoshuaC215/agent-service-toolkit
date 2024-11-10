@@ -7,7 +7,8 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 
 from agents.bg_task_agent.task import Task
-from agents.models import models
+from core import settings
+from core.llm import get_model
 
 
 class AgentState(MessagesState, total=False):
@@ -26,7 +27,7 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
 
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = models[config["configurable"].get("model", "gpt-4o-mini")]
+    m = get_model(config["configurable"].get("model", settings.OPENAI_DEFAULT_MODEL))
     model_runnable = wrap_model(m)
     response = await model_runnable.ainvoke(state, config)
 

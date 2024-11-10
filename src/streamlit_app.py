@@ -1,11 +1,18 @@
 import asyncio
-import os
 from collections.abc import AsyncGenerator
 
 import streamlit as st
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient
+from core import settings
+from core.llm import (
+    AnthropicModelName,
+    AWSModelName,
+    GoogleModelName,
+    GroqModelName,
+    OpenAIModelName,
+)
 from schema import ChatHistory, ChatMessage
 from schema.task_data import TaskData
 
@@ -49,8 +56,7 @@ async def main() -> None:
         st.rerun()
 
     if "agent_client" not in st.session_state:
-        agent_url = os.getenv("AGENT_URL", "http://localhost")
-        st.session_state.agent_client = AgentClient(agent_url)
+        st.session_state.agent_client = AgentClient(settings.BASE_URL)
     agent_client: AgentClient = st.session_state.agent_client
 
     if "thread_id" not in st.session_state:
@@ -65,11 +71,11 @@ async def main() -> None:
         st.session_state.thread_id = thread_id
 
     models = {
-        "OpenAI GPT-4o-mini (streaming)": "gpt-4o-mini",
-        "Gemini 1.5 Flash (streaming)": "gemini-1.5-flash",
-        "Claude 3 Haiku (streaming)": "claude-3-haiku",
-        "llama-3.1-70b on Groq": "llama-3.1-70b",
-        "AWS Bedrock Haiku (streaming)": "bedrock-haiku",
+        "OpenAI GPT-4o-mini (streaming)": OpenAIModelName.GPT_4O_MINI,
+        "Gemini 1.5 Flash (streaming)": GoogleModelName.GEMINI_15_FLASH,
+        "Claude 3 Haiku (streaming)": AnthropicModelName.HAIKU_3,
+        "llama-3.1-70b on Groq": GroqModelName.LLAMA_31_70B,
+        "AWS Bedrock Haiku (streaming)": AWSModelName.BEDROCK_HAIKU,
     }
     # Config options
     with st.sidebar:

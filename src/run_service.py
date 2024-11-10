@@ -1,14 +1,12 @@
-import os
-
 import uvicorn
 from dotenv import load_dotenv
+
+from core import settings
 
 load_dotenv()
 
 if __name__ == "__main__":
-    if os.getenv("MODE") != "dev":
-        from service import app
-
-        uvicorn.run(app, host="0.0.0.0", port=80)
+    if not settings.is_dev():
+        uvicorn.run("service:app", host=settings.HOST, port=settings.PORT)
     else:
         uvicorn.run("service:app", reload=True)

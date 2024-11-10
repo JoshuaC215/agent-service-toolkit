@@ -1,10 +1,10 @@
 import json
-import os
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import httpx
 
+from core import settings
 from schema import ChatHistory, ChatHistoryInput, ChatMessage, Feedback, StreamInput, UserInput
 
 
@@ -13,7 +13,7 @@ class AgentClient:
 
     def __init__(
         self,
-        base_url: str = "http://localhost:80",
+        base_url: str = settings.BASE_URL,
         agent: str = "research-assistant",
         timeout: float | None = None,
     ) -> None:
@@ -25,7 +25,7 @@ class AgentClient:
         """
         self.base_url = base_url
         self.agent = agent
-        self.auth_secret = os.getenv("AUTH_SECRET")
+        self.auth_secret = settings.AUTH_SECRET.get_secret_value() if settings.AUTH_SECRET else None
         self.timeout = timeout
 
     @property
@@ -49,11 +49,7 @@ class AgentClient:
         Returns:
             AnyMessage: The response from the agent
         """
-        request = UserInput(message=message)
-        if thread_id:
-            request.thread_id = thread_id
-        if model:
-            request.model = model
+        request = UserInput(message=message, thread_id=thread_id, model=model)
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}/{self.agent}/invoke",

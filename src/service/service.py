@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import warnings
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -18,6 +17,7 @@ from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, agents
+from core import settings
 from schema import (
     ChatHistory,
     ChatHistoryInput,
@@ -43,11 +43,11 @@ def verify_bearer(
         Depends(HTTPBearer(description="Please provide AUTH_SECRET api key.")),
     ],
 ) -> None:
-    if http_auth.credentials != os.getenv("AUTH_SECRET"):
+    if http_auth.credentials != settings.AUTH_SECRET.get_secret_value():
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
-bearer_depend = [Depends(verify_bearer)] if os.getenv("AUTH_SECRET") else None
+bearer_depend = [Depends(verify_bearer)] if settings.AUTH_SECRET else None
 
 
 @asynccontextmanager
