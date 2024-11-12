@@ -5,7 +5,6 @@ import streamlit as st
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient
-from core import settings
 from core.llm import (
     AnthropicModelName,
     AWSModelName,
@@ -56,7 +55,7 @@ async def main() -> None:
         st.rerun()
 
     if "agent_client" not in st.session_state:
-        st.session_state.agent_client = AgentClient(settings.BASE_URL)
+        st.session_state.agent_client = AgentClient()
     agent_client: AgentClient = st.session_state.agent_client
 
     if "thread_id" not in st.session_state:
