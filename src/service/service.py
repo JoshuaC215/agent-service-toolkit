@@ -77,19 +77,6 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     return kwargs, run_id
 
 
-async def ainvoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
-    agent: CompiledStateGraph = agents[agent_id]
-    kwargs, run_id = _parse_input(user_input)
-    try:
-        response = await agent.ainvoke(**kwargs)
-        output = langchain_to_chat_message(response["messages"][-1])
-        output.run_id = str(run_id)
-        return output
-    except Exception as e:
-        logger.error(f"An exception occurred: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error")
-
-
 @router.post("/{agent_id}/invoke")
 @router.post("/invoke")
 async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
@@ -100,7 +87,16 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to messages for recording feedback.
     """
-    return await ainvoke(user_input=user_input, agent_id=agent_id)
+    agent: CompiledStateGraph = agents[agent_id]
+    kwargs, run_id = _parse_input(user_input)
+    try:
+        response = await agent.ainvoke(**kwargs)
+        output = langchain_to_chat_message(response["messages"][-1])
+        output.run_id = str(run_id)
+        return output
+    except Exception as e:
+        logger.error(f"An exception occurred: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error")
 
 
 async def message_generator(
