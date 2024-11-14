@@ -8,8 +8,7 @@ from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient
 from schema import ChatHistory, ChatMessage
-from schema.task_data import TaskData
-from task_data_status import TaskDataStatus
+from schema.task_data import TaskData, TaskDataStatus
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:
