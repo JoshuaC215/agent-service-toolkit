@@ -23,7 +23,7 @@ class Task:
             type=self.name,
             data=task_data.model_dump(),
         )
-        await task_custom_data.adispatch()
+        await task_custom_data.adispatch(config)
         return task_custom_data.to_langchain()
 
     async def start(self, config: RunnableConfig, data: dict = {}) -> BaseMessage:
