@@ -60,10 +60,23 @@ jobs:
       - name: Run service and test
         run: |
           # Run the service container
-          docker run -d --network host agent-service-toolkit.service:${{ github.sha }}
+          docker run -d --name service-container --network host agent-service-toolkit.service:${{ github.sha }}
 
           # Wait for service to be ready
-          timeout 30 bash -c 'while ! curl -s http://localhost:8000/health; do sleep 1; done'
+          timeout 45 bash -c '
+            while ! curl -s http://localhost/health; do
+              echo "Waiting for service to be ready..."
+              docker logs service-container
+              sleep 5
+            done
+          '
+
+          # If timeout occurred, show final logs
+          if [ $? -eq 124 ]; then
+            echo "Service failed to become ready. Final logs:"
+            docker logs service-container
+            exit 1
+          fi
 
           # Install client
           python -m pip install --upgrade pip

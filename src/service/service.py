@@ -237,4 +237,10 @@ def history(input: ChatHistoryInput) -> ChatHistory:
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "ok"}
+
+
 app.include_router(router)
