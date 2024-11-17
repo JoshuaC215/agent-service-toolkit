@@ -2,6 +2,7 @@ import os
 
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
+from langchain_community.chat_models import FakeListChatModel
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
@@ -10,6 +11,7 @@ from langchain_openai import ChatOpenAI
 # NOTE: models with streaming=True will send tokens as they are generated
 # if the /stream endpoint is called with stream_tokens=True (the default)
 models: dict[str, BaseChatModel] = {}
+
 if os.getenv("OPENAI_API_KEY") is not None:
     models["gpt-4o-mini"] = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, streaming=True)
 if os.getenv("GROQ_API_KEY") is not None:
@@ -26,6 +28,8 @@ if os.getenv("USE_AWS_BEDROCK") == "true":
     models["bedrock-haiku"] = ChatBedrock(
         model_id="anthropic.claude-3-5-haiku-20241022-v1:0", temperature=0.5
     )
+if os.getenv("USE_FAKE_MODEL") == "true":
+    models["fake"] = FakeListChatModel(responses=["This is a test response from the fake model."])
 
 if not models:
     print("No LLM available. Please set environment variables to enable at least one LLM.")
