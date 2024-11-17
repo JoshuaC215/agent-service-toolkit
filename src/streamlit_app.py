@@ -271,14 +271,10 @@ async def draw_messages(
                             status.update(state="complete")
 
             case "custom":
-                # This is an implementation of the TaskData example for CustomData.
-                # An agent can write a CustomData object to the message stream, and
-                # it's passed to the client for rendering. To see this in practice,
-                # run the app with the `bg-task-agent` agent.
-
-                # This is provided as an example, you may want to write your own
-                # CustomData types and handlers. This section will be skipped for
-                # any other agents that don't send CustomData.
+                # CustomData example used by the bg-task-agent
+                # See:
+                # - src/agents/utils.py CustomData
+                # - src/agents/bg_task_agent/task.py
                 try:
                     task_data: TaskData = TaskData.model_validate(msg.custom_data)
                 except ValidationError:
@@ -286,12 +282,9 @@ async def draw_messages(
                     st.write(msg.custom_data)
                     st.stop()
 
-                # If we're rendering new messages, store the message in session state
                 if is_new:
                     st.session_state.messages.append(msg)
 
-                # If the last message type was not Task, create a new chat message
-                # and container for task messages
                 if last_message_type != "task":
                     last_message_type = "task"
                     st.session_state.last_message = st.chat_message(

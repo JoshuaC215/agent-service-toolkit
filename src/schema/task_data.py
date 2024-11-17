@@ -1,6 +1,5 @@
 from typing import Any, Literal
 
-import streamlit as st
 from pydantic import BaseModel, Field
 
 
@@ -37,6 +36,8 @@ class TaskData(BaseModel):
 
 class TaskDataStatus:
     def __init__(self) -> None:
+        import streamlit as st
+
         self.status = st.status("")
         self.current_task_data: dict[str, TaskData] = {}
 
