@@ -14,17 +14,32 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
 
+    services:
+      dind:
+        image: docker:dind
+        ports:
+          - 2375:2375
+        options: >-
+          --privileged
+          --health-cmd "docker info"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: network=host
 
       - name: Build service image
         uses: docker/build-push-action@v3
         with:
           context: .
           push: false
+          load: true
           tags: agent-service-toolkit.service:${{ github.sha }}
           file: docker/Dockerfile.service
 
@@ -33,5 +48,46 @@ jobs:
         with:
           context: .
           push: false
+          load: true
           tags: agent-service-toolkit.app:${{ github.sha }}
           file: docker/Dockerfile.app
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Run service and test
+        run: |
+          # Run the service container
+          docker run -d --network host agent-service-toolkit.service:${{ github.sha }}
+
+          # Wait for service to be ready
+          timeout 30 bash -c 'while ! curl -s http://localhost:8000/health; do sleep 1; done'
+
+          # Install client
+          python -m pip install --upgrade pip
+          pip install -e .
+
+          # Create and run E2E test
+          cat > test_e2e.py << 'EOL'
+          import asyncio
+          from src.client import AgentServiceClient
+          from src.schema.messages import Message, MessageType
+
+          async def test_invoke():
+              client = AgentServiceClient("http://localhost:8000")
+              message = Message(
+                  type=MessageType.USER,
+                  content="Hello, this is a test message",
+                  role="user"
+              )
+              response = await client.invoke(message)
+              assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+              print("E2E test passed successfully!")
+
+          if __name__ == "__main__":
+              asyncio.run(test_invoke())
+          EOL
+
+          python test_e2e.py
