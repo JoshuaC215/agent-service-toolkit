@@ -77,7 +77,16 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], str]:
     return kwargs, run_id
 
 
-async def ainvoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
+@router.post("/{agent_id}/invoke")
+@router.post("/invoke")
+async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
+    """
+    Invoke an agent with user input to retrieve a final response.
+
+    If agent_id is not provided, the default agent will be used.
+    Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
+    is also attached to messages for recording feedback.
+    """
     agent: CompiledStateGraph = agents[agent_id]
     kwargs, run_id = _parse_input(user_input)
     try:
@@ -88,28 +97,6 @@ async def ainvoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatM
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")
-
-
-@router.post("/invoke")
-async def invoke(user_input: UserInput) -> ChatMessage:
-    """
-    Invoke the default agent with user input to retrieve a final response.
-
-    Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
-    is also attached to messages for recording feedback.
-    """
-    return await ainvoke(user_input=user_input)
-
-
-@router.post("/{agent_id}/invoke")
-async def agent_invoke(user_input: UserInput, agent_id: str) -> ChatMessage:
-    """
-    Invoke an agent with user input to retrieve a final response.
-
-    Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
-    is also attached to messages for recording feedback.
-    """
-    return await ainvoke(user_input=user_input, agent_id=agent_id)
 
 
 async def message_generator(
@@ -187,33 +174,23 @@ def _sse_response_example() -> dict[int, Any]:
     }
 
 
-@router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
-async def stream(user_input: StreamInput) -> StreamingResponse:
-    """
-    Stream the default agent's response to a user input, including intermediate messages and tokens.
-
-    Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
-    is also attached to all messages for recording feedback.
-
-    Set `stream_tokens=false` to return intermediate messages but not token-by-token.
-    """
-    return StreamingResponse(message_generator(user_input), media_type="text/event-stream")
-
-
 @router.post(
     "/{agent_id}/stream", response_class=StreamingResponse, responses=_sse_response_example()
 )
-async def agent_stream(user_input: StreamInput, agent_id: str) -> StreamingResponse:
+@router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
+async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> StreamingResponse:
     """
     Stream an agent's response to a user input, including intermediate messages and tokens.
 
+    If agent_id is not provided, the default agent will be used.
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to all messages for recording feedback.
 
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
     return StreamingResponse(
-        message_generator(user_input, agent_id=agent_id), media_type="text/event-stream"
+        message_generator(user_input, agent_id),
+        media_type="text/event-stream",
     )
 
 
