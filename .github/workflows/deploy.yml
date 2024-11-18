@@ -12,9 +12,13 @@ jobs:
     if: github.repository == 'JoshuaC215/agent-service-toolkit'
     uses: ./.github/workflows/test.yml
 
+  test-docker:
+    if: github.repository == 'JoshuaC215/agent-service-toolkit'
+    uses: ./.github/workflows/test-docker.yml
+
   build:
     runs-on: ubuntu-latest
-    needs: test
+    needs: [test, test-docker]
 
     steps:
       - uses: actions/checkout@v4

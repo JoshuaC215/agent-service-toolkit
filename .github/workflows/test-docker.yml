@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  docker-build:
+  test-docker:
     runs-on: ubuntu-latest
 
     services:
@@ -52,17 +52,11 @@ jobs:
           tags: agent-service-toolkit.app:${{ github.sha }}
           file: docker/Dockerfile.app
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+      - name: Start service container
+        run: docker run -d --name service-container --network host -e USE_FAKE_MODEL=true agent-service-toolkit.service:${{ github.sha }}
 
-      - name: Run service and test
+      - name: Wait for service to be healthy
         run: |
-          # Run the service container
-          docker run -d --name service-container --network host -e USE_FAKE_MODEL=true agent-service-toolkit.service:${{ github.sha }}
-
-          # Wait for service to be ready
           timeout 30 bash -c '
             while ! curl -s http://localhost/health; do
               echo "Waiting for service to be ready..."
@@ -71,36 +65,43 @@ jobs:
             done
           '
 
-          # Install client
+      - name: Install client
+        run: |
           python -m pip install --upgrade pip
           pip install -e .
 
-          # Create and run E2E test
-          cat > test_e2e.py << 'EOL'
-          import asyncio
-          from src.client import AgentServiceClient
-          from src.schema.messages import Message, MessageType
+      - name: Run app container
+        run: docker run -d --name app-container --network host -e AGENT_URL=http://localhost agent-service-toolkit.app:${{ github.sha }}
 
-          async def test_invoke():
-              client = AgentServiceClient("http://localhost")
-              message = Message(
-                  type=MessageType.USER,
-                  content="Hello, this is a test message",
-                  role="user"
-              )
-              response = await client.invoke(message, model="fake")
-              assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+      - name: Confirm app starts correctly
+        run: |
+          timeout 30 bash -c '
+            while ! curl -s http://localhost:8501/healthz; do
+              echo "Waiting for app to be ready..."
+              docker logs app-container
+              sleep 2
+            done
+          '
 
-              response_data = response.json()
-              expected_content = "This is a test response from the fake model."
-              assert response_data["content"] == expected_content, (
-                  f"Expected content: {expected_content}\n"
-                  f"Got content: {response_data['content']}"
-              )
-              print("E2E test passed successfully!")
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: "0.4.12"
+      - name: Install ONLY CLIENT dependencies with uv
+        run: |
+          uv pip install -r requirements.txt
+          uv pip install pytest pytest-env
+        env:
+          UV_SYSTEM_PYTHON: 1
+      - name: Run integration tests
+        run: pytest tests/integration/test_docker.py -v --run-docker
 
-          if __name__ == "__main__":
-              asyncio.run(test_invoke())
-          EOL
-
-          python test_e2e.py
+      - name: Clean up containers
+        if: always()
+        run: |
+          docker stop service-container app-container || true
+          docker rm service-container app-container || true
