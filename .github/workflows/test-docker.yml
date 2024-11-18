@@ -93,7 +93,7 @@ jobs:
         env:
           UV_SYSTEM_PYTHON: 1
       - name: Run integration tests
-        run: pytest tests/integration/test_docker.py -v --run-docker
+        run: pytest tests/integration -v --run-docker
 
       - name: Clean up containers
         if: always()
