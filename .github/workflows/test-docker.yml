@@ -11,20 +11,35 @@ permissions:
   contents: read
 
 jobs:
-  docker-build:
+  test-docker:
     runs-on: ubuntu-latest
+
+    services:
+      dind:
+        image: docker:dind
+        ports:
+          - 2375:2375
+        options: >-
+          --privileged
+          --health-cmd "docker info"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
+        with:
+          driver-opts: network=host
 
       - name: Build service image
         uses: docker/build-push-action@v3
         with:
           context: .
           push: false
+          load: true
           tags: agent-service-toolkit.service:${{ github.sha }}
           file: docker/Dockerfile.service
 
@@ -33,5 +48,55 @@ jobs:
         with:
           context: .
           push: false
+          load: true
           tags: agent-service-toolkit.app:${{ github.sha }}
           file: docker/Dockerfile.app
+
+      - name: Start service container
+        run: docker run -d --name service-container --network host -e USE_FAKE_MODEL=true agent-service-toolkit.service:${{ github.sha }}
+
+      - name: Confirm service starts correctly
+        run: |
+          timeout 30 bash -c '
+            while ! curl -s http://localhost/health; do
+              echo "Waiting for service to be ready..."
+              docker logs service-container
+              sleep 2
+            done
+          '
+
+      - name: Run app container
+        run: docker run -d --name app-container --network host -e AGENT_URL=http://localhost agent-service-toolkit.app:${{ github.sha }}
+
+      - name: Confirm app starts correctly
+        run: |
+          timeout 30 bash -c '
+            while ! curl -s http://localhost:8501/healthz; do
+              echo "Waiting for app to be ready..."
+              docker logs app-container
+              sleep 2
+            done
+          '
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: "0.4.12"
+      - name: Install ONLY CLIENT dependencies with uv
+        run: |
+          uv pip install -r requirements.txt
+          uv pip install pytest pytest-env
+        env:
+          UV_SYSTEM_PYTHON: 1
+      - name: Run integration tests
+        run: pytest tests/integration -v --run-docker
+
+      - name: Clean up containers
+        if: always()
+        run: |
+          docker stop service-container app-container || true
+          docker rm service-container app-container || true
