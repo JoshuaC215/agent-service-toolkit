@@ -55,7 +55,7 @@ jobs:
       - name: Start service container
         run: docker run -d --name service-container --network host -e USE_FAKE_MODEL=true agent-service-toolkit.service:${{ github.sha }}
 
-      - name: Wait for service to be healthy
+      - name: Confirm service starts correctly
         run: |
           timeout 30 bash -c '
             while ! curl -s http://localhost/health; do
@@ -64,11 +64,6 @@ jobs:
               sleep 2
             done
           '
-
-      - name: Install client
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .
 
       - name: Run app container
         run: docker run -d --name app-container --network host -e AGENT_URL=http://localhost agent-service-toolkit.app:${{ github.sha }}
