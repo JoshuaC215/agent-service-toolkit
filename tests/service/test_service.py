@@ -1,31 +1,22 @@
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import patch
 
 import langsmith
-from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.pregel.types import StateSnapshot
 
-from agents import DEFAULT_AGENT
 from schema import ChatHistory, ChatMessage
-from service import app
-
-test_client = TestClient(app)
 
 
-def test_invoke() -> None:
+def test_invoke(test_client, mock_agent) -> None:
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is 70 degrees."
-    agent_response = {"messages": [AIMessage(content=ANSWER)]}
-    agent_mock = AsyncMock()
-    agent_mock.ainvoke = AsyncMock(return_value=agent_response)
+    mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=ANSWER)]}
 
-    with patch.dict("service.service.agents", {DEFAULT_AGENT: agent_mock}):
-        with test_client as c:
-            response = c.post("/invoke", json={"message": QUESTION})
-            assert response.status_code == 200
+    response = test_client.post("/invoke", json={"message": QUESTION})
+    assert response.status_code == 200
 
-    agent_mock.ainvoke.assert_awaited_once()
-    input_message = agent_mock.ainvoke.await_args.kwargs["input"]["messages"][0]
+    mock_agent.ainvoke.assert_awaited_once()
+    input_message = mock_agent.ainvoke.await_args.kwargs["input"]["messages"][0]
     assert input_message.content == QUESTION
 
     output = ChatMessage.model_validate(response.json())
@@ -34,7 +25,7 @@ def test_invoke() -> None:
 
 
 @patch("service.service.LangsmithClient")
-def test_feedback(mock_client: langsmith.Client) -> None:
+def test_feedback(mock_client: langsmith.Client, test_client) -> None:
     ls_instance = mock_client.return_value
     ls_instance.create_feedback.return_value = None
     body = {
@@ -52,30 +43,25 @@ def test_feedback(mock_client: langsmith.Client) -> None:
     )
 
 
-def test_history() -> None:
+def test_history(test_client, mock_agent) -> None:
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is 70 degrees."
     user_question = HumanMessage(content=QUESTION)
     agent_response = AIMessage(content=ANSWER)
-    agent_mock = AsyncMock()
-    agent_mock.get_state = Mock(
-        return_value=StateSnapshot(
-            values={"messages": [user_question, agent_response]},
-            next=(),
-            config={},
-            metadata=None,
-            created_at=None,
-            parent_config=None,
-            tasks=(),
-        )
+    mock_agent.get_state.return_value = StateSnapshot(
+        values={"messages": [user_question, agent_response]},
+        next=(),
+        config={},
+        metadata=None,
+        created_at=None,
+        parent_config=None,
+        tasks=(),
     )
 
-    with patch.dict("service.service.agents", {DEFAULT_AGENT: agent_mock}):
-        with test_client as c:
-            response = c.post(
-                "/history", json={"thread_id": "7bcc7cc1-99d7-4b1d-bdb5-e6f90ed44de6"}
-            )
-            assert response.status_code == 200
+    response = test_client.post(
+        "/history", json={"thread_id": "7bcc7cc1-99d7-4b1d-bdb5-e6f90ed44de6"}
+    )
+    assert response.status_code == 200
 
     output = ChatHistory.model_validate(response.json())
     assert output.messages[0].type == "human"
