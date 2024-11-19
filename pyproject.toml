@@ -42,7 +42,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pre-commit", "pytest", "pytest-env", "ruff"]
+dev = [
+    "pre-commit",
+    "pytest",
+    "pytest-env",
+    "pytest-asyncio",
+    "ruff",
+]
 
 [tool.ruff]
 line-length = 100
