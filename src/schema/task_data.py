@@ -61,13 +61,14 @@ class TaskDataStatus:
             # Status label always shows the last newly started task
             status.update(label=f"""Task: {task_data.name}""")
         self.current_task_data[task_data.run_id] = task_data
+        if all(entry.completed() for entry in self.current_task_data.values()):
+            # Status is "error" if any task has errored
+            if any(entry.completed_with_error() for entry in self.current_task_data.values()):
+                state = "error"
+            # Status is "complete" if all tasks have completed successfully
+            else:
+                state = "complete"
         # Status is "running" until all tasks have completed
-        if not any(entry.completed() for entry in self.current_task_data.values()):
-            state = "running"
-        # Status is "error" if any task has errored
-        elif any(entry.completed_with_error() for entry in self.current_task_data.values()):
-            state = "error"
-        # Status is "complete" if all tasks have completed successfully
         else:
-            state = "complete"
+            state = "running"
         status.update(state=state)
