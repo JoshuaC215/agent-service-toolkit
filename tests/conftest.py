@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 
 from agents import DEFAULT_AGENT
+from client.client import AgentClient
 from service import app
 
 
@@ -48,3 +49,9 @@ def mock_agent():
     agent_mock.get_state = Mock()  # Default empty mock for get_state
     with patch.dict("service.service.agents", {DEFAULT_AGENT: agent_mock}):
         yield agent_mock
+
+
+@pytest.fixture
+def agent_client(mock_env):
+    """Fixture for creating a test client with a clean environment."""
+    return AgentClient(base_url="http://test", agent="test-agent")
