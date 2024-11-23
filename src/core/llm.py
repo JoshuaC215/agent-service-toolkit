@@ -66,7 +66,7 @@ ModelT: TypeAlias = ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI | ChatGr
 
 
 @cache
-def get_model(model_name: str) -> ModelT:
+def get_model(model_name: AllModelEnum, /) -> ModelT:
     # NOTE: models with streaming=True will send tokens as they are generated
     # if the /stream endpoint is called with stream_tokens=True (the default)
     api_model_name = _MODEL_TABLE.get(model_name)

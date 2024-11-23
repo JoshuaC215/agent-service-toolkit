@@ -41,7 +41,8 @@ class Settings(BaseSettings):
     GROQ_API_KEY: SecretStr | None = None
     USE_AWS_BEDROCK: bool = False
 
-    DEFAULT_MODEL: AllModelEnum = None  # If the value is None, it will be set in model_post_init
+    # If DEFAULT_MODEL is None, it will be set in model_post_init
+    DEFAULT_MODEL: AllModelEnum | None = None  # type: ignore[assignment]
 
     OPENWEATHERMAP_API_KEY: SecretStr | None = None
 
