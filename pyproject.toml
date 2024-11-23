@@ -3,9 +3,7 @@ name = "agent-service-toolkit"
 version = "0.1.0"
 description = "Full toolkit for running an AI agent service built with LangGraph, FastAPI and Streamlit"
 readme = "README.md"
-authors = [
-    {name = "Joshua Carroll", email = "carroll.joshk@gmail.com"},
-]
+authors = [{ name = "Joshua Carroll", email = "carroll.joshk@gmail.com" }]
 classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
@@ -16,36 +14,31 @@ classifiers = [
 requires-python = ">=3.11"
 
 dependencies = [
-    "duckduckgo-search>=6.3",
-    "fastapi ~=0.115.4",
+    "duckduckgo-search>=6.3.6",
+    "fastapi ~=0.115.5",
     "httpx ~=0.27.2",
-    "langchain-core ~=0.3.15",
-    "langchain-community ~=0.3.5",
-    "langchain-openai ~=0.2.6",
-    "langchain-anthropic ~= 0.2.4",
-    "langchain-google-genai ~=2.0.4",
+    "langchain-core ~=0.3.20",
+    "langchain-community ~=0.3.7",
+    "langchain-openai ~=0.2.9",
+    "langchain-anthropic ~= 0.3.0",
+    "langchain-google-genai ~=2.0.5",
     "langchain-groq ~=0.2.1",
     "langchain-aws ~=0.2.7",
-    "langgraph ~=0.2.45",
+    "langgraph ~=0.2.53",
     "langgraph-checkpoint-sqlite ~=2.0.1",
-    "langsmith ~=0.1.142",
+    "langsmith ~=0.1.145",
     "numexpr ~=2.10.1",
-    "pydantic ~=2.9.2",
+    "pydantic ~=2.10.1",
     "pydantic-settings ~=2.6.1",
     "pyowm ~=3.3.0",
     "python-dotenv ~=1.0.1",
-    "setuptools ~=75.3.0",
-    "streamlit ~=1.40.0",
-    "uvicorn ~=0.32.0",
+    "setuptools ~=75.6.0",
+    "streamlit ~=1.40.1",
+    "uvicorn ~=0.32.1",
 ]
 
 [project.optional-dependencies]
-dev = [
-    "pre-commit",
-    "pytest",
-    "pytest-env",
-    "ruff",
-]
+dev = ["pre-commit", "pytest", "pytest-env", "ruff"]
 
 [tool.ruff]
 line-length = 100
@@ -55,9 +48,7 @@ target-version = "py311"
 extend-select = ["I", "U"]
 
 [tool.pytest.ini_options]
-pythonpath = [
-  "src"
-]
+pythonpath = ["src"]
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-fake-openai-key"
