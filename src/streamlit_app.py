@@ -1,4 +1,5 @@
 import asyncio
+import os
 from collections.abc import AsyncGenerator
 
 import streamlit as st
@@ -56,7 +57,9 @@ async def main() -> None:
         st.rerun()
 
     if "agent_client" not in st.session_state:
-        st.session_state.agent_client = AgentClient()
+        st.session_state.agent_client = AgentClient(
+            base_url=os.getenv("AGENT_URL", "http://localhost")
+        )
     agent_client: AgentClient = st.session_state.agent_client
 
     if "thread_id" not in st.session_state:
