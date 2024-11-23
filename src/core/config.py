@@ -4,7 +4,7 @@ from dotenv import find_dotenv
 from pydantic import BeforeValidator, HttpUrl, SecretStr, TypeAdapter, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from core.llm import AnthropicModelName, GoogleModelName, GroqModelName, OpenAIModelName
+from core.llm import OpenAIModelName
 
 
 def check_str_is_http(x: str) -> str:
@@ -31,10 +31,7 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: SecretStr | None = None
     GROQ_API_KEY: SecretStr | None = None
 
-    OPENAI_DEFAULT_MODEL: OpenAIModelName = OpenAIModelName.GPT_4O_MINI
-    ANTHROPIC_DEFAULT_MODEL: AnthropicModelName = AnthropicModelName.HAIKU_3
-    GOOGLE_DEFAULT_MODEL: GoogleModelName = GoogleModelName.GEMINI_15_FLASH
-    GROQ_DEFAULT_MODEL: GroqModelName = GroqModelName.LLAMA_31_70B
+    DEFAULT_MODEL: OpenAIModelName = OpenAIModelName.GPT_4O_MINI
 
     OPENWEATHERMAP_API_KEY: SecretStr | None = None
 
