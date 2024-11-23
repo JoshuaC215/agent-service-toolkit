@@ -42,8 +42,6 @@ class GroqModelName(StrEnum):
     LLAMA_31_8B = "groq-llama-3.1-8b"
     LLAMA_31_70B = "groq-llama-3.1-70b"
 
-    LlAMA_GUARD_3_8B = "groq-llama-guard-3-8b"
-
 
 class AWSModelName(StrEnum):
     BEDROCK_HAIKU = "bedrock-3.5-haiku"
@@ -58,7 +56,6 @@ _MODEL_TABLE = {
     GoogleModelName.GEMINI_15_FLASH: "gemini-1.5-flash",
     GroqModelName.LLAMA_31_8B: "llama-3.1-8b-instant",
     GroqModelName.LLAMA_31_70B: "llama-3.1-70b-versatile",
-    GroqModelName.LlAMA_GUARD_3_8B: "llama-guard-3-8b",
     AWSModelName.BEDROCK_HAIKU: "anthropic.claude-3-5-haiku-20241022-v1:0",
 }
 

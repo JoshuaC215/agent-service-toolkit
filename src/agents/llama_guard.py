@@ -6,7 +6,6 @@ from langchain_groq import ChatGroq
 from pydantic import BaseModel, Field
 
 from core import settings
-from core.llm import GroqModelName
 
 
 class SafetyAssessment(Enum):
@@ -82,7 +81,7 @@ class LlamaGuard:
             print("GROQ_API_KEY not set, skipping LlamaGuard")
             self.model = None
             return
-        self.model = ChatGroq(model=GroqModelName.LlAMA_GUARD_3_8B, temperature=0.0).with_config(
+        self.model = ChatGroq(model="llama-guard-3-8b", temperature=0.0).with_config(
             tags=["llama_guard"]
         )
         self.prompt = PromptTemplate.from_template(llama_guard_instructions)
