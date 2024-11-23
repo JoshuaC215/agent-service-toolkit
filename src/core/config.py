@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: SecretStr | None = None
     GOOGLE_API_KEY: SecretStr | None = None
     GROQ_API_KEY: SecretStr | None = None
-    AWS_ACCESS_KEY_ID: SecretStr | None = None
+    USE_AWS_BEDROCK: bool = False
 
     DEFAULT_MODEL: AllModelEnum = None  # If the value is None, it will be set in model_post_init
 
@@ -58,9 +58,9 @@ class Settings(BaseSettings):
             Provider.ANTHROPIC: self.ANTHROPIC_API_KEY,
             Provider.GOOGLE: self.GOOGLE_API_KEY,
             Provider.GROQ: self.GROQ_API_KEY,
-            Provider.AWS: self.AWS_ACCESS_KEY_ID,
+            Provider.AWS: self.USE_AWS_BEDROCK,
         }
-        active_keys = {k for k, v in api_keys.items() if v is not None}
+        active_keys = {k for k, v in api_keys.items() if v}
         if not active_keys:
             raise ValueError("At least one LLM API key must be provided.")
 
