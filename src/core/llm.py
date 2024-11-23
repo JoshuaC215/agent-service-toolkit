@@ -1,4 +1,3 @@
-from enum import StrEnum, auto
 from functools import cache
 from typing import TypeAlias
 
@@ -8,44 +7,14 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
-
-class Provider(StrEnum):
-    OPENAI = auto()
-    ANTHROPIC = auto()
-    GOOGLE = auto()
-    GROQ = auto()
-    AWS = auto()
-
-
-class OpenAIModelName(StrEnum):
-    """https://platform.openai.com/docs/models/gpt-4o"""
-
-    GPT_4O_MINI = "gpt-4o-mini"
-    GPT_4O = "gpt-4o"
-
-
-class AnthropicModelName(StrEnum):
-    """https://docs.anthropic.com/en/docs/about-claude/models#model-names"""
-
-    HAIKU_3 = "claude-3-haiku"
-    HAIKU_35 = "claude-3.5-haiku"
-    SONNET_35 = "claude-3.5-sonnet"
-
-
-class GoogleModelName(StrEnum):
-    GEMINI_15_FLASH = "gemini-1.5-flash"
-
-
-class GroqModelName(StrEnum):
-    """https://console.groq.com/docs/models"""
-
-    LLAMA_31_8B = "groq-llama-3.1-8b"
-    LLAMA_31_70B = "groq-llama-3.1-70b"
-
-
-class AWSModelName(StrEnum):
-    BEDROCK_HAIKU = "bedrock-3.5-haiku"
-
+from schema.models import (
+    AllModelEnum,
+    AnthropicModelName,
+    AWSModelName,
+    GoogleModelName,
+    GroqModelName,
+    OpenAIModelName,
+)
 
 _MODEL_TABLE = {
     OpenAIModelName.GPT_4O_MINI: "gpt-4o-mini",
@@ -56,12 +25,10 @@ _MODEL_TABLE = {
     GoogleModelName.GEMINI_15_FLASH: "gemini-1.5-flash",
     GroqModelName.LLAMA_31_8B: "llama-3.1-8b-instant",
     GroqModelName.LLAMA_31_70B: "llama-3.1-70b-versatile",
+    GroqModelName.LLAMA_GUARD_3_8B: "llama-guard-3-8b",
     AWSModelName.BEDROCK_HAIKU: "anthropic.claude-3-5-haiku-20241022-v1:0",
 }
 
-AllModelEnum: TypeAlias = (
-    OpenAIModelName | AnthropicModelName | GoogleModelName | GroqModelName | AWSModelName
-)
 ModelT: TypeAlias = ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI | ChatGroq | ChatBedrock
 
 
@@ -78,6 +45,8 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
     if model_name in GoogleModelName:
         return ChatGoogleGenerativeAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GroqModelName:
+        if model_name == GroqModelName.LLAMA_GUARD_3_8B:
+            return ChatGroq(model=api_model_name, temperature=0.0)
         return ChatGroq(model=api_model_name, temperature=0.5)
     if model_name in AWSModelName:
         return ChatBedrock(model_id=api_model_name, temperature=0.5)

@@ -4,7 +4,7 @@ from dotenv import find_dotenv
 from pydantic import BeforeValidator, HttpUrl, SecretStr, TypeAdapter, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from core.llm import (
+from schema.models import (
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
@@ -65,12 +65,9 @@ class Settings(BaseSettings):
         if not active_keys:
             raise ValueError("At least one LLM API key must be provided.")
 
-        if len(active_keys) > 1 and self.DEFAULT_MODEL is None:
-            raise ValueError("DEFAULT_MODEL must be specified when multiple API keys are provided.")
-
         if self.DEFAULT_MODEL is None:
-            provider_name = next(iter(active_keys))
-            match provider_name:
+            first_provider = next(iter(active_keys))
+            match first_provider:
                 case Provider.OPENAI:
                     self.DEFAULT_MODEL = OpenAIModelName.GPT_4O_MINI
                 case Provider.ANTHROPIC:
@@ -82,7 +79,7 @@ class Settings(BaseSettings):
                 case Provider.AWS:
                     self.DEFAULT_MODEL = AWSModelName.BEDROCK_HAIKU
                 case _:
-                    raise ValueError(f"Unknown provider: {provider_name}")
+                    raise ValueError(f"Unknown provider: {first_provider}")
 
     @computed_field
     @property

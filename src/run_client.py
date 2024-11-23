@@ -35,7 +35,7 @@ def main() -> None:
     print("\nStream example:")
     for message in client.stream("Share a quick fun fact?"):
         if isinstance(message, str):
-            print(message, flush=True, end="|")
+            print(message, flush=True, end="")
         elif isinstance(message, ChatMessage):
             print("\n", flush=True)
             message.pretty_print()
@@ -44,4 +44,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    print("Running in sync mode")
+    main()
+    print("\n\n\n\n\n")
+    print("Running in async mode")
     asyncio.run(amain())

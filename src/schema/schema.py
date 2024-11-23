@@ -3,7 +3,7 @@ from typing import Any, Literal, NotRequired
 from pydantic import BaseModel, Field, SerializeAsAny
 from typing_extensions import TypedDict
 
-from core.llm import AllModelEnum
+from schema.models import AllModelEnum
 
 
 class UserInput(BaseModel):

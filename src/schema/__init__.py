@@ -1,3 +1,4 @@
+from schema.models import AllModelEnum
 from schema.schema import (
     ChatHistory,
     ChatHistoryInput,
@@ -9,6 +10,7 @@ from schema.schema import (
 )
 
 __all__ = [
+    "AllModelEnum",
     "UserInput",
     "ChatMessage",
     "StreamInput",

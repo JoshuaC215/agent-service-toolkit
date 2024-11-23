@@ -7,14 +7,14 @@ from pydantic import ValidationError
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient
-from core.llm import (
+from schema import ChatHistory, ChatMessage
+from schema.models import (
     AnthropicModelName,
     AWSModelName,
     GoogleModelName,
     GroqModelName,
     OpenAIModelName,
 )
-from schema import ChatHistory, ChatMessage
 from schema.task_data import TaskData, TaskDataStatus
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
