@@ -5,7 +5,6 @@ from typing import Any
 
 import httpx
 
-from core import settings
 from schema import ChatHistory, ChatHistoryInput, ChatMessage, Feedback, StreamInput, UserInput
 
 
@@ -14,7 +13,7 @@ class AgentClient:
 
     def __init__(
         self,
-        base_url: str = settings.BASE_URL,
+        base_url: str = "http://localhost",
         agent: str = "research-assistant",
         timeout: float | None = None,
     ) -> None:

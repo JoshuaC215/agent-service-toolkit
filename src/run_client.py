@@ -1,12 +1,13 @@
 import asyncio
 
 from client import AgentClient
+from core import settings
 from schema import ChatMessage
 
 
 async def amain() -> None:
     #### ASYNC ####
-    client = AgentClient()
+    client = AgentClient(settings.BASE_URL)
 
     print("Chat example:")
     response = await client.ainvoke("Tell me a brief joke?", model="gpt-4o")
@@ -25,7 +26,7 @@ async def amain() -> None:
 
 def main() -> None:
     #### SYNC ####
-    client = AgentClient()
+    client = AgentClient(settings.BASE_URL)
 
     print("Chat example:")
     response = client.invoke("Tell me a brief joke?", model="gpt-4o")
