@@ -81,8 +81,6 @@ def get_model(model_name: str) -> ModelT:
     if model_name in GoogleModelName._value2member_map_:
         return ChatGoogleGenerativeAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GroqModelName._value2member_map_:
-        if model_name == GroqModelName.LlAMA_GUARD_3_8B:
-            return ChatGroq(model=api_model_name, temperature=0.0).with_config(tags=["llama_guard"])
         return ChatGroq(model=api_model_name, temperature=0.5)
     if model_name in AWSModelName._value2member_map_:
         return ChatBedrock(model_id=api_model_name, temperature=0.5)
