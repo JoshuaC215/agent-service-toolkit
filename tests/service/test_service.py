@@ -63,7 +63,7 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     """Test that the model parameter is correctly passed to the agent."""
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is sunny."
-    CUSTOM_MODEL = "gpt-4-turbo"
+    CUSTOM_MODEL = "claude-3.5-sonnet"
     mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=ANSWER)]}
 
     response = test_client.post("/invoke", json={"message": QUESTION, "model": CUSTOM_MODEL})
@@ -78,6 +78,11 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     output = ChatMessage.model_validate(response.json())
     assert output.type == "ai"
     assert output.content == ANSWER
+
+    # Verify an invalid model throws a validation error
+    INVALID_MODEL = "gpt-7-notreal"
+    response = test_client.post("/invoke", json={"message": QUESTION, "model": INVALID_MODEL})
+    assert response.status_code == 422
 
 
 @patch("service.service.LangsmithClient")

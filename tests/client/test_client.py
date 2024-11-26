@@ -13,7 +13,7 @@ def test_init(mock_env):
     """Test client initialization with different parameters."""
     # Test default values
     client = AgentClient()
-    assert client.base_url == "http://localhost:80"
+    assert client.base_url == "http://localhost"
     assert client.agent == "research-assistant"
     assert client.timeout is None
 
@@ -60,14 +60,14 @@ def test_invoke(agent_client):
     with patch("httpx.post", return_value=mock_response) as mock_post:
         response = agent_client.invoke(
             QUESTION,
-            model="gpt-4",
+            model="gpt-4o",
             thread_id="test-thread",
         )
         assert isinstance(response, ChatMessage)
         # Verify request
         args, kwargs = mock_post.call_args
         assert kwargs["json"]["message"] == QUESTION
-        assert kwargs["json"]["model"] == "gpt-4"
+        assert kwargs["json"]["model"] == "gpt-4o"
         assert kwargs["json"]["thread_id"] == "test-thread"
 
     # Test error response
@@ -96,7 +96,7 @@ async def test_ainvoke(agent_client):
     with patch("httpx.AsyncClient.post", return_value=mock_response) as mock_post:
         response = await agent_client.ainvoke(
             QUESTION,
-            model="gpt-4",
+            model="gpt-4o",
             thread_id="test-thread",
         )
         assert isinstance(response, ChatMessage)
@@ -105,7 +105,7 @@ async def test_ainvoke(agent_client):
         # Verify request
         args, kwargs = mock_post.call_args
         assert kwargs["json"]["message"] == QUESTION
-        assert kwargs["json"]["model"] == "gpt-4"
+        assert kwargs["json"]["model"] == "gpt-4o"
         assert kwargs["json"]["thread_id"] == "test-thread"
 
     # Test error response

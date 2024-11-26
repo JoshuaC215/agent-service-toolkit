@@ -42,6 +42,13 @@ def mock_env():
 
 
 @pytest.fixture
+def mock_service_settings(mock_env):
+    """Fixture to ensure settings are clean for each test."""
+    with patch("service.service.settings") as mock_settings:
+        yield mock_settings
+
+
+@pytest.fixture
 def mock_agent():
     """Fixture to create a mock agent that can be configured for different test scenarios."""
     agent_mock = AsyncMock()

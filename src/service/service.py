@@ -43,10 +43,11 @@ def verify_bearer(
         Depends(HTTPBearer(description="Please provide AUTH_SECRET api key.", auto_error=False)),
     ],
 ) -> None:
+    if not settings.AUTH_SECRET:
+        return
     auth_secret = settings.AUTH_SECRET.get_secret_value()
-    if auth_secret:
-        if not http_auth or http_auth.credentials != auth_secret:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
+    if not http_auth or http_auth.credentials != auth_secret:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
 @asynccontextmanager
