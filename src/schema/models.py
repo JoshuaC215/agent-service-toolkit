@@ -27,6 +27,8 @@ class AnthropicModelName(StrEnum):
 
 
 class GoogleModelName(StrEnum):
+    """https://ai.google.dev/gemini-api/docs/models/gemini"""
+
     GEMINI_15_FLASH = "gemini-1.5-flash"
 
 
@@ -40,10 +42,14 @@ class GroqModelName(StrEnum):
 
 
 class AWSModelName(StrEnum):
+    """https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html"""
+
     BEDROCK_HAIKU = "bedrock-3.5-haiku"
 
 
 class FakeModelName(StrEnum):
+    """Fake model for testing."""
+
     FAKE = "fake"
 
 
