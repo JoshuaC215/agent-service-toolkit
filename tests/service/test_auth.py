@@ -1,9 +1,9 @@
 from pydantic import SecretStr
 
 
-def test_no_auth_secret(mock_service_settings, mock_agent, test_client):
+def test_no_auth_secret(mock_settings, mock_agent, test_client):
     """Test that when AUTH_SECRET is not set, all requests are allowed"""
-    mock_service_settings.AUTH_SECRET = None
+    mock_settings.AUTH_SECRET = None
     response = test_client.post(
         "/invoke",
         json={"message": "test"},
@@ -16,9 +16,9 @@ def test_no_auth_secret(mock_service_settings, mock_agent, test_client):
     assert response.status_code == 200
 
 
-def test_auth_secret_correct(mock_service_settings, mock_agent, test_client):
+def test_auth_secret_correct(mock_settings, mock_agent, test_client):
     """Test that when AUTH_SECRET is set, requests with correct token are allowed"""
-    mock_service_settings.AUTH_SECRET = SecretStr("test-secret")
+    mock_settings.AUTH_SECRET = SecretStr("test-secret")
     response = test_client.post(
         "/invoke",
         json={"message": "test"},
@@ -27,9 +27,9 @@ def test_auth_secret_correct(mock_service_settings, mock_agent, test_client):
     assert response.status_code == 200
 
 
-def test_auth_secret_incorrect(mock_service_settings, mock_agent, test_client):
+def test_auth_secret_incorrect(mock_settings, mock_agent, test_client):
     """Test that when AUTH_SECRET is set, requests with wrong token are rejected"""
-    mock_service_settings.AUTH_SECRET = SecretStr("test-secret")
+    mock_settings.AUTH_SECRET = SecretStr("test-secret")
     response = test_client.post(
         "/invoke",
         json={"message": "test"},
