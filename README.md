@@ -19,7 +19,7 @@ This project offers a template for you to easily build and run your own agents u
 Run directly in python
 
 ```sh
-# An OPENAI_API_KEY is required
+# At least one LLM API key is required
 echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 
 # uv is recommended but "pip install ." also works
@@ -92,44 +92,7 @@ With that said, there are several other interesting projects in this space that 
    ```
 
 2. Set up environment variables:
-   Create a `.env` file in the root directory and add the following:
-
-   ```sh
-   # Provide at least one LLM API key to enable the agent service
-
-   # Optional, to enable OpenAI gpt-4o-mini
-   OPENAI_API_KEY=your_openai_api_key
-
-   # Optional, to enable LlamaGuard and Llama 3.1
-   GROQ_API_KEY=your_groq_api_key
-
-   # Optional, to enable Gemini 1.5 Flash
-   # See: https://ai.google.dev/gemini-api/docs/api-key
-   GOOGLE_API_KEY=your_gemini_key
-
-   # Optional, to enable Claude 3 Haiku
-   # See: https://docs.anthropic.com/en/api/getting-started
-   ANTHROPIC_API_KEY=your_anthropic_key
-
-   # Optional, to enable AWS Bedrock models Haiku
-   # See: https://docs.aws.amazon.com/bedrock/latest/userguide/setting-up.html
-   USE_AWS_BEDROCK=true
-
-   # Optional, to enable simple header-based auth on the service
-   AUTH_SECRET=any_string_you_choose
-
-   # Optional, to enable OpenWeatherMap
-   OPENWEATHERMAP_API_KEY=your_openweathermap_api_key
-
-   # Optional, to enable LangSmith tracing
-   LANGCHAIN_TRACING_V2=true
-   LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
-   LANGCHAIN_API_KEY=your_langchain_api_key
-   LANGCHAIN_PROJECT=your_project
-
-   # Optional, if MODE=dev, uvicorn will reload the server on file changes
-   MODE=
-   ```
+   Create a `.env` file in the root directory. At least one LLM API key or configuration is required. See the [`.env.example` file](./.env.example) for a full list of available environment variables, including a variety of model provider API keys, header-based authentication, LangSmith tracing, testing and development modes, and OpenWeatherMap API key.
 
 3. You can now run the agent service and the Streamlit app locally, either with Docker or just using Python. The Docker setup is recommended for simpler environment setup and immediate reloading of the services when you make changes to your code.
 
