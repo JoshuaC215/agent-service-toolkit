@@ -13,7 +13,7 @@ class UserInput(BaseModel):
         description="User input to the agent.",
         examples=["What is the weather in Tokyo?"],
     )
-    model: SerializeAsAny[AllModelEnum] = Field(
+    model: SerializeAsAny[AllModelEnum] | None = Field(
         title="Model",
         description="LLM Model to use for the agent.",
         default="gpt-4o-mini",

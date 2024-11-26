@@ -39,15 +39,15 @@ logger = logging.getLogger(__name__)
 
 def verify_bearer(
     http_auth: Annotated[
-        HTTPAuthorizationCredentials,
-        Depends(HTTPBearer(description="Please provide AUTH_SECRET api key.")),
+        HTTPAuthorizationCredentials | None,
+        Depends(HTTPBearer(description="Please provide AUTH_SECRET api key.", auto_error=False)),
     ],
 ) -> None:
-    if http_auth.credentials != settings.AUTH_SECRET.get_secret_value():
+    if not settings.AUTH_SECRET:
+        return
+    auth_secret = settings.AUTH_SECRET.get_secret_value()
+    if not http_auth or http_auth.credentials != auth_secret:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
-
-
-bearer_depend = [Depends(verify_bearer)] if settings.AUTH_SECRET else None
 
 
 @asynccontextmanager
@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(lifespan=lifespan)
-router = APIRouter(dependencies=bearer_depend)
+router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 
 def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
