@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir uv
 RUN uv sync --frozen --no-install-project --no-dev
 
 COPY src/agents/ ./agents/
+COPY src/core/ ./core/
 COPY src/schema/ ./schema/
 COPY src/service/ ./service/
 COPY src/run_service.py .

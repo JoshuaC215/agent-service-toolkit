@@ -4,7 +4,7 @@ from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSer
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 
-from agents.models import models
+from core import get_model, settings
 
 
 class AgentState(MessagesState, total=False):
@@ -23,7 +23,7 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
 
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = models[config["configurable"].get("model", "gpt-4o-mini")]
+    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m)
     response = await model_runnable.ainvoke(state, config)
 

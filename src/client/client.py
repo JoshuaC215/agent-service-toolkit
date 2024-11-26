@@ -13,7 +13,7 @@ class AgentClient:
 
     def __init__(
         self,
-        base_url: str = "http://localhost:80",
+        base_url: str = "http://localhost",
         agent: str = "research-assistant",
         timeout: float | None = None,
     ) -> None:
@@ -49,11 +49,7 @@ class AgentClient:
         Returns:
             AnyMessage: The response from the agent
         """
-        request = UserInput(message=message)
-        if thread_id:
-            request.thread_id = thread_id
-        if model:
-            request.model = model
+        request = UserInput(message=message, thread_id=thread_id, model=model)
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}/{self.agent}/invoke",

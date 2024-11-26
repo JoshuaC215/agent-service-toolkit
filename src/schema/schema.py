@@ -1,7 +1,9 @@
-from typing import Any, Literal
+from typing import Any, Literal, NotRequired
 
-from pydantic import BaseModel, Field
-from typing_extensions import NotRequired, TypedDict
+from pydantic import BaseModel, Field, SerializeAsAny
+from typing_extensions import TypedDict
+
+from schema.models import AllModelEnum
 
 
 class UserInput(BaseModel):
@@ -11,7 +13,8 @@ class UserInput(BaseModel):
         description="User input to the agent.",
         examples=["What is the weather in Tokyo?"],
     )
-    model: str = Field(
+    model: SerializeAsAny[AllModelEnum] = Field(
+        title="Model",
         description="LLM Model to use for the agent.",
         default="gpt-4o-mini",
         examples=["gpt-4o-mini", "llama-3.1-70b"],

@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 from typing import Literal
 
@@ -12,8 +11,8 @@ from langgraph.managed import IsLastStep
 from langgraph.prebuilt import ToolNode
 
 from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
-from agents.models import models
 from agents.tools import calculator
+from core import get_model, settings
 
 
 class AgentState(MessagesState, total=False):
@@ -31,7 +30,7 @@ tools = [web_search, calculator]
 
 # Add weather tool if API key is set
 # Register for an API key at https://openweathermap.org/api/
-if os.getenv("OPENWEATHERMAP_API_KEY") is not None:
+if settings.OPENWEATHERMAP_API_KEY:
     tools.append(OpenWeatherMapQueryRun(name="Weather"))
 
 current_date = datetime.now().strftime("%B %d, %Y")
@@ -66,7 +65,7 @@ def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
 
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = models[config["configurable"].get("model", "gpt-4o-mini")]
+    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m)
     response = await model_runnable.ainvoke(state, config)
 
@@ -142,6 +141,4 @@ def pending_tool_calls(state: AgentState) -> Literal["tools", "done"]:
 
 agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", "done": END})
 
-research_assistant = agent.compile(
-    checkpointer=MemorySaver(),
-)
+research_assistant = agent.compile(checkpointer=MemorySaver())
