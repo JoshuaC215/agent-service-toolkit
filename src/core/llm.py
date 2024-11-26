@@ -40,6 +40,8 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
     # NOTE: models with streaming=True will send tokens as they are generated
     # if the /stream endpoint is called with stream_tokens=True (the default)
     api_model_name = _MODEL_TABLE.get(model_name)
+    if not api_model_name:
+        raise ValueError(f"Unsupported model: {model_name}")
 
     if model_name in OpenAIModelName:
         return ChatOpenAI(model=api_model_name, temperature=0.5, streaming=True)
@@ -55,4 +57,3 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         return ChatBedrock(model_id=api_model_name, temperature=0.5)
     if model_name in FakeModelName:
         return FakeListChatModel(responses=["This is a test response from the fake model."])
-    raise ValueError(f"Unsupported model: {model_name}")
