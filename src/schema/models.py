@@ -8,6 +8,7 @@ class Provider(StrEnum):
     GOOGLE = auto()
     GROQ = auto()
     AWS = auto()
+    FAKE = auto()
 
 
 class OpenAIModelName(StrEnum):
@@ -42,6 +43,15 @@ class AWSModelName(StrEnum):
     BEDROCK_HAIKU = "bedrock-3.5-haiku"
 
 
+class FakeModelName(StrEnum):
+    FAKE = "fake"
+
+
 AllModelEnum: TypeAlias = (
-    OpenAIModelName | AnthropicModelName | GoogleModelName | GroqModelName | AWSModelName
+    OpenAIModelName
+    | AnthropicModelName
+    | GoogleModelName
+    | GroqModelName
+    | AWSModelName
+    | FakeModelName
 )

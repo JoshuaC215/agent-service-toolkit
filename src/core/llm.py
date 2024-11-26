@@ -3,6 +3,7 @@ from typing import TypeAlias
 
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
+from langchain_community.chat_models import FakeListChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
@@ -11,6 +12,7 @@ from schema.models import (
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
+    FakeModelName,
     GoogleModelName,
     GroqModelName,
     OpenAIModelName,
@@ -27,6 +29,7 @@ _MODEL_TABLE = {
     GroqModelName.LLAMA_31_70B: "llama-3.1-70b-versatile",
     GroqModelName.LLAMA_GUARD_3_8B: "llama-guard-3-8b",
     AWSModelName.BEDROCK_HAIKU: "anthropic.claude-3-5-haiku-20241022-v1:0",
+    FakeModelName.FAKE: "fake",
 }
 
 ModelT: TypeAlias = ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI | ChatGroq | ChatBedrock
@@ -50,4 +53,6 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         return ChatGroq(model=api_model_name, temperature=0.5)
     if model_name in AWSModelName:
         return ChatBedrock(model_id=api_model_name, temperature=0.5)
+    if model_name in FakeModelName:
+        return FakeListChatModel(responses=["This is a test response from the fake model."])
     raise ValueError(f"Unsupported model: {model_name}")
