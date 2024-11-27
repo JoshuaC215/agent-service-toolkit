@@ -1,7 +1,5 @@
 from unittest.mock import patch
 
-import pytest
-from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage, ToolCall, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
@@ -10,24 +8,7 @@ from langgraph.graph import END, MessagesState, StateGraph
 from agents.utils import CustomData
 from client import AgentClient
 from schema.schema import ChatMessage
-from service.service import app
 from service.utils import langchain_to_chat_message
-
-
-@pytest.fixture
-def mock_httpx_stream():
-    """Patch httpx.stream to use our test client."""
-
-    with TestClient(app) as client:
-
-        def mock_stream(method: str, url: str, **kwargs):
-            # Strip the base URL since TestClient expects just the path
-            path = url.replace("http://localhost", "")
-            return client.stream(method, path, **kwargs)
-
-        with patch("httpx.stream", mock_stream):
-            yield
-
 
 START_MESSAGE = CustomData(type="start", data={"key1": "value1", "key2": 123})
 

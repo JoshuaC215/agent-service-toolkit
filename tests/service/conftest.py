@@ -29,3 +29,18 @@ def mock_settings(mock_env):
     """Fixture to ensure settings are clean for each test."""
     with patch("service.service.settings") as mock_settings:
         yield mock_settings
+
+
+@pytest.fixture
+def mock_httpx_stream():
+    """Patch httpx.stream to use our test client."""
+
+    with TestClient(app) as client:
+
+        def mock_stream(method: str, url: str, **kwargs):
+            # Strip the base URL since TestClient expects just the path
+            path = url.replace("http://localhost", "")
+            return client.stream(method, path, **kwargs)
+
+        with patch("httpx.stream", mock_stream):
+            yield
