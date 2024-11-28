@@ -128,12 +128,13 @@ async def test_app_streaming(mock_agent_client):
     assert at.chat_message[0].avatar == "user"
     assert at.chat_message[0].markdown[0].value == PROMPT
     response = at.chat_message[1]
+    tool_status = response.status[0]
     assert response.avatar == "assistant"
-    assert response.status[0].label == "Tool Call: calculator"
-    assert response.status[0].icon == ":material/check:"
-    assert response.status[0].markdown[0].value == "Input:"
-    assert response.status[0].json[0].value == '{"expression": "6 * 7"}'
-    assert response.status[0].markdown[1].value == "Output:"
-    assert response.status[0].markdown[2].value == "42"
-    assert response.markdown[3].value == "The answer is 42"
+    assert tool_status.label == "Tool Call: calculator"
+    assert tool_status.icon == ":material/check:"
+    assert tool_status.markdown[0].value == "Input:"
+    assert tool_status.json[0].value == '{"expression": "6 * 7"}'
+    assert tool_status.markdown[1].value == "Output:"
+    assert tool_status.markdown[2].value == "42"
+    assert response.markdown[-1].value == "The answer is 42"
     assert not at.exception
