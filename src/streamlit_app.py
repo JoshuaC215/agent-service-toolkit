@@ -3,6 +3,7 @@ import os
 from collections.abc import AsyncGenerator
 
 import streamlit as st
+from dotenv import load_dotenv
 from pydantic import ValidationError
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 
@@ -57,9 +58,13 @@ async def main() -> None:
         st.rerun()
 
     if "agent_client" not in st.session_state:
-        st.session_state.agent_client = AgentClient(
-            base_url=os.getenv("AGENT_URL", "http://localhost")
-        )
+        load_dotenv()
+        agent_url = os.getenv("AGENT_URL")
+        if not agent_url:
+            host = os.getenv("HOST", "0.0.0.0")
+            port = os.getenv("PORT", 80)
+            agent_url = f"http://{host}:{port}"
+        st.session_state.agent_client = AgentClient(base_url=agent_url)
     agent_client: AgentClient = st.session_state.agent_client
 
     if "thread_id" not in st.session_state:

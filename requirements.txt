@@ -4,4 +4,5 @@
 
 httpx~=0.27.2
 pydantic ~=2.10.1
+python-dotenv ~=1.0.1
 streamlit~=1.40.1
