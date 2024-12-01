@@ -130,7 +130,7 @@ You can also run the agent service and the Streamlit app locally without Docker,
 
    ```sh
    pip install uv
-   uv sync --frozen --extra dev
+   uv sync --frozen
    source .venv/bin/activate
    ```
 
@@ -164,7 +164,7 @@ Currently the tests need to be run using the local development without Docker se
 
    ```sh
    pip install uv
-   uv sync --frozen --extra dev
+   uv sync --frozen
    pre-commit install
    ```
 

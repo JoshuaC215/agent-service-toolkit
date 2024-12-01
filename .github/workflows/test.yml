@@ -32,7 +32,7 @@ jobs:
         version: "0.5.4"
     - name: Install dependencies with uv
       run: |
-        uv sync --frozen --extra dev
+        uv sync --frozen
       env:
         UV_SYSTEM_PYTHON: 1
     - name: Lint and format with ruff

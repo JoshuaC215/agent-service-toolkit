@@ -88,7 +88,7 @@ jobs:
           version: "0.4.12"
       - name: Install ONLY CLIENT dependencies with uv
         run: |
-          uv pip install -r requirements.txt
+          uv sync --frozen --only-group client --only-group dev
           uv pip install pytest pytest-env
         env:
           UV_SYSTEM_PYTHON: 1

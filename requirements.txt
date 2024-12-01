@@ -1,8 +1,0 @@
-# IMPORTANT: This is only used for the Streamlit app deployment
-# to Streamlit Community Cloud, since it doesn't have support for uv.
-# USE PYPROJECT.TOML AND UV.LOCK FOR YOUR OWN INSTALL!
-
-httpx~=0.27.2
-pydantic ~=2.10.1
-python-dotenv ~=1.0.1
-streamlit~=1.40.1
