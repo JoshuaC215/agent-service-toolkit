@@ -89,11 +89,10 @@ jobs:
       - name: Install ONLY CLIENT dependencies with uv
         run: |
           uv sync --frozen --only-group client --only-group dev
-          uv pip install pytest pytest-env
         env:
           UV_SYSTEM_PYTHON: 1
       - name: Run integration tests
-        run: pytest tests/integration -v --run-docker
+        run: uv run pytest tests/integration -v --run-docker
 
       - name: Clean up containers
         if: always()
