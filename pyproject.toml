@@ -45,6 +45,7 @@ dependencies = [
 dev = [
     "pre-commit",
     "pytest",
+    "pytest-cov",
     "pytest-env",
     "pytest-asyncio",
     "ruff",

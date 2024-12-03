@@ -42,4 +42,9 @@ jobs:
 
     - name: Test with pytest
       run: |
-        uv run pytest
+        uv run pytest --cov=src/ --cov-report=xml
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
