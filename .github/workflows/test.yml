@@ -16,9 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Python 3.13 should theoretically work,
-        # but having trouble running in Github Actions
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
     - uses: actions/checkout@v4
@@ -32,7 +30,7 @@ jobs:
         version: "0.5.5"
     - name: Install dependencies with uv
       run: |
-        uv sync --frozen
+        uv sync --frozen -v
       env:
         UV_SYSTEM_PYTHON: 1
     - name: Lint and format with ruff

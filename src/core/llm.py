@@ -4,7 +4,8 @@ from typing import TypeAlias
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models import FakeListChatModel
-from langchain_google_genai import ChatGoogleGenerativeAI
+
+# from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
@@ -32,7 +33,7 @@ _MODEL_TABLE = {
     FakeModelName.FAKE: "fake",
 }
 
-ModelT: TypeAlias = ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI | ChatGroq | ChatBedrock
+ModelT: TypeAlias = ChatOpenAI | ChatAnthropic | ChatGroq | ChatBedrock  # | ChatGoogleGenerativeAI
 
 
 @cache
@@ -47,8 +48,8 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         return ChatOpenAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in AnthropicModelName:
         return ChatAnthropic(model=api_model_name, temperature=0.5, streaming=True)
-    if model_name in GoogleModelName:
-        return ChatGoogleGenerativeAI(model=api_model_name, temperature=0.5, streaming=True)
+    # if model_name in GoogleModelName:
+    #     return ChatGoogleGenerativeAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GroqModelName:
         if model_name == GroqModelName.LLAMA_GUARD_3_8B:
             return ChatGroq(model=api_model_name, temperature=0.0)
