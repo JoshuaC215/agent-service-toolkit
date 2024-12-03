@@ -78,22 +78,21 @@ jobs:
             done
           '
 
-      - name: Set up Python 3.12
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv
-        uses: astral-sh/setup-uv@v2
+        uses: astral-sh/setup-uv@v4
         with:
-          version: "0.4.12"
+          version: "0.5.5"
       - name: Install ONLY CLIENT dependencies with uv
         run: |
-          uv pip install -r requirements.txt
-          uv pip install pytest pytest-env
+          uv sync --frozen --only-group client --only-group dev
         env:
           UV_SYSTEM_PYTHON: 1
       - name: Run integration tests
-        run: pytest tests/integration -v --run-docker
+        run: uv run pytest tests/integration -v --run-docker
 
       - name: Clean up containers
         if: always()

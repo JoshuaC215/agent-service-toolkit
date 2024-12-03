@@ -41,13 +41,23 @@ dependencies = [
     "uvicorn ~=0.32.1",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pre-commit",
     "pytest",
     "pytest-env",
     "pytest-asyncio",
     "ruff",
+]
+
+# Group for the minimal dependencies to run just the client and Streamlit app.
+# These are also installed in the default dependencies.
+# To install run: `uv sync --frozen --only-group client`
+client = [
+    "httpx~=0.27.2",
+    "pydantic ~=2.10.1",
+    "python-dotenv ~=1.0.1",
+    "streamlit~=1.40.1",
 ]
 
 [tool.ruff]
