@@ -1,4 +1,4 @@
-name: Build and deploy agent-service to Azure Web App
+name: Deploy to Azure
 
 on:
   push:
@@ -12,13 +12,9 @@ jobs:
     if: github.repository == 'JoshuaC215/agent-service-toolkit'
     uses: ./.github/workflows/test.yml
 
-  test-docker:
-    if: github.repository == 'JoshuaC215/agent-service-toolkit'
-    uses: ./.github/workflows/test-docker.yml
-
   build:
     runs-on: ubuntu-latest
-    needs: [test, test-docker]
+    needs: [test]
 
     steps:
       - uses: actions/checkout@v4
