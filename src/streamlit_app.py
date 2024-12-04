@@ -99,6 +99,7 @@ async def main() -> None:
                     "research-assistant",
                     "chatbot",
                     "bg-task-agent",
+                    "interrupted_assistant"
                 ],
             )
             use_streaming = st.toggle("Stream results", value=True)
