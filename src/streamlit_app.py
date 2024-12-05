@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient
-from schema import ChatHistory, ChatMessage
+from schema import ChatHistory, ChatMessage, InterruptMessage
 from schema.models import (
     AnthropicModelName,
     AWSModelName,
@@ -66,6 +66,13 @@ async def main() -> None:
             agent_url = f"http://{host}:{port}"
         st.session_state.agent_client = AgentClient(base_url=agent_url)
     agent_client: AgentClient = st.session_state.agent_client
+
+    if "interrupt_state" not in st.session_state:
+        st.session_state["interrupt_state"] = {
+            "interruption": None,
+            "tool_status": None,
+            "response": None
+        }
 
     if "thread_id" not in st.session_state:
         thread_id = st.query_params.get("thread_id")
@@ -168,6 +175,20 @@ async def main() -> None:
             st.chat_message("ai").write(response.content)
         st.rerun()  # Clear stale containers
 
+    # Handle human-in-the-loop
+    if st.session_state["interrupt_state"]["interruption"]:
+        permission = handle_interruption()
+        stream = agent_client.astream(
+            message=permission,
+            model=model,
+            thread_id=st.session_state.thread_id,
+            run_id=st.session_state["interrupt_state"]["interruption"].run_id,
+            tool_call_id=st.session_state["interrupt_state"]["interruption"].tool_id,
+            interruption=True
+        )
+        await draw_messages(stream, is_new=True)
+        st.rerun()
+
     # If messages have been generated, show feedback widget
     if len(messages) > 0:
         with st.session_state.last_message:
@@ -175,7 +196,7 @@ async def main() -> None:
 
 
 async def draw_messages(
-    messages_agen: AsyncGenerator[ChatMessage | str, None],
+    messages_agen: AsyncGenerator[ChatMessage | InterruptMessage | str, None],
     is_new: bool = False,
 ) -> None:
     """
@@ -199,6 +220,7 @@ async def draw_messages(
     # Keep track of the last message container
     last_message_type = None
     st.session_state.last_message = None
+    status = st.session_state["interrupt_state"]["tool_status"]
 
     # Placeholder for intermediate streaming tokens
     streaming_content = ""
@@ -206,6 +228,29 @@ async def draw_messages(
 
     # Iterate over the messages and draw them
     while msg := await anext(messages_agen, None):
+        if isinstance(msg, InterruptMessage):
+            if is_new:
+                st.session_state.messages.append(msg)
+            if last_message_type != "ai":
+                last_message_type = "ai"
+                st.session_state.last_message = st.chat_message("ai")
+            with st.session_state.last_message:
+                if msg.confirmation_msg:
+                    st.write(msg.confirmation_msg)
+            st.session_state["interrupt_state"].update(
+                {
+                    "interruption": msg,
+                    "response": None,
+                }
+            )
+            continue
+        # Restart interruption
+        st.session_state["interrupt_state"].update(
+                {
+                    "interruption": None,
+                    "response": None,
+                }
+        )
         # str message represents an intermediate token being streamed
         if isinstance(msg, str):
             # If placeholder is empty, this is the first token of a new message
@@ -254,36 +299,19 @@ async def draw_messages(
                             st.write(msg.content)
 
                     if msg.tool_calls:
-                        # Create a status container for each tool call and store the
-                        # status container by ID to ensure results are mapped to the
-                        # correct status container.
-                        call_results = {}
-                        for tool_call in msg.tool_calls:
-                            status = st.status(
-                                f"""Tool Call: {tool_call["name"]}""",
-                                state="running" if is_new else "complete",
+                        status = st.status(
+                                f"""Tool Call: {msg.tool_calls[0]["name"]}""",
+                                state="running",
                             )
-                            call_results[tool_call["id"]] = status
-                            status.write("Input:")
-                            status.write(tool_call["args"])
-
-                        # Expect one ToolMessage for each tool call.
-                        for _ in range(len(call_results)):
-                            tool_result: ChatMessage = await anext(messages_agen)
-                            if tool_result.type != "tool":
-                                st.error(f"Unexpected ChatMessage type: {tool_result.type}")
-                                st.write(tool_result)
-                                st.stop()
-
-                            # Record the message if it's new, and update the correct
-                            # status container with the result
-                            if is_new:
-                                st.session_state.messages.append(tool_result)
-                            status = call_results[tool_result.tool_call_id]
-                            status.write("Output:")
-                            status.write(tool_result.content)
-                            status.update(state="complete")
-
+                        status.write("Input:")
+                        status.write(msg.tool_calls[0]["args"])
+                        st.session_state["interrupt_state"]["tool_status"] = status
+            case "tool":
+                    if is_new:
+                        st.session_state.messages.append(msg)
+                    status.write("Output:")
+                    status.write(msg.content)
+                    status.update(state="complete")
             case "custom":
                 # CustomData example used by the bg-task-agent
                 # See:
@@ -314,6 +342,31 @@ async def draw_messages(
                 st.error(f"Unexpected ChatMessage type: {msg.type}")
                 st.write(msg)
                 st.stop()
+
+def handle_interruption():
+    interruption = st.session_state["interrupt_state"]["interruption"]
+    if not interruption:
+        return "Wait"
+    
+    # st.write("Se ha detectado una interrupción:")
+    response = st.radio("Continue?", options=["Yes", "No"], key="response_radio")
+    if st.button("Confirm"):
+        handle_button_click(response.lower())
+        return process_interruption()
+    else:
+        st.stop()  # Pausa el flujo hasta que el usuario interactúe.
+
+
+def handle_button_click(value):
+    st.session_state["interrupt_state"]["response"] = value
+
+
+def process_interruption():
+    user_response = st.session_state["interrupt_state"]["response"]
+    if user_response == "yes":
+        return "aproved_tool"
+    else:
+        return "canceled_tool"
 
 
 async def handle_feedback() -> None:

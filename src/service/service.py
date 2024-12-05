@@ -187,6 +187,7 @@ async def message_generator(
             ichat_message.run_id = str(run_id)
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'content': f'Error parsing interrupt message: {e}'})}\n\n"
+            
         yield f"data: {json.dumps({'type': 'interrupt', 'content': ichat_message.model_dump()})}\n\n"
 
     yield "data: [DONE]\n\n"

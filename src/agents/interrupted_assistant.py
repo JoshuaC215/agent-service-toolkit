@@ -37,6 +37,8 @@ instructions = f"""
     or two citations per response unless more are needed. ONLY USE LINKS RETURNED BY THE TOOLS.
     - Use calculator tool with numexpr to answer math questions. The user does not understand numexpr,
       so for the final response, use human readable format - e.g. "300 * 200", not "(300 \\times 200)".
+    - If API call is denied by user don't answer the question, just inform that you are canceling the 
+      operation as they ask to.
     """
 
 def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
@@ -89,5 +91,5 @@ agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", "don
 
 interrupted_assistant = agent.compile(
     checkpointer=MemorySaver(),
-    # interrupt_before=["tools"]
+    interrupt_before=["tools"]
 )
