@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from schema import ChatHistory, ChatHistoryInput, ChatMessage, Feedback, StreamInput, UserInput
+from schema import ChatHistory, ChatHistoryInput, ChatMessage, InterruptMessage, Feedback, StreamInput, UserInput
 
 
 class AgentClient:
@@ -90,7 +90,7 @@ class AgentClient:
             return ChatMessage.model_validate(response.json())
         raise Exception(f"Error: {response.status_code} - {response.text}")
 
-    def _parse_stream_line(self, line: str) -> ChatMessage | str | None:
+    def _parse_stream_line(self, line: str) -> ChatMessage | InterruptMessage | str | None:
         line = line.strip()
         if line.startswith("data: "):
             data = line[6:]
@@ -107,6 +107,11 @@ class AgentClient:
                         return ChatMessage.model_validate(parsed["content"])
                     except Exception as e:
                         raise Exception(f"Server returned invalid message: {e}")
+                case "interrupt":
+                    try:
+                        return InterruptMessage.model_validate(parsed["content"])
+                    except Exception as e:
+                        raise Exception(f"Server returned invalid interrupt message: {e}")
                 case "token":
                     # Yield the str token directly
                     return parsed["content"]
@@ -164,8 +169,11 @@ class AgentClient:
         message: str,
         model: str | None = None,
         thread_id: str | None = None,
+        run_id: str | None = None,
+        tool_call_id: str | None = None,
+        interruption: bool = False,
         stream_tokens: bool = True,
-    ) -> AsyncGenerator[ChatMessage | str, None]:
+    ) -> AsyncGenerator[ChatMessage | InterruptMessage | str, None]:
         """
         Stream the agent's response asynchronously.
 
@@ -179,15 +187,25 @@ class AgentClient:
             thread_id (str, optional): Thread ID for continuing a conversation
             stream_tokens (bool, optional): Stream tokens as they are generated
                 Default: True
+            run_id (str, optional): Needed after interruption
+            tool_call_id (str, optional): Needed after interruption
+            interruption (bool, optional): Needed after interruption
 
         Returns:
-            AsyncGenerator[ChatMessage | str, None]: The response from the agent
+            AsyncGenerator[ChatMessage | InterruptMessage | str, None]: The response from the agent
         """
         request = StreamInput(message=message, stream_tokens=stream_tokens)
+        if interruption:
+            request.type = "interrupt"
         if thread_id:
             request.thread_id = thread_id
         if model:
             request.model = model
+        if run_id:
+            request.run_id = run_id
+        if tool_call_id:
+            request.tool_call_id = tool_call_id
+
         async with httpx.AsyncClient() as client:
             async with client.stream(
                 "POST",
