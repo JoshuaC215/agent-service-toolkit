@@ -9,6 +9,12 @@ from schema.models import AllModelEnum
 class UserInput(BaseModel):
     """Basic user input for the agent."""
 
+    type: Literal["user", "interrupt"] = Field(
+        description="Source of the message.",
+        default="user",
+        examples=["user", "interrupt"],
+    )
+
     message: str = Field(
         description="User input to the agent.",
         examples=["What is the weather in Tokyo?"],
@@ -21,6 +27,16 @@ class UserInput(BaseModel):
     )
     thread_id: str | None = Field(
         description="Thread ID to persist and continue a multi-turn conversation.",
+        default=None,
+        examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
+    )
+    tool_call_id: str | None = Field(
+        description="Tool call that this message is responding to after an interruption.",
+        default=None,
+        examples=["call_Jja7J89XsjrOLA5r!MEOW!SL"],
+    )
+    run_id: str | None = Field(
+        description="Run ID of the message to continue after interruption.",
         default=None,
         examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
     )
@@ -93,6 +109,44 @@ class ChatMessage(BaseModel):
 
     def pretty_print(self) -> None:
         print(self.pretty_repr())  # noqa: T201
+
+class InterruptMessage(BaseModel):
+    msg_name: str = Field(
+        description="Name of the message. If created from call_tool it will be equal to the template name.",
+        examples=["book_table", "ask_permission", "default"],
+    )
+    
+    args: dict[str, Any] = Field(
+        description="Data/information to be added to message",
+        example=[{"num_personas": 4, "reservation_datetime": "2024-10-24 19:00"}],
+        default={},
+    )
+    confirmation_msg: str | None = Field(
+        description="Message to display.",
+        default=None, ## TODO: antes de hacer el diplay si esto es None tendre que invocar select_confirmation con default
+        example=["Needs confirmation.", "{num_personas} people at {reservation_datetime}. It's that correct?"],
+    )
+    user_input: str | None = Field(
+        description="Data added by user after interruption. None means that user said ok to confirmation.",
+        default="", #TODO: no uso none por defecto, porque un none significa okey continua la ejecicion
+    )
+    run_id: str | None = Field(
+        description="Run ID of the message.",
+        default=None,
+        examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
+    )
+    original: dict[str, Any] = Field(
+        description="Original LangChain message triggering the interruption in serialized form.",
+        default={},
+    )
+    # model: str | None = Field(
+    #     description="Model to run.",
+    #     default=None,
+    # )
+    # thread_id: str | None = Field(
+    #     description="Thread id.",
+    #     default=None,
+    # )
 
 
 class Feedback(BaseModel):
