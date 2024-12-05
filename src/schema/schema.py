@@ -24,6 +24,8 @@ class ServiceMetadata(BaseModel):
 
     agents: list[AgentInfo]
     models: set[AllModelEnum]
+    default_agent: str
+    default_model: AllModelEnum
 
 
 class UserInput(BaseModel):
