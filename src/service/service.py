@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import AnyMessage, HumanMessage
+from langchain_core.messages import AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
@@ -22,6 +22,7 @@ from schema import (
     ChatHistory,
     ChatHistoryInput,
     ChatMessage,
+    InterruptMessage,
     Feedback,
     FeedbackResponse,
     StreamInput,
@@ -31,6 +32,7 @@ from service.utils import (
     convert_message_content_to_string,
     langchain_to_chat_message,
     remove_tool_calls,
+    interrupt_from_call_tool
 )
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
@@ -66,14 +68,33 @@ router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 
 def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
-    run_id = uuid4()
+    run_id = user_input.run_id or uuid4()
     thread_id = user_input.thread_id or str(uuid4())
+    if user_input.type == "user":
+        inputU = {"messages": [HumanMessage(content=user_input.message)]}
+    else:
+        if user_input.message == "aproved_tool":
+            inputU = None # This means to continue graph execution after interruption
+        elif user_input.message == "canceled_tool":
+            inputU = {"messages": [ToolMessage(
+                        tool_call_id=user_input.tool_call_id,
+                        content=f"API call denied by user. Ask them about de reason or what else can you help them with.",
+                        )]}
+        else:
+            inputU = {"messages": [
+                            ToolMessage(
+                                tool_call_id=user_input.tool_call_id,
+                                content=f"API call denied by user.",
+                                ),
+                            HumanMessage(content=user_input.message)
+                        ]}
+
     kwargs = {
-        "input": {"messages": [HumanMessage(content=user_input.message)]},
-        "config": RunnableConfig(
-            configurable={"thread_id": thread_id, "model": user_input.model}, run_id=run_id
-        ),
-    }
+            "input": inputU,
+            "config": RunnableConfig(
+                configurable={"thread_id": thread_id, "model": user_input.model}, run_id=run_id
+            ),
+        }
     return kwargs, run_id
 
 
@@ -156,6 +177,17 @@ async def message_generator(
                 # So we only print non-empty content.
                 yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
             continue
+    
+    # Handle interruptions
+    snapshot = await agent.aget_state(kwargs["config"])
+    if snapshot.next: 
+        try:
+            ai_message = langchain_to_chat_message(snapshot.values["messages"][-1])
+            ichat_message = interrupt_from_call_tool(call_tool=ai_message.tool_calls[0])
+            ichat_message.run_id = str(run_id)
+        except Exception as e:
+            yield f"data: {json.dumps({'type': 'error', 'content': f'Error parsing interrupt message: {e}'})}\n\n"
+        yield f"data: {json.dumps({'type': 'interrupt', 'content': ichat_message.model_dump()})}\n\n"
 
     yield "data: [DONE]\n\n"
 
