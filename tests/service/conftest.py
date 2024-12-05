@@ -4,7 +4,6 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 
-from agents import DEFAULT_AGENT
 from service import app
 
 
@@ -20,7 +19,7 @@ def mock_agent():
     agent_mock = AsyncMock()
     agent_mock.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="Test response")]})
     agent_mock.get_state = Mock()  # Default empty mock for get_state
-    with patch.dict("service.service.agents", {DEFAULT_AGENT: agent_mock}):
+    with patch("service.service.get_agent", Mock(return_value=agent_mock)):
         yield agent_mock
 
 

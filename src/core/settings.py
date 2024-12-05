@@ -45,6 +45,7 @@ class Settings(BaseSettings):
 
     # If DEFAULT_MODEL is None, it will be set in model_post_init
     DEFAULT_MODEL: AllModelEnum | None = None  # type: ignore[assignment]
+    AVAILABLE_MODELS: set[AllModelEnum] = set()  # type: ignore[assignment]
 
     OPENWEATHERMAP_API_KEY: SecretStr | None = None
 
@@ -64,27 +65,38 @@ class Settings(BaseSettings):
             Provider.AWS: self.USE_AWS_BEDROCK,
             Provider.FAKE: self.USE_FAKE_MODEL,
         }
-        active_keys = {k for k, v in api_keys.items() if v}
+        active_keys = [k for k, v in api_keys.items() if v]
         if not active_keys:
             raise ValueError("At least one LLM API key must be provided.")
 
-        if self.DEFAULT_MODEL is None:
-            first_provider = next(iter(active_keys))
-            match first_provider:
+        for provider in active_keys:
+            match provider:
                 case Provider.OPENAI:
-                    self.DEFAULT_MODEL = OpenAIModelName.GPT_4O_MINI
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = OpenAIModelName.GPT_4O_MINI
+                    self.AVAILABLE_MODELS.update(set(OpenAIModelName))
                 case Provider.ANTHROPIC:
-                    self.DEFAULT_MODEL = AnthropicModelName.HAIKU_3
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = AnthropicModelName.HAIKU_3
+                    self.AVAILABLE_MODELS.update(set(AnthropicModelName))
                 case Provider.GOOGLE:
-                    self.DEFAULT_MODEL = GoogleModelName.GEMINI_15_FLASH
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_15_FLASH
+                    self.AVAILABLE_MODELS.update(set(GoogleModelName))
                 case Provider.GROQ:
-                    self.DEFAULT_MODEL = GroqModelName.LLAMA_31_8B
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = GroqModelName.LLAMA_31_8B
+                    self.AVAILABLE_MODELS.update(set(GroqModelName))
                 case Provider.AWS:
-                    self.DEFAULT_MODEL = AWSModelName.BEDROCK_HAIKU
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = AWSModelName.BEDROCK_HAIKU
+                    self.AVAILABLE_MODELS.update(set(AWSModelName))
                 case Provider.FAKE:
-                    self.DEFAULT_MODEL = FakeModelName.FAKE
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = FakeModelName.FAKE
+                    self.AVAILABLE_MODELS.update(set(FakeModelName))
                 case _:
-                    raise ValueError(f"Unknown provider: {first_provider}")
+                    raise ValueError(f"Unknown provider: {provider}")
 
     @computed_field
     @property

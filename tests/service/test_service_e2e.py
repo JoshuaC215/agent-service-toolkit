@@ -84,7 +84,13 @@ def test_agent_stream(mock_httpx_stream):
 
     # Use stream to get intermediate responses
     messages = []
-    with patch("service.service.agents", {"static-agent": static_agent}):
+
+    def agent_lookup(agent_id):
+        if agent_id == "static-agent":
+            return static_agent
+        return None
+
+    with patch("service.service.get_agent", side_effect=agent_lookup):
         for response in client.stream("Test message", stream_tokens=False):
             if isinstance(response, ChatMessage):
                 messages.append(response)

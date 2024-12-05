@@ -30,7 +30,6 @@ def test_invoke(test_client, mock_agent) -> None:
 def test_invoke_custom_agent(test_client, mock_agent) -> None:
     """Test that /invoke works with a custom agent_id path parameter."""
     CUSTOM_AGENT = "custom_agent"
-    DEFAULT_AGENT = "default_agent"
     QUESTION = "What is the weather in Tokyo?"
     CUSTOM_ANSWER = "The weather in Tokyo is sunny."
     DEFAULT_ANSWER = "This is from the default agent."
@@ -42,8 +41,13 @@ def test_invoke_custom_agent(test_client, mock_agent) -> None:
     # Configure our custom mock agent
     mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=CUSTOM_ANSWER)]}
 
-    # Patch the agents dictionary to include both agents
-    with patch("service.service.agents", {CUSTOM_AGENT: mock_agent, DEFAULT_AGENT: default_mock}):
+    # Patch get_agent to return the correct agent based on the provided agent_id
+    def agent_lookup(agent_id):
+        if agent_id == CUSTOM_AGENT:
+            return mock_agent
+        return default_mock
+
+    with patch("service.service.get_agent", side_effect=agent_lookup):
         response = test_client.post(f"/{CUSTOM_AGENT}/invoke", json={"message": QUESTION})
         assert response.status_code == 200
 
