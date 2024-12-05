@@ -130,6 +130,11 @@ class InterruptMessage(BaseModel):
         description="Data added by user after interruption. None means that user said ok to confirmation.",
         default="", #TODO: no uso none por defecto, porque un none significa okey continua la ejecicion
     )
+    tool_id: str | None = Field(
+        description="ID of the interrupted tool.",
+        default=None,
+        examples=["call_Jja7J89XsjrOLA5r!MEOW!SL"]
+    )
     run_id: str | None = Field(
         description="Run ID of the message.",
         default=None,

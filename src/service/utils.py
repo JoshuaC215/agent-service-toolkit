@@ -8,7 +8,7 @@ from langchain_core.messages import (
     ChatMessage as LangchainChatMessage,
 )
 
-from schema import ChatMessage
+from schema import ChatMessage, InterruptMessage
 
 
 def convert_message_content_to_string(content: str | list[str | dict]) -> str:
@@ -74,3 +74,18 @@ def remove_tool_calls(content: str | list[str | dict]) -> str | list[str | dict]
         for content_item in content
         if isinstance(content_item, str) or content_item["type"] != "tool_use"
     ]
+
+
+def interrupt_from_call_tool(call_tool: dict) -> InterruptMessage:
+    # Crear instancia de InterruptMessage a partir del diccionario call_tool
+    instance = InterruptMessage(
+        msg_name=call_tool["name"], 
+        args=call_tool["args"],
+        tool_id=call_tool["id"]
+        )
+
+    instance.original = call_tool
+
+    instance.confirmation_msg = "Do you aprove the above actions?"
+
+    return instance
