@@ -5,7 +5,15 @@ from typing import Any
 
 import httpx
 
-from schema import ChatHistory, ChatHistoryInput, ChatMessage, Feedback, StreamInput, UserInput
+from schema import (
+    ChatHistory,
+    ChatHistoryInput,
+    ChatMessage,
+    Feedback,
+    ServiceMetadata,
+    StreamInput,
+    UserInput,
+)
 
 
 class AgentClient:
@@ -14,19 +22,29 @@ class AgentClient:
     def __init__(
         self,
         base_url: str = "http://localhost",
-        agent: str = "research-assistant",
+        agent: str = None,
         timeout: float | None = None,
+        get_info: bool = True,
     ) -> None:
         """
         Initialize the client.
 
         Args:
             base_url (str): The base URL of the agent service.
+            agent (str): The name of the default agent to use.
+            timeout (float, optional): The timeout for requests.
+            get_info (bool, optional): Whether to fetch agent information on init.
+                Default: True
         """
         self.base_url = base_url
-        self.agent = agent
         self.auth_secret = os.getenv("AUTH_SECRET")
         self.timeout = timeout
+        self.info: ServiceMetadata | None = None
+        self.agent: str | None = None
+        if get_info:
+            self.retrieve_info()
+        if agent:
+            self.update_agent(agent)
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -34,6 +52,36 @@ class AgentClient:
         if self.auth_secret:
             headers["Authorization"] = f"Bearer {self.auth_secret}"
         return headers
+
+    def retrieve_info(self) -> None:
+        try:
+            response = httpx.get(
+                f"{self.base_url}/info",
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            if response.status_code == 200:
+                self.info: ServiceMetadata = ServiceMetadata.model_validate(response.json())
+            else:
+                raise Exception(
+                    f"Error getting service info: {response.status_code} - {response.text}"
+                )
+        except Exception as e:
+            raise Exception(f"Error getting service info: {e}")
+
+        if not self.agent or self.agent not in [a.key for a in self.info.agents]:
+            self.agent = self.info.default_agent
+
+    def update_agent(self, agent: str, verify: bool = True) -> None:
+        if verify:
+            if not self.info:
+                self.retrieve_info()
+            agent_keys = [a.key for a in self.info.agents]
+            if agent not in agent_keys:
+                raise Exception(
+                    f"Agent {agent} not found in available agents: {', '.join(agent_keys)}"
+                )
+        self.agent = agent
 
     async def ainvoke(
         self, message: str, model: str | None = None, thread_id: str | None = None
@@ -49,6 +97,8 @@ class AgentClient:
         Returns:
             AnyMessage: The response from the agent
         """
+        if not self.agent:
+            raise Exception("No agent selected. Use update_agent() to select an agent.")
         request = UserInput(message=message, thread_id=thread_id, model=model)
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -75,6 +125,8 @@ class AgentClient:
         Returns:
             ChatMessage: The response from the agent
         """
+        if not self.agent:
+            raise Exception("No agent selected. Use update_agent() to select an agent.")
         request = UserInput(message=message)
         if thread_id:
             request.thread_id = thread_id
@@ -138,6 +190,8 @@ class AgentClient:
         Returns:
             Generator[ChatMessage | str, None, None]: The response from the agent
         """
+        if not self.agent:
+            raise Exception("No agent selected. Use update_agent() to select an agent.")
         request = StreamInput(message=message, stream_tokens=stream_tokens)
         if thread_id:
             request.thread_id = thread_id
@@ -183,6 +237,8 @@ class AgentClient:
         Returns:
             AsyncGenerator[ChatMessage | str, None]: The response from the agent
         """
+        if not self.agent:
+            raise Exception("No agent selected. Use update_agent() to select an agent.")
         request = StreamInput(message=message, stream_tokens=stream_tokens)
         if thread_id:
             request.thread_id = thread_id

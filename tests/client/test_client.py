@@ -6,37 +6,38 @@ import pytest
 from httpx import Response
 
 from client import AgentClient
-from schema import ChatHistory, ChatMessage
+from schema import AgentInfo, ChatHistory, ChatMessage, ServiceMetadata
+from schema.models import OpenAIModelName
 
 
 def test_init(mock_env):
     """Test client initialization with different parameters."""
     # Test default values
-    client = AgentClient()
+    client = AgentClient(get_info=False)
     assert client.base_url == "http://localhost"
-    assert client.agent == "research-assistant"
     assert client.timeout is None
 
     # Test custom values
     client = AgentClient(
         base_url="http://test",
-        agent="custom-agent",
         timeout=30.0,
+        get_info=False,
     )
     assert client.base_url == "http://test"
-    assert client.agent == "custom-agent"
     assert client.timeout == 30.0
+    client.update_agent("test-agent", verify=False)
+    assert client.agent == "test-agent"
 
 
 def test_headers(mock_env):
     """Test header generation with and without auth."""
     # Test without auth
-    client = AgentClient()
+    client = AgentClient(get_info=False)
     assert client._headers == {}
 
     # Test with auth
     with patch.dict(os.environ, {"AUTH_SECRET": "test-secret"}, clear=True):
-        client = AgentClient()
+        client = AgentClient(get_info=False)
         assert client._headers == {"Authorization": "Bearer test-secret"}
 
 
@@ -277,3 +278,41 @@ def test_get_history(agent_client):
         with pytest.raises(Exception) as exc:
             agent_client.get_history(THREAD_ID)
         assert "Error: 500" in str(exc.value)
+
+
+def test_info(agent_client):
+    assert agent_client.info is None
+    assert agent_client.agent == "test-agent"
+
+    # Mock info response
+    test_info = ServiceMetadata(
+        default_agent="custom-agent",
+        agents=[AgentInfo(key="custom-agent", description="Custom agent")],
+        default_model=OpenAIModelName.GPT_4O,
+        models=[OpenAIModelName.GPT_4O, OpenAIModelName.GPT_4O_MINI],
+    )
+    test_response = Response(200, json=test_info.model_dump())
+
+    # Update an existing client with info
+    with patch("httpx.get", return_value=test_response):
+        agent_client.retrieve_info()
+
+    assert agent_client.info == test_info
+    assert agent_client.agent == "custom-agent"
+
+    # Test invalid update_agent
+    with pytest.raises(Exception) as exc:
+        agent_client.update_agent("unknown-agent")
+    assert "Agent unknown-agent not found in available agents: custom-agent" in str(exc.value)
+
+    # Test a fresh client with info
+    with patch("httpx.get", return_value=test_response):
+        agent_client = AgentClient(base_url="http://test")
+    assert agent_client.info == test_info
+    assert agent_client.agent == "custom-agent"
+
+    # Test error on invoke if no agent set
+    agent_client = AgentClient(base_url="http://test", get_info=False)
+    with pytest.raises(Exception) as exc:
+        agent_client.invoke("test")
+    assert "No agent selected. Use update_agent() to select an agent." in str(exc.value)

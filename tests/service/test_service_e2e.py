@@ -5,6 +5,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 
+from agents.agents import Agent
 from agents.utils import CustomData
 from client import AgentClient
 from schema.schema import ChatMessage
@@ -78,9 +79,11 @@ agent.add_edge("static_messages", END)
 static_agent = agent.compile(checkpointer=MemorySaver())
 
 
-def test_agent_stream(mock_httpx_stream):
+def test_agent_stream(mock_httpx):
     """Test that streaming from our static agent works correctly with token streaming."""
-    client = AgentClient(agent="static-agent")
+    agent_meta = Agent(description="A static agent.", graph=static_agent)
+    with patch.dict("agents.agents.agents", {"static-agent": agent_meta}, clear=True):
+        client = AgentClient(agent="static-agent")
 
     # Use stream to get intermediate responses
     messages = []
