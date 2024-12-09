@@ -7,7 +7,9 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.pregel.types import StateSnapshot
 
-from schema import ChatHistory, ChatMessage
+from agents.agents import Agent
+from schema import ChatHistory, ChatMessage, ServiceMetadata
+from schema.models import OpenAIModelName
 
 
 def test_invoke(test_client, mock_agent) -> None:
@@ -238,3 +240,24 @@ async def test_stream_no_tokens(test_client, mock_agent) -> None:
         assert len(final_messages) == 1
         assert final_messages[0]["content"]["content"] == FINAL_ANSWER
         assert final_messages[0]["content"]["type"] == "ai"
+
+
+def test_info(test_client, mock_settings) -> None:
+    """Test that /info returns the correct service metadata."""
+
+    base_agent = Agent(description="A base agent.", graph=None)
+    mock_settings.AUTH_SECRET = None
+    mock_settings.DEFAULT_MODEL = OpenAIModelName.GPT_4O_MINI
+    mock_settings.AVAILABLE_MODELS = {OpenAIModelName.GPT_4O_MINI, OpenAIModelName.GPT_4O}
+    with patch.dict("agents.agents.agents", {"base-agent": base_agent}, clear=True):
+        response = test_client.get("/info")
+        assert response.status_code == 200
+        output = ServiceMetadata.model_validate(response.json())
+
+    assert output.default_agent == "research-assistant"
+    assert len(output.agents) == 1
+    assert output.agents[0].key == "base-agent"
+    assert output.agents[0].description == "A base agent."
+
+    assert output.default_model == OpenAIModelName.GPT_4O_MINI
+    assert output.models == [OpenAIModelName.GPT_4O, OpenAIModelName.GPT_4O_MINI]

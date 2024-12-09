@@ -24,6 +24,7 @@ from schema import (
     ChatMessage,
     Feedback,
     FeedbackResponse,
+    ServiceMetadata,
     StreamInput,
     UserInput,
 )
@@ -65,6 +66,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
+
+
+@router.get("/info")
+async def info() -> ServiceMetadata:
+    models = list(settings.AVAILABLE_MODELS)
+    models.sort()
+    return ServiceMetadata(
+        agents=get_all_agent_info(),
+        models=models,
+        default_agent=DEFAULT_AGENT,
+        default_model=settings.DEFAULT_MODEL,
+    )
 
 
 def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:

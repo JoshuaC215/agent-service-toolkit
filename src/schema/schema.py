@@ -23,7 +23,7 @@ class ServiceMetadata(BaseModel):
     """Metadata about the service including available agents and models."""
 
     agents: list[AgentInfo]
-    models: set[AllModelEnum]
+    models: list[AllModelEnum]
     default_agent: str
     default_model: AllModelEnum
 
