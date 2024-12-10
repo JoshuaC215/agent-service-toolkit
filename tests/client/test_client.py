@@ -3,9 +3,9 @@ import os
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from httpx import Response
+from httpx import Request, Response
 
-from client import AgentClient
+from client import AgentClient, AgentClientError
 from schema import AgentInfo, ChatHistory, ChatMessage, ServiceMetadata
 from schema.models import OpenAIModelName
 
@@ -47,9 +47,11 @@ def test_invoke(agent_client):
     ANSWER = "The weather is sunny."
 
     # Mock successful response
+    mock_request = Request("POST", "http://test/invoke")
     mock_response = Response(
         200,
         json={"type": "ai", "content": ANSWER},
+        request=mock_request,
     )
     with patch("httpx.post", return_value=mock_response):
         response = agent_client.invoke(QUESTION)
@@ -72,11 +74,11 @@ def test_invoke(agent_client):
         assert kwargs["json"]["thread_id"] == "test-thread"
 
     # Test error response
-    error_response = Response(500, text="Internal Server Error")
+    error_response = Response(500, text="Internal Server Error", request=mock_request)
     with patch("httpx.post", return_value=error_response):
-        with pytest.raises(Exception) as exc:
+        with pytest.raises(AgentClientError) as exc:
             agent_client.invoke(QUESTION)
-        assert "Error: 500" in str(exc.value)
+        assert "500 Internal Server Error" in str(exc.value)
 
 
 @pytest.mark.asyncio
@@ -86,7 +88,8 @@ async def test_ainvoke(agent_client):
     ANSWER = "The weather is sunny."
 
     # Test successful response
-    mock_response = Response(200, json={"type": "ai", "content": ANSWER})
+    mock_request = Request("POST", "http://test/invoke")
+    mock_response = Response(200, json={"type": "ai", "content": ANSWER}, request=mock_request)
     with patch("httpx.AsyncClient.post", return_value=mock_response):
         response = await agent_client.ainvoke(QUESTION)
         assert isinstance(response, ChatMessage)
@@ -110,10 +113,11 @@ async def test_ainvoke(agent_client):
         assert kwargs["json"]["thread_id"] == "test-thread"
 
     # Test error response
-    with patch("httpx.AsyncClient.post", return_value=Response(500, text="Internal Server Error")):
-        with pytest.raises(Exception) as exc:
+    error_response = Response(500, text="Internal Server Error", request=mock_request)
+    with patch("httpx.AsyncClient.post", return_value=error_response):
+        with pytest.raises(AgentClientError) as exc:
             await agent_client.ainvoke(QUESTION)
-        assert "Error: 500" in str(exc.value)
+        assert "500 Internal Server Error" in str(exc.value)
 
 
 def test_stream(agent_client):
@@ -135,6 +139,7 @@ def test_stream(agent_client):
     mock_response = Mock()
     mock_response.status_code = 200
     mock_response.iter_lines.return_value = events
+    mock_response.request = Request("POST", "http://test/stream")
     mock_response.__enter__ = Mock(return_value=mock_response)
     mock_response.__exit__ = Mock(return_value=None)
 
@@ -154,15 +159,16 @@ def test_stream(agent_client):
         assert final_message.content == FINAL_ANSWER
 
     # Test error response
-    error_response = Mock()
-    error_response.status_code = 500
-    error_response.text = "Internal Server Error"
-    error_response.__enter__ = Mock(return_value=error_response)
-    error_response.__exit__ = Mock(return_value=None)
-    with patch("httpx.stream", return_value=error_response):
-        with pytest.raises(Exception) as exc:
+    error_response = Response(
+        500, text="Internal Server Error", request=Request("POST", "http://test/stream")
+    )
+    error_response_mock = Mock()
+    error_response_mock.__enter__ = Mock(return_value=error_response)
+    error_response_mock.__exit__ = Mock(return_value=None)
+    with patch("httpx.stream", return_value=error_response_mock):
+        with pytest.raises(AgentClientError) as exc:
             list(agent_client.stream(QUESTION))
-        assert "Error: 500" in str(exc.value)
+        assert "500 Internal Server Error" in str(exc.value)
 
 
 @pytest.mark.asyncio
@@ -189,6 +195,7 @@ async def test_astream(agent_client):
     # Mock the streaming response
     mock_response = AsyncMock()
     mock_response.status_code = 200
+    mock_response.request = Request("POST", "http://test/stream")
     mock_response.aiter_lines = Mock(return_value=async_events())
     mock_response.__aenter__ = AsyncMock(return_value=mock_response)
 
@@ -214,18 +221,19 @@ async def test_astream(agent_client):
         assert final_message.content == FINAL_ANSWER
 
     # Test error response
-    error_response = AsyncMock()
-    error_response.status_code = 500
-    error_response.text = "Internal Server Error"
-    error_response.__aenter__ = AsyncMock(return_value=error_response)
+    error_response = Response(
+        500, text="Internal Server Error", request=Request("POST", "http://test/stream")
+    )
+    error_response_mock = AsyncMock()
+    error_response_mock.__aenter__ = AsyncMock(return_value=error_response)
 
-    mock_client.stream.return_value = error_response
+    mock_client.stream.return_value = error_response_mock
 
     with patch("httpx.AsyncClient", return_value=mock_client):
-        with pytest.raises(Exception) as exc:
+        with pytest.raises(AgentClientError) as exc:
             async for _ in agent_client.astream(QUESTION):
                 pass
-        assert "Error: 500" in str(exc.value)
+        assert "500 Internal Server Error" in str(exc.value)
 
 
 @pytest.mark.asyncio
@@ -237,7 +245,8 @@ async def test_acreate_feedback(agent_client):
     KWARGS = {"comment": "Great response!"}
 
     # Test successful response
-    with patch("httpx.AsyncClient.post", return_value=Response(200, json={})) as mock_post:
+    mock_response = Response(200, json={}, request=Request("POST", "http://test/feedback"))
+    with patch("httpx.AsyncClient.post", return_value=mock_response) as mock_post:
         await agent_client.acreate_feedback(RUN_ID, KEY, SCORE, KWARGS)
         # Verify request
         args, kwargs = mock_post.call_args
@@ -247,10 +256,13 @@ async def test_acreate_feedback(agent_client):
         assert kwargs["json"]["kwargs"] == KWARGS
 
     # Test error response
-    with patch("httpx.AsyncClient.post", return_value=Response(500, text="Internal Server Error")):
-        with pytest.raises(Exception) as exc:
+    error_response = Response(
+        500, text="Internal Server Error", request=Request("POST", "http://test/feedback")
+    )
+    with patch("httpx.AsyncClient.post", return_value=error_response):
+        with pytest.raises(AgentClientError) as exc:
             await agent_client.acreate_feedback(RUN_ID, KEY, SCORE)
-        assert "Error: 500" in str(exc.value)
+        assert "500 Internal Server Error" in str(exc.value)
 
 
 def test_get_history(agent_client):
@@ -264,7 +276,7 @@ def test_get_history(agent_client):
     }
 
     # Mock successful response
-    mock_response = Response(200, json=HISTORY)
+    mock_response = Response(200, json=HISTORY, request=Request("POST", "http://test/history"))
     with patch("httpx.post", return_value=mock_response):
         history = agent_client.get_history(THREAD_ID)
         assert isinstance(history, ChatHistory)
@@ -273,11 +285,13 @@ def test_get_history(agent_client):
         assert history.messages[1].type == "ai"
 
     # Test error response
-    error_response = Response(500, text="Internal Server Error")
+    error_response = Response(
+        500, text="Internal Server Error", request=Request("POST", "http://test/history")
+    )
     with patch("httpx.post", return_value=error_response):
-        with pytest.raises(Exception) as exc:
+        with pytest.raises(AgentClientError) as exc:
             agent_client.get_history(THREAD_ID)
-        assert "Error: 500" in str(exc.value)
+        assert "500 Internal Server Error" in str(exc.value)
 
 
 def test_info(agent_client):
@@ -291,7 +305,9 @@ def test_info(agent_client):
         default_model=OpenAIModelName.GPT_4O,
         models=[OpenAIModelName.GPT_4O, OpenAIModelName.GPT_4O_MINI],
     )
-    test_response = Response(200, json=test_info.model_dump())
+    test_response = Response(
+        200, json=test_info.model_dump(), request=Request("GET", "http://test/info")
+    )
 
     # Update an existing client with info
     with patch("httpx.get", return_value=test_response):
@@ -301,7 +317,7 @@ def test_info(agent_client):
     assert agent_client.agent == "custom-agent"
 
     # Test invalid update_agent
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(AgentClientError) as exc:
         agent_client.update_agent("unknown-agent")
     assert "Agent unknown-agent not found in available agents: custom-agent" in str(exc.value)
 
@@ -313,6 +329,6 @@ def test_info(agent_client):
 
     # Test error on invoke if no agent set
     agent_client = AgentClient(base_url="http://test", get_info=False)
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(AgentClientError) as exc:
         agent_client.invoke("test")
     assert "No agent selected. Use update_agent() to select an agent." in str(exc.value)
