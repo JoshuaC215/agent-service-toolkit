@@ -7,7 +7,9 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.pregel.types import StateSnapshot
 
-from schema import ChatHistory, ChatMessage
+from agents.agents import Agent
+from schema import ChatHistory, ChatMessage, ServiceMetadata
+from schema.models import OpenAIModelName
 
 
 def test_invoke(test_client, mock_agent) -> None:
@@ -30,7 +32,6 @@ def test_invoke(test_client, mock_agent) -> None:
 def test_invoke_custom_agent(test_client, mock_agent) -> None:
     """Test that /invoke works with a custom agent_id path parameter."""
     CUSTOM_AGENT = "custom_agent"
-    DEFAULT_AGENT = "default_agent"
     QUESTION = "What is the weather in Tokyo?"
     CUSTOM_ANSWER = "The weather in Tokyo is sunny."
     DEFAULT_ANSWER = "This is from the default agent."
@@ -42,8 +43,13 @@ def test_invoke_custom_agent(test_client, mock_agent) -> None:
     # Configure our custom mock agent
     mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=CUSTOM_ANSWER)]}
 
-    # Patch the agents dictionary to include both agents
-    with patch("service.service.agents", {CUSTOM_AGENT: mock_agent, DEFAULT_AGENT: default_mock}):
+    # Patch get_agent to return the correct agent based on the provided agent_id
+    def agent_lookup(agent_id):
+        if agent_id == CUSTOM_AGENT:
+            return mock_agent
+        return default_mock
+
+    with patch("service.service.get_agent", side_effect=agent_lookup):
         response = test_client.post(f"/{CUSTOM_AGENT}/invoke", json={"message": QUESTION})
         assert response.status_code == 200
 
@@ -234,3 +240,24 @@ async def test_stream_no_tokens(test_client, mock_agent) -> None:
         assert len(final_messages) == 1
         assert final_messages[0]["content"]["content"] == FINAL_ANSWER
         assert final_messages[0]["content"]["type"] == "ai"
+
+
+def test_info(test_client, mock_settings) -> None:
+    """Test that /info returns the correct service metadata."""
+
+    base_agent = Agent(description="A base agent.", graph=None)
+    mock_settings.AUTH_SECRET = None
+    mock_settings.DEFAULT_MODEL = OpenAIModelName.GPT_4O_MINI
+    mock_settings.AVAILABLE_MODELS = {OpenAIModelName.GPT_4O_MINI, OpenAIModelName.GPT_4O}
+    with patch.dict("agents.agents.agents", {"base-agent": base_agent}, clear=True):
+        response = test_client.get("/info")
+        assert response.status_code == 200
+        output = ServiceMetadata.model_validate(response.json())
+
+    assert output.default_agent == "research-assistant"
+    assert len(output.agents) == 1
+    assert output.agents[0].key == "base-agent"
+    assert output.agents[0].description == "A base agent."
+
+    assert output.default_model == OpenAIModelName.GPT_4O_MINI
+    assert output.models == [OpenAIModelName.GPT_4O, OpenAIModelName.GPT_4O_MINI]

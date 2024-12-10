@@ -7,15 +7,8 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 
-from client import AgentClient
+from client import AgentClient, AgentClientError
 from schema import ChatHistory, ChatMessage
-from schema.models import (
-    AnthropicModelName,
-    AWSModelName,
-    GoogleModelName,
-    GroqModelName,
-    OpenAIModelName,
-)
 from schema.task_data import TaskData, TaskDataStatus
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
@@ -64,7 +57,13 @@ async def main() -> None:
             host = os.getenv("HOST", "0.0.0.0")
             port = os.getenv("PORT", 80)
             agent_url = f"http://{host}:{port}"
-        st.session_state.agent_client = AgentClient(base_url=agent_url)
+        try:
+            with st.spinner("Connecting to agent service..."):
+                st.session_state.agent_client = AgentClient(base_url=agent_url)
+        except AgentClientError as e:
+            st.error(f"Error connecting to agent service: {e}")
+            st.markdown("The service might be booting up. Try again in a few seconds.")
+            st.stop()
     agent_client: AgentClient = st.session_state.agent_client
 
     if "thread_id" not in st.session_state:
@@ -78,28 +77,20 @@ async def main() -> None:
         st.session_state.messages = messages
         st.session_state.thread_id = thread_id
 
-    models = {
-        "OpenAI GPT-4o-mini (streaming)": OpenAIModelName.GPT_4O_MINI,
-        "Gemini 1.5 Flash (streaming)": GoogleModelName.GEMINI_15_FLASH,
-        "Claude 3 Haiku (streaming)": AnthropicModelName.HAIKU_3,
-        "llama-3.1-70b on Groq": GroqModelName.LLAMA_31_70B,
-        "AWS Bedrock Haiku (streaming)": AWSModelName.BEDROCK_HAIKU,
-    }
     # Config options
     with st.sidebar:
         st.header(f"{APP_ICON} {APP_TITLE}")
         ""
         "Full toolkit for running an AI agent service built with LangGraph, FastAPI and Streamlit"
         with st.popover(":material/settings: Settings", use_container_width=True):
-            m = st.radio("LLM to use", options=models.keys())
-            model = models[m]
+            model_idx = agent_client.info.models.index(agent_client.info.default_model)
+            model = st.selectbox("LLM to use", options=agent_client.info.models, index=model_idx)
+            agent_list = [a.key for a in agent_client.info.agents]
+            agent_idx = agent_list.index(agent_client.info.default_agent)
             agent_client.agent = st.selectbox(
                 "Agent to use",
-                options=[
-                    "research-assistant",
-                    "chatbot",
-                    "bg-task-agent",
-                ],
+                options=agent_list,
+                index=agent_idx,
             )
             use_streaming = st.toggle("Stream results", value=True)
 
@@ -135,7 +126,7 @@ async def main() -> None:
     messages: list[ChatMessage] = st.session_state.messages
 
     if len(messages) == 0:
-        WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. I may take a few seconds to boot up when you send your first message. Ask me anything!"
+        WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
         with st.chat_message("ai"):
             st.write(WELCOME)
 
@@ -150,25 +141,29 @@ async def main() -> None:
     if user_input := st.chat_input():
         messages.append(ChatMessage(type="human", content=user_input))
         st.chat_message("human").write(user_input)
-        if use_streaming:
-            stream = agent_client.astream(
-                message=user_input,
-                model=model,
-                thread_id=st.session_state.thread_id,
-            )
-            await draw_messages(stream, is_new=True)
-        else:
-            response = await agent_client.ainvoke(
-                message=user_input,
-                model=model,
-                thread_id=st.session_state.thread_id,
-            )
-            messages.append(response)
-            st.chat_message("ai").write(response.content)
-        st.rerun()  # Clear stale containers
+        try:
+            if use_streaming:
+                stream = agent_client.astream(
+                    message=user_input,
+                    model=model,
+                    thread_id=st.session_state.thread_id,
+                )
+                await draw_messages(stream, is_new=True)
+            else:
+                response = await agent_client.ainvoke(
+                    message=user_input,
+                    model=model,
+                    thread_id=st.session_state.thread_id,
+                )
+                messages.append(response)
+                st.chat_message("ai").write(response.content)
+            st.rerun()  # Clear stale containers
+        except AgentClientError as e:
+            st.error(f"Error generating response: {e}")
+            st.stop()
 
     # If messages have been generated, show feedback widget
-    if len(messages) > 0:
+    if len(messages) > 0 and st.session_state.last_message:
         with st.session_state.last_message:
             await handle_feedback()
 
@@ -331,12 +326,16 @@ async def handle_feedback() -> None:
         normalized_score = (feedback + 1) / 5.0
 
         agent_client: AgentClient = st.session_state.agent_client
-        await agent_client.acreate_feedback(
-            run_id=latest_run_id,
-            key="human-feedback-stars",
-            score=normalized_score,
-            kwargs={"comment": "In-line human feedback"},
-        )
+        try:
+            await agent_client.acreate_feedback(
+                run_id=latest_run_id,
+                key="human-feedback-stars",
+                score=normalized_score,
+                kwargs={"comment": "In-line human feedback"},
+            )
+        except AgentClientError as e:
+            st.error(f"Error recording feedback: {e}")
+            st.stop()
         st.session_state.last_feedback = (latest_run_id, feedback)
         st.toast("Feedback recorded", icon=":material/reviews:")
 

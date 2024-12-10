@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Literal
 
 from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
+from langchain_community.utilities import OpenWeatherMapAPIWrapper
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
@@ -31,7 +32,10 @@ tools = [web_search, calculator]
 # Add weather tool if API key is set
 # Register for an API key at https://openweathermap.org/api/
 if settings.OPENWEATHERMAP_API_KEY:
-    tools.append(OpenWeatherMapQueryRun(name="Weather"))
+    wrapper = OpenWeatherMapAPIWrapper(
+        openweathermap_api_key=settings.OPENWEATHERMAP_API_KEY.get_secret_value()
+    )
+    tools.append(OpenWeatherMapQueryRun(name="Weather", api_wrapper=wrapper))
 
 current_date = datetime.now().strftime("%B %d, %Y")
 instructions = f"""

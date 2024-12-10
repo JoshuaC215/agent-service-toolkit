@@ -57,20 +57,21 @@ docker compose watch
 1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
+1. **Dynamic Metadata**: `/info` endpoint provides dynamically configured metadata about the service and available agents and models.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
+1. **Testing**: Includes robust unit and integration tests for the full repo.
 
 ### Key Files
 
 The repository is structured as follows:
 
-- `src/agents/research_assistant.py`: Defines the main LangGraph agent
-- `src/agents/llama_guard.py`: Defines the LlamaGuard content moderation
-- `src/agents/models.py`: Configures available models based on ENV
-- `src/agents/agents.py`: Mapping of all agents provided by the service
-- `src/schema/schema.py`: Defines the protocol schema
+- `src/agents/`: Defines several agents with different capabilities
+- `src/schema/`: Defines the protocol schema
+- `src/core/`: Core modules including LLM definition and settings
 - `src/service/service.py`: FastAPI service to serve the agents
 - `src/client/client.py`: Client to interact with the agent service
 - `src/streamlit_app.py`: Streamlit app providing a chat interface
+- `tests/`: Unit and integration tests
 
 ## Why LangGraph?
 
@@ -213,7 +214,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [x] Add more sophisticated tools for the research assistant
 - [x] Increase test coverage and add CI pipeline
 - [x] Add support for multiple agents running on the same service, including non-chat agent
-- [ ] Deployment instructions and configuration for cloud providers
+- [x] Service metadata endpoint `/info` and dynamic app configuration
 - [ ] More ideas? File an issue or create a discussion!
 
 ## License

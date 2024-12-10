@@ -9,6 +9,9 @@ async def amain() -> None:
     #### ASYNC ####
     client = AgentClient(settings.BASE_URL)
 
+    print("Agent info:")
+    print(client.info)
+
     print("Chat example:")
     response = await client.ainvoke("Tell me a brief joke?", model="gpt-4o")
     response.pretty_print()
@@ -27,6 +30,9 @@ async def amain() -> None:
 def main() -> None:
     #### SYNC ####
     client = AgentClient(settings.BASE_URL)
+
+    print("Agent info:")
+    print(client.info)
 
     print("Chat example:")
     response = client.invoke("Tell me a brief joke?", model="gpt-4o")
