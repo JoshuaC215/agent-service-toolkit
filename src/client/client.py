@@ -5,7 +5,19 @@ from typing import Any
 
 import httpx
 
-from schema import ChatHistory, ChatHistoryInput, ChatMessage, Feedback, StreamInput, UserInput
+from schema import (
+    ChatHistory,
+    ChatHistoryInput,
+    ChatMessage,
+    Feedback,
+    ServiceMetadata,
+    StreamInput,
+    UserInput,
+)
+
+
+class AgentClientError(Exception):
+    pass
 
 
 class AgentClient:
@@ -14,19 +26,29 @@ class AgentClient:
     def __init__(
         self,
         base_url: str = "http://localhost",
-        agent: str = "research-assistant",
+        agent: str = None,
         timeout: float | None = None,
+        get_info: bool = True,
     ) -> None:
         """
         Initialize the client.
 
         Args:
             base_url (str): The base URL of the agent service.
+            agent (str): The name of the default agent to use.
+            timeout (float, optional): The timeout for requests.
+            get_info (bool, optional): Whether to fetch agent information on init.
+                Default: True
         """
         self.base_url = base_url
-        self.agent = agent
         self.auth_secret = os.getenv("AUTH_SECRET")
         self.timeout = timeout
+        self.info: ServiceMetadata | None = None
+        self.agent: str | None = None
+        if get_info:
+            self.retrieve_info()
+        if agent:
+            self.update_agent(agent)
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -34,6 +56,32 @@ class AgentClient:
         if self.auth_secret:
             headers["Authorization"] = f"Bearer {self.auth_secret}"
         return headers
+
+    def retrieve_info(self) -> None:
+        try:
+            response = httpx.get(
+                f"{self.base_url}/info",
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error getting service info: {e}")
+
+        self.info: ServiceMetadata = ServiceMetadata.model_validate(response.json())
+        if not self.agent or self.agent not in [a.key for a in self.info.agents]:
+            self.agent = self.info.default_agent
+
+    def update_agent(self, agent: str, verify: bool = True) -> None:
+        if verify:
+            if not self.info:
+                self.retrieve_info()
+            agent_keys = [a.key for a in self.info.agents]
+            if agent not in agent_keys:
+                raise AgentClientError(
+                    f"Agent {agent} not found in available agents: {', '.join(agent_keys)}"
+                )
+        self.agent = agent
 
     async def ainvoke(
         self, message: str, model: str | None = None, thread_id: str | None = None
@@ -49,17 +97,22 @@ class AgentClient:
         Returns:
             AnyMessage: The response from the agent
         """
+        if not self.agent:
+            raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
         request = UserInput(message=message, thread_id=thread_id, model=model)
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/{self.agent}/invoke",
-                json=request.model_dump(),
-                headers=self._headers,
-                timeout=self.timeout,
-            )
-            if response.status_code == 200:
-                return ChatMessage.model_validate(response.json())
-            raise Exception(f"Error: {response.status_code} - {response.text}")
+            try:
+                response = await client.post(
+                    f"{self.base_url}/{self.agent}/invoke",
+                    json=request.model_dump(),
+                    headers=self._headers,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+            except httpx.HTTPError as e:
+                raise AgentClientError(f"Error: {e}")
+
+        return ChatMessage.model_validate(response.json())
 
     def invoke(
         self, message: str, model: str | None = None, thread_id: str | None = None
@@ -75,20 +128,25 @@ class AgentClient:
         Returns:
             ChatMessage: The response from the agent
         """
+        if not self.agent:
+            raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
         request = UserInput(message=message)
         if thread_id:
             request.thread_id = thread_id
         if model:
             request.model = model
-        response = httpx.post(
-            f"{self.base_url}/{self.agent}/invoke",
-            json=request.model_dump(),
-            headers=self._headers,
-            timeout=self.timeout,
-        )
-        if response.status_code == 200:
-            return ChatMessage.model_validate(response.json())
-        raise Exception(f"Error: {response.status_code} - {response.text}")
+        try:
+            response = httpx.post(
+                f"{self.base_url}/{self.agent}/invoke",
+                json=request.model_dump(),
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error: {e}")
+
+        return ChatMessage.model_validate(response.json())
 
     def _parse_stream_line(self, line: str) -> ChatMessage | str | None:
         line = line.strip()
@@ -138,26 +196,30 @@ class AgentClient:
         Returns:
             Generator[ChatMessage | str, None, None]: The response from the agent
         """
+        if not self.agent:
+            raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
         request = StreamInput(message=message, stream_tokens=stream_tokens)
         if thread_id:
             request.thread_id = thread_id
         if model:
             request.model = model
-        with httpx.stream(
-            "POST",
-            f"{self.base_url}/{self.agent}/stream",
-            json=request.model_dump(),
-            headers=self._headers,
-            timeout=self.timeout,
-        ) as response:
-            if response.status_code != 200:
-                raise Exception(f"Error: {response.status_code} - {response.text}")
-            for line in response.iter_lines():
-                if line.strip():
-                    parsed = self._parse_stream_line(line)
-                    if parsed is None:
-                        break
-                    yield parsed
+        try:
+            with httpx.stream(
+                "POST",
+                f"{self.base_url}/{self.agent}/stream",
+                json=request.model_dump(),
+                headers=self._headers,
+                timeout=self.timeout,
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if line.strip():
+                        parsed = self._parse_stream_line(line)
+                        if parsed is None:
+                            break
+                        yield parsed
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error: {e}")
 
     async def astream(
         self,
@@ -183,27 +245,31 @@ class AgentClient:
         Returns:
             AsyncGenerator[ChatMessage | str, None]: The response from the agent
         """
+        if not self.agent:
+            raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
         request = StreamInput(message=message, stream_tokens=stream_tokens)
         if thread_id:
             request.thread_id = thread_id
         if model:
             request.model = model
         async with httpx.AsyncClient() as client:
-            async with client.stream(
-                "POST",
-                f"{self.base_url}/{self.agent}/stream",
-                json=request.model_dump(),
-                headers=self._headers,
-                timeout=self.timeout,
-            ) as response:
-                if response.status_code != 200:
-                    raise Exception(f"Error: {response.status_code} - {response.text}")
-                async for line in response.aiter_lines():
-                    if line.strip():
-                        parsed = self._parse_stream_line(line)
-                        if parsed is None:
-                            break
-                        yield parsed
+            try:
+                async with client.stream(
+                    "POST",
+                    f"{self.base_url}/{self.agent}/stream",
+                    json=request.model_dump(),
+                    headers=self._headers,
+                    timeout=self.timeout,
+                ) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if line.strip():
+                            parsed = self._parse_stream_line(line)
+                            if parsed is None:
+                                break
+                            yield parsed
+            except httpx.HTTPError as e:
+                raise AgentClientError(f"Error: {e}")
 
     async def acreate_feedback(
         self, run_id: str, key: str, score: float, kwargs: dict[str, Any] = {}
@@ -217,15 +283,17 @@ class AgentClient:
         """
         request = Feedback(run_id=run_id, key=key, score=score, kwargs=kwargs)
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/feedback",
-                json=request.model_dump(),
-                headers=self._headers,
-                timeout=self.timeout,
-            )
-            if response.status_code != 200:
-                raise Exception(f"Error: {response.status_code} - {response.text}")
-            response.json()
+            try:
+                response = await client.post(
+                    f"{self.base_url}/feedback",
+                    json=request.model_dump(),
+                    headers=self._headers,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+                response.json()
+            except httpx.HTTPError as e:
+                raise AgentClientError(f"Error: {e}")
 
     def get_history(
         self,
@@ -238,14 +306,15 @@ class AgentClient:
             thread_id (str, optional): Thread ID for identifying a conversation
         """
         request = ChatHistoryInput(thread_id=thread_id)
-        response = httpx.post(
-            f"{self.base_url}/history",
-            json=request.model_dump(),
-            headers=self._headers,
-            timeout=self.timeout,
-        )
-        if response.status_code == 200:
-            response_object = response.json()
-            return ChatHistory.model_validate(response_object)
-        else:
-            raise Exception(f"Error: {response.status_code} - {response.text}")
+        try:
+            response = httpx.post(
+                f"{self.base_url}/history",
+                json=request.model_dump(),
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error: {e}")
+
+        return ChatHistory.model_validate(response.json())

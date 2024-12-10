@@ -4,8 +4,9 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from client import AgentClientError
 from schema import ChatHistory, ChatMessage
-from schema.models import AnthropicModelName
+from schema.models import OpenAIModelName
 
 
 def test_app_simple_non_streaming(mock_agent_client):
@@ -45,9 +46,10 @@ def test_app_settings(mock_agent_client):
     )
 
     at.sidebar.toggle[0].set_value(False)  # Use Streaming = False
-    at.sidebar.radio[0].set_value("Claude 3 Haiku (streaming)")
-    assert mock_agent_client.agent == "research-assistant"
-    at.sidebar.selectbox[0].set_value("chatbot")
+    assert at.sidebar.selectbox[0].value == "gpt-4o"
+    assert mock_agent_client.agent == "test-agent"
+    at.sidebar.selectbox[0].set_value("gpt-4o-mini")
+    at.sidebar.selectbox[1].set_value("chatbot")
     at.chat_input[0].set_value(PROMPT).run()
     print(at)
 
@@ -61,7 +63,7 @@ def test_app_settings(mock_agent_client):
     assert mock_agent_client.agent == "chatbot"
     mock_agent_client.ainvoke.assert_called_with(
         message=PROMPT,
-        model=AnthropicModelName.HAIKU_3,
+        model=OpenAIModelName.GPT_4O_MINI,
         thread_id="test session id",
     )
     assert not at.exception
@@ -137,4 +139,24 @@ async def test_app_streaming(mock_agent_client):
     assert tool_status.markdown[1].value == "Output:"
     assert tool_status.markdown[2].value == "42"
     assert response.markdown[-1].value == "The answer is 42"
+    assert not at.exception
+
+
+@pytest.mark.asyncio
+async def test_app_init_error(mock_agent_client):
+    """Test the app with an error in the agent initialization"""
+    at = AppTest.from_file("../../src/streamlit_app.py").run()
+
+    # Setup mock streaming response
+    PROMPT = "What is 6 * 7?"
+    mock_agent_client.astream.side_effect = AgentClientError("Error connecting to agent")
+
+    at.toggle[0].set_value(True)  # Use Streaming = True
+    at.chat_input[0].set_value(PROMPT).run()
+    print(at)
+
+    assert at.chat_message[0].avatar == "assistant"
+    assert at.chat_message[1].avatar == "user"
+    assert at.chat_message[1].markdown[0].value == PROMPT
+    assert at.error[0].value == "Error generating response: Error connecting to agent"
     assert not at.exception

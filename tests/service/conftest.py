@@ -4,7 +4,6 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 
-from agents import DEFAULT_AGENT
 from service import app
 
 
@@ -20,7 +19,7 @@ def mock_agent():
     agent_mock = AsyncMock()
     agent_mock.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="Test response")]})
     agent_mock.get_state = Mock()  # Default empty mock for get_state
-    with patch.dict("service.service.agents", {DEFAULT_AGENT: agent_mock}):
+    with patch("service.service.get_agent", Mock(return_value=agent_mock)):
         yield agent_mock
 
 
@@ -32,8 +31,8 @@ def mock_settings(mock_env):
 
 
 @pytest.fixture
-def mock_httpx_stream():
-    """Patch httpx.stream to use our test client."""
+def mock_httpx():
+    """Patch httpx.stream and httpx.get to use our test client."""
 
     with TestClient(app) as client:
 
@@ -42,5 +41,11 @@ def mock_httpx_stream():
             path = url.replace("http://localhost", "")
             return client.stream(method, path, **kwargs)
 
+        def mock_get(url: str, **kwargs):
+            # Strip the base URL since TestClient expects just the path
+            path = url.replace("http://localhost", "")
+            return client.get(path, **kwargs)
+
         with patch("httpx.stream", mock_stream):
-            yield
+            with patch("httpx.get", mock_get):
+                yield

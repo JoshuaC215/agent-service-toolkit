@@ -40,6 +40,7 @@ def test_settings_with_openai_key():
         settings = Settings(_env_file=None)
         assert settings.OPENAI_API_KEY == SecretStr("test_key")
         assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_4O_MINI
+        assert settings.AVAILABLE_MODELS == set(OpenAIModelName)
 
 
 def test_settings_with_anthropic_key():
@@ -47,6 +48,27 @@ def test_settings_with_anthropic_key():
         settings = Settings(_env_file=None)
         assert settings.ANTHROPIC_API_KEY == SecretStr("test_key")
         assert settings.DEFAULT_MODEL == AnthropicModelName.HAIKU_3
+        assert settings.AVAILABLE_MODELS == set(AnthropicModelName)
+
+
+def test_settings_with_multiple_api_keys():
+    with patch.dict(
+        os.environ,
+        {
+            "OPENAI_API_KEY": "test_openai_key",
+            "ANTHROPIC_API_KEY": "test_anthropic_key",
+        },
+        clear=True,
+    ):
+        settings = Settings(_env_file=None)
+        assert settings.OPENAI_API_KEY == SecretStr("test_openai_key")
+        assert settings.ANTHROPIC_API_KEY == SecretStr("test_anthropic_key")
+        # When multiple providers are available, OpenAI should be the default
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_4O_MINI
+        # Available models should include exactly all OpenAI and Anthropic models
+        expected_models = set(OpenAIModelName)
+        expected_models.update(set(AnthropicModelName))
+        assert settings.AVAILABLE_MODELS == expected_models
 
 
 def test_settings_base_url():

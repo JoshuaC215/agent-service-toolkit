@@ -16,7 +16,7 @@ from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
 
-from agents import DEFAULT_AGENT, agents
+from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
 from core import settings
 from schema import (
     ChatHistory,
@@ -24,6 +24,7 @@ from schema import (
     ChatMessage,
     Feedback,
     FeedbackResponse,
+    ServiceMetadata,
     StreamInput,
     UserInput,
 )
@@ -55,14 +56,28 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Construct agent with Sqlite checkpointer
     # TODO: It's probably dangerous to share the same checkpointer on multiple agents
     async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as saver:
-        for a in agents.values():
-            a.checkpointer = saver
+        agents = get_all_agent_info()
+        for a in agents:
+            agent = get_agent(a.key)
+            agent.checkpointer = saver
         yield
     # context manager will clean up the AsyncSqliteSaver on exit
 
 
 app = FastAPI(lifespan=lifespan)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
+
+
+@router.get("/info")
+async def info() -> ServiceMetadata:
+    models = list(settings.AVAILABLE_MODELS)
+    models.sort()
+    return ServiceMetadata(
+        agents=get_all_agent_info(),
+        models=models,
+        default_agent=DEFAULT_AGENT,
+        default_model=settings.DEFAULT_MODEL,
+    )
 
 
 def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
@@ -87,7 +102,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to messages for recording feedback.
     """
-    agent: CompiledStateGraph = agents[agent_id]
+    agent: CompiledStateGraph = get_agent(agent_id)
     kwargs, run_id = _parse_input(user_input)
     try:
         response = await agent.ainvoke(**kwargs)
@@ -107,7 +122,7 @@ async def message_generator(
 
     This is the workhorse method for the /stream endpoint.
     """
-    agent: CompiledStateGraph = agents[agent_id]
+    agent: CompiledStateGraph = get_agent(agent_id)
     kwargs, run_id = _parse_input(user_input)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
@@ -220,7 +235,7 @@ def history(input: ChatHistoryInput) -> ChatHistory:
     Get chat history.
     """
     # TODO: Hard-coding DEFAULT_AGENT here is wonky
-    agent: CompiledStateGraph = agents[DEFAULT_AGENT]
+    agent: CompiledStateGraph = get_agent(DEFAULT_AGENT)
     try:
         state_snapshot = agent.get_state(
             config=RunnableConfig(
