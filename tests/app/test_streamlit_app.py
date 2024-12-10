@@ -5,7 +5,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from schema import ChatHistory, ChatMessage
-from schema.models import AnthropicModelName
+from schema.models import OpenAIModelName
 
 
 def test_app_simple_non_streaming(mock_agent_client):
@@ -45,9 +45,10 @@ def test_app_settings(mock_agent_client):
     )
 
     at.sidebar.toggle[0].set_value(False)  # Use Streaming = False
-    at.sidebar.radio[0].set_value("Claude 3 Haiku (streaming)")
-    assert mock_agent_client.agent == "research-assistant"
-    at.sidebar.selectbox[0].set_value("chatbot")
+    assert at.sidebar.selectbox[0].value == "gpt-4o"
+    assert mock_agent_client.agent == "test-agent"
+    at.sidebar.selectbox[0].set_value("gpt-4o-mini")
+    at.sidebar.selectbox[1].set_value("chatbot")
     at.chat_input[0].set_value(PROMPT).run()
     print(at)
 
@@ -61,7 +62,7 @@ def test_app_settings(mock_agent_client):
     assert mock_agent_client.agent == "chatbot"
     mock_agent_client.ainvoke.assert_called_with(
         message=PROMPT,
-        model=AnthropicModelName.HAIKU_3,
+        model=OpenAIModelName.GPT_4O_MINI,
         thread_id="test session id",
     )
     assert not at.exception
