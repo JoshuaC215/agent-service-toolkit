@@ -1,10 +1,11 @@
 # 🧰 AI Agent Service Toolkit
 
-[![build status](https://github.com/JoshuaC215/agent-service-toolkit/actions/workflows/test.yml/badge.svg)](https://github.com/JoshuaC215/agent-service-toolkit/actions/workflows/test.yml) [![codecov](https://codecov.io/github/JoshuaC215/agent-service-toolkit/graph/badge.svg?token=5MTJSYWD05)](https://codecov.io/github/JoshuaC215/agent-service-toolkit) ![Python Version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FJoshuaC215%2Fagent-service-toolkit%2Frefs%2Fheads%2Fbadges%2Fpyproject.toml)
-![GitHub License](https://img.shields.io/github/license/JoshuaC215/agent-service-toolkit) [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_red.svg)](https://agent-service-toolkit.streamlit.app/)
+[![build status](https://github.com/JoshuaC215/agent-service-toolkit/actions/workflows/test.yml/badge.svg)](https://github.com/JoshuaC215/agent-service-toolkit/actions/workflows/test.yml) [![codecov](https://codecov.io/github/JoshuaC215/agent-service-toolkit/graph/badge.svg?token=5MTJSYWD05)](https://codecov.io/github/JoshuaC215/agent-service-toolkit) [![Python Version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2FJoshuaC215%2Fagent-service-toolkit%2Frefs%2Fheads%2Fmain%2Fpyproject.toml)](https://github.com/JoshuaC215/agent-service-toolkit/blob/main/pyproject.toml)
+[![GitHub License](https://img.shields.io/github/license/JoshuaC215/agent-service-toolkit)](https://github.com/JoshuaC215/agent-service-toolkit/blob/main/LICENSE) [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_red.svg)](https://agent-service-toolkit.streamlit.app/)
 
+A full toolkit for running an AI agent service built with LangGraph, FastAPI and Streamlit.
 
-This repository provides a blueprint and full toolkit for a LangGraph-based agent service architecture. It includes a [LangGraph](https://langchain-ai.github.io/langgraph/) agent, a [FastAPI](https://fastapi.tiangolo.com/) service to serve it, a client to interact with the service, and a [Streamlit](https://streamlit.io/) app that uses the client to provide a chat interface.
+It includes a [LangGraph](https://langchain-ai.github.io/langgraph/) agent, a [FastAPI](https://fastapi.tiangolo.com/) service to serve it, a client to interact with the service, and a [Streamlit](https://streamlit.io/) app that uses the client to provide a chat interface. Data structures and settings are built with [Pydantic](https://github.com/pydantic/pydantic).
 
 This project offers a template for you to easily build and run your own agents using the LangGraph framework. It demonstrates a complete setup from agent definition to user interface, making it easier to get started with LangGraph-based projects by providing a full, robust toolkit.
 
@@ -57,20 +58,21 @@ docker compose watch
 1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
+1. **Dynamic Metadata**: `/info` endpoint provides dynamically configured metadata about the service and available agents and models.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
+1. **Testing**: Includes robust unit and integration tests for the full repo.
 
 ### Key Files
 
 The repository is structured as follows:
 
-- `src/agents/research_assistant.py`: Defines the main LangGraph agent
-- `src/agents/llama_guard.py`: Defines the LlamaGuard content moderation
-- `src/agents/models.py`: Configures available models based on ENV
-- `src/agents/agents.py`: Mapping of all agents provided by the service
-- `src/schema/schema.py`: Defines the protocol schema
+- `src/agents/`: Defines several agents with different capabilities
+- `src/schema/`: Defines the protocol schema
+- `src/core/`: Core modules including LLM definition and settings
 - `src/service/service.py`: FastAPI service to serve the agents
 - `src/client/client.py`: Client to interact with the agent service
 - `src/streamlit_app.py`: Streamlit app providing a chat interface
+- `tests/`: Unit and integration tests
 
 ## Why LangGraph?
 
@@ -213,7 +215,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [x] Add more sophisticated tools for the research assistant
 - [x] Increase test coverage and add CI pipeline
 - [x] Add support for multiple agents running on the same service, including non-chat agent
-- [ ] Deployment instructions and configuration for cloud providers
+- [x] Service metadata endpoint `/info` and dynamic app configuration
 - [ ] More ideas? File an issue or create a discussion!
 
 ## License

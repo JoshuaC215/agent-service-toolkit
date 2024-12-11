@@ -6,6 +6,37 @@ from typing_extensions import TypedDict
 from schema.models import AllModelEnum
 
 
+class AgentInfo(BaseModel):
+    """Info about an available agent."""
+
+    key: str = Field(
+        description="Agent key.",
+        examples=["research-assistant"],
+    )
+    description: str = Field(
+        description="Description of the agent.",
+        examples=["A research assistant for generating research papers."],
+    )
+
+
+class ServiceMetadata(BaseModel):
+    """Metadata about the service including available agents and models."""
+
+    agents: list[AgentInfo] = Field(
+        description="List of available agents.",
+    )
+    models: list[AllModelEnum] = Field(
+        description="List of available LLMs.",
+    )
+    default_agent: str = Field(
+        description="Default agent used when none is specified.",
+        examples=["research-assistant"],
+    )
+    default_model: AllModelEnum = Field(
+        description="Default model used when none is specified.",
+    )
+
+
 class UserInput(BaseModel):
     """Basic user input for the agent."""
 
