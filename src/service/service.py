@@ -193,7 +193,11 @@ async def message_generator(
                 yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
             continue
     
-    # Handle interruptions
+    # Handle interruptions: https://langchain-ai.github.io/langgraph/how-tos/human_in_the_loop/breakpoints/
+    # To detect breakpoints which enable pausing graph execution at specific steps.
+    # If detected, interruption message is send to ask for human approval.
+    # Checkpoints ensure the graph can resume from the same state after human input.
+    # To specify breakpoints use interrupt_before in the agent.
     snapshot = await agent.aget_state(kwargs["config"])
     if snapshot.next: 
         try:
