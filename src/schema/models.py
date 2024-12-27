@@ -36,7 +36,7 @@ class GroqModelName(StrEnum):
     """https://console.groq.com/docs/models"""
 
     LLAMA_31_8B = "groq-llama-3.1-8b"
-    LLAMA_31_70B = "groq-llama-3.1-70b"
+    LLAMA_33_70B = "groq-llama-3.3-70b"
 
     LLAMA_GUARD_3_8B = "groq-llama-guard-3-8b"
 
