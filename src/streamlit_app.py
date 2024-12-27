@@ -72,8 +72,11 @@ async def main() -> None:
             thread_id = get_script_run_ctx().session_id
             messages = []
         else:
-            history: ChatHistory = agent_client.get_history(thread_id=thread_id)
-            messages = history.messages
+            try:
+                messages: ChatHistory = agent_client.get_history(thread_id=thread_id).messages
+            except Exception:
+                st.error("No message history found for this Thread ID.")
+                messages = []
         st.session_state.messages = messages
         st.session_state.thread_id = thread_id
 
