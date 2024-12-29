@@ -75,7 +75,7 @@ async def main() -> None:
         else:
             try:
                 messages: ChatHistory = agent_client.get_history(thread_id=thread_id).messages
-            except Exception:
+            except AgentClientError:
                 st.error("No message history found for this Thread ID.")
                 messages = []
         st.session_state.messages = messages
@@ -115,11 +115,6 @@ async def main() -> None:
             st.write(
                 "Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only."
             )
-
-        st.markdown(
-            f"Thread ID: **{st.session_state.thread_id}**",
-            help=f"Set URL query parameter ?thread_id={st.session_state.thread_id} to continue this conversation or use the share button below",
-        )
 
         @st.dialog("Share/resume chat")
         def share_chat_dialog() -> None:
