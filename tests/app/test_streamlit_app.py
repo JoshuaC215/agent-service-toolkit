@@ -73,7 +73,7 @@ def test_app_thread_id_history(mock_agent_client):
     """Test the thread_id is generated"""
 
     at = AppTest.from_file("../../src/streamlit_app.py").run()
-    assert at.sidebar.markdown[-2].value == "Thread ID: **test session id**"
+    assert at.session_state.thread_id == "test session id"
 
     # Reset and set thread_id
     at = AppTest.from_file("../../src/streamlit_app.py")
@@ -85,7 +85,7 @@ def test_app_thread_id_history(mock_agent_client):
     mock_agent_client.get_history.return_value = ChatHistory(messages=HISTORY)
     at.run()
     print(at)
-    assert at.sidebar.markdown[-2].value == "Thread ID: **1234**"
+    assert at.session_state.thread_id == "1234"
     mock_agent_client.get_history.assert_called_with(thread_id="1234")
     assert at.chat_message[0].avatar == "user"
     assert at.chat_message[0].markdown[0].value == "What is the weather?"
