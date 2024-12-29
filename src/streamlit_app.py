@@ -1,5 +1,6 @@
 import asyncio
 import os
+import urllib.parse
 from collections.abc import AsyncGenerator
 
 import streamlit as st
@@ -72,8 +73,11 @@ async def main() -> None:
             thread_id = get_script_run_ctx().session_id
             messages = []
         else:
-            history: ChatHistory = agent_client.get_history(thread_id=thread_id)
-            messages = history.messages
+            try:
+                messages: ChatHistory = agent_client.get_history(thread_id=thread_id).messages
+            except AgentClientError:
+                st.error("No message history found for this Thread ID.")
+                messages = []
         st.session_state.messages = messages
         st.session_state.thread_id = thread_id
 
@@ -112,10 +116,21 @@ async def main() -> None:
                 "Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only."
             )
 
-        st.markdown(
-            f"Thread ID: **{st.session_state.thread_id}**",
-            help=f"Set URL query parameter ?thread_id={st.session_state.thread_id} to continue this conversation",
-        )
+        @st.dialog("Share/resume chat")
+        def share_chat_dialog() -> None:
+            session = st.runtime.get_instance()._session_mgr.list_active_sessions()[0]
+            st_base_url = urllib.parse.urlunparse(
+                [session.client.request.protocol, session.client.request.host, "", "", "", ""]
+            )
+            # if it's not localhost, switch to https by default
+            if not st_base_url.startswith("https") and "localhost" not in st_base_url:
+                st_base_url = st_base_url.replace("http", "https")
+            chat_url = f"{st_base_url}?thread_id={st.session_state.thread_id}"
+            st.markdown(f"**Chat URL:**\n```text\n{chat_url}\n```")
+            st.info("Copy the above URL to share or revisit this chat")
+
+        if st.button(":material/upload: Share/resume chat", use_container_width=True):
+            share_chat_dialog()
 
         "[View the source code](https://github.com/JoshuaC215/agent-service-toolkit)"
         st.caption(
