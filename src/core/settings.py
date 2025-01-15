@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     def model_post_init(self, __context: Any) -> None:
         api_keys = {
             Provider.OPENAI: self.OPENAI_API_KEY,
-            Provider.Deepseek: self.DEEPSEEK_API_KEY,
+            Provider.DEEPSEEK: self.DEEPSEEK_API_KEY,
             Provider.ANTHROPIC: self.ANTHROPIC_API_KEY,
             Provider.GOOGLE: self.GOOGLE_API_KEY,
             Provider.GROQ: self.GROQ_API_KEY,
