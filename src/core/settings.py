@@ -8,11 +8,11 @@ from schema.models import (
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
+    DeepseekModelName,
     FakeModelName,
     GoogleModelName,
     GroqModelName,
     OpenAIModelName,
-    DeepseekModelName,
     Provider,
 )
 

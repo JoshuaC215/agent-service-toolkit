@@ -18,10 +18,12 @@ class OpenAIModelName(StrEnum):
     GPT_4O_MINI = "gpt-4o-mini"
     GPT_4O = "gpt-4o"
 
+
 class DeepseekModelName(StrEnum):
     """https://api-docs.deepseek.com/quick_start/pricing"""
 
     DEEPSEEK_CHAT = "deepseek-chat"
+
 
 class AnthropicModelName(StrEnum):
     """https://docs.anthropic.com/en/docs/about-claude/models#model-names"""

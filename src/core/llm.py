@@ -9,16 +9,15 @@ from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
 from core.settings import settings
-
 from schema.models import (
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
+    DeepseekModelName,
     FakeModelName,
     GoogleModelName,
     GroqModelName,
     OpenAIModelName,
-    DeepseekModelName,
 )
 
 _MODEL_TABLE = {
@@ -54,7 +53,7 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             model=api_model_name,
             temperature=0.5,
             streaming=True,
-            openai_api_base='https://api.deepseek.com',
+            openai_api_base="https://api.deepseek.com",
             openai_api_key=settings.DEEPSEEK_API_KEY,
         )
     if model_name in AnthropicModelName:
