@@ -9,6 +9,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
+from core.settings import settings
+
 from schema.models import (
     AllModelEnum,
     AnthropicModelName,
@@ -54,7 +56,7 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             temperature=0.5,
             streaming=True,
             openai_api_base='https://api.deepseek.com',
-            openai_api_key=os.getenv("DEEPSEEK_API_KEY"),
+            openai_api_key=settings.DEEPSEEK_API_KEY,
         )
     if model_name in AnthropicModelName:
         return ChatAnthropic(model=api_model_name, temperature=0.5, streaming=True)
