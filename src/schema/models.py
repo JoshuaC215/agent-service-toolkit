@@ -19,7 +19,7 @@ class OpenAIModelName(StrEnum):
     GPT_4O = "gpt-4o"
 
 class DeepseekModelName(StrEnum):
-    """https://api-docs.deepseek.com/zh-cn/quick_start/pricing"""
+    """https://api-docs.deepseek.com/quick_start/pricing"""
 
     DEEPSEEK_CHAT = "deepseek-chat"
 
