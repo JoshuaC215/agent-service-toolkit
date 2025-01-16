@@ -21,7 +21,7 @@ class OpenAIModelName(StrEnum):
 class DeepseekModelName(StrEnum):
     """https://api-docs.deepseek.com/zh-cn/quick_start/pricing"""
 
-    DeepseekChat = "deepseek-chat"
+    DEEPSEEK_CHAT = "deepseek-chat"
 
 class AnthropicModelName(StrEnum):
     """https://docs.anthropic.com/en/docs/about-claude/models#model-names"""

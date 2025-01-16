@@ -80,7 +80,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(OpenAIModelName))
                 case Provider.DEEPSEEK:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = DeepseekModelName.DeepseekChat
+                        self.DEFAULT_MODEL = DeepseekModelName.DEEPSEEK_CHAT
                     self.AVAILABLE_MODELS.update(set(DeepseekModelName))
                 case Provider.ANTHROPIC:
                     if self.DEFAULT_MODEL is None:
