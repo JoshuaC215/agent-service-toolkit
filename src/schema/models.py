@@ -4,6 +4,7 @@ from typing import TypeAlias
 
 class Provider(StrEnum):
     OPENAI = auto()
+    DEEPSEEK = auto()
     ANTHROPIC = auto()
     GOOGLE = auto()
     GROQ = auto()
@@ -16,6 +17,12 @@ class OpenAIModelName(StrEnum):
 
     GPT_4O_MINI = "gpt-4o-mini"
     GPT_4O = "gpt-4o"
+
+
+class DeepseekModelName(StrEnum):
+    """https://api-docs.deepseek.com/quick_start/pricing"""
+
+    DEEPSEEK_CHAT = "deepseek-chat"
 
 
 class AnthropicModelName(StrEnum):
@@ -55,6 +62,7 @@ class FakeModelName(StrEnum):
 
 AllModelEnum: TypeAlias = (
     OpenAIModelName
+    | DeepseekModelName
     | AnthropicModelName
     | GoogleModelName
     | GroqModelName

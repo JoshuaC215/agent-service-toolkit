@@ -8,10 +8,12 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_openai import ChatOpenAI
 
+from core.settings import settings
 from schema.models import (
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
+    DeepseekModelName,
     FakeModelName,
     GoogleModelName,
     GroqModelName,
@@ -21,6 +23,7 @@ from schema.models import (
 _MODEL_TABLE = {
     OpenAIModelName.GPT_4O_MINI: "gpt-4o-mini",
     OpenAIModelName.GPT_4O: "gpt-4o",
+    DeepseekModelName.DEEPSEEK_CHAT: "deepseek-chat",
     AnthropicModelName.HAIKU_3: "claude-3-haiku-20240307",
     AnthropicModelName.HAIKU_35: "claude-3-5-haiku-latest",
     AnthropicModelName.SONNET_35: "claude-3-5-sonnet-latest",
@@ -45,6 +48,14 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
 
     if model_name in OpenAIModelName:
         return ChatOpenAI(model=api_model_name, temperature=0.5, streaming=True)
+    if model_name in DeepseekModelName:
+        return ChatOpenAI(
+            model=api_model_name,
+            temperature=0.5,
+            streaming=True,
+            openai_api_base="https://api.deepseek.com",
+            openai_api_key=settings.DEEPSEEK_API_KEY,
+        )
     if model_name in AnthropicModelName:
         return ChatAnthropic(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GoogleModelName:
