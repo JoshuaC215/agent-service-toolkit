@@ -34,6 +34,7 @@ dependencies = [
     { name = "streamlit" },
     { name = "tiktoken" },
     { name = "uvicorn" },
+    { name = "composio_langgraph" },
 ]
 
 [package.dev-dependencies]
@@ -77,6 +78,7 @@ requires-dist = [
     { name = "streamlit", specifier = "~=1.40.1" },
     { name = "tiktoken", specifier = ">=0.8.0" },
     { name = "uvicorn", specifier = "~=0.32.1" },
+    { name = "composio_langgraph", specifier = "~=0.6.15" },
 ]
 
 [package.metadata.requires-dev]
