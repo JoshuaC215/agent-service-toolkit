@@ -76,15 +76,14 @@ The repository is structured as follows:
 
 ## Why LangGraph?
 
-AI agents are increasingly being built with more explicitly structured and tightly controlled [Compound AI Systems](https://bair.berkeley.edu/blog/2024/02/18/compound-ai-systems/), with careful attention to the [cognitive architecture](https://blog.langchain.dev/what-is-a-cognitive-architecture/). At the time of this repo's creation, LangGraph seems like the most advanced open source framework for building such systems, with a high degree of control as well as support for features like concurrent execution, cycles in the graph, streaming results, built-in observability, and the rich ecosystem around LangChain.
+AI agents are increasingly being built with more explicitly structured and tightly controlled [Compound AI Systems](https://bair.berkeley.edu/blog/2024/02/18/compound-ai-systems/), with careful attention to the [cognitive architecture](https://blog.langchain.dev/what-is-a-cognitive-architecture/). At the time of this repo's creation, LangGraph seems like the most advanced and popular open source framework for building such systems, with a high degree of control as well as support for features like concurrent execution, cycles in the graph, streaming results, built-in observability, and the rich ecosystem around LangChain.
 
 I've spent a decent amount of time building with LangChain over the past year and experienced some of the commonly cited pain points. In building this out with LangGraph I found a few similar issues, but overall I like the direction and I'm happy with my choice to use it.
 
-With that said, there are several other interesting projects in this space that are worth calling out, and I hope to spend more time building with them soon:
+With that said, there are several other interesting projects in this space that are worth calling out. I haven't spent much time with these but I hope to explore them more soon!
 
-- [LlamaIndex Workflows](https://www.llamaindex.ai/blog/introducing-workflows-beta-a-new-way-to-create-complex-ai-applications-with-llamaindex) and [llama-agents](https://github.com/run-llama/llama-agents): LlamaIndex Workflows launched the day I started working on this. I've generally really liked the experience building with LlamaIndex and this looks very promising.
-- [DSPy](https://github.com/stanfordnlp/dspy): The DSPy optimizer and approach also seems super interesting and promising. But the creator [has stated](https://github.com/stanfordnlp/dspy/issues/703#issuecomment-2016598529) they aren't focusing on agents yet. I will probably experiment with building some of the specific nodes in more complex agents using DSPy in the future.
-- I know there are more springing up regularly, such as I recently came across [Prefect ControlFlow](https://github.com/PrefectHQ/ControlFlow).
+- [LlamaIndex Workflows](https://docs.llamaindex.ai/en/stable/module_guides/workflow/) and [LlamaDeploy](https://github.com/run-llama/llama_deploy)
+- [CrewAI Flows](https://docs.crewai.com/concepts/flows)
 
 ## Setup and Usage
 
