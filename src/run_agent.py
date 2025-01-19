@@ -12,6 +12,8 @@ agent = get_agent(DEFAULT_AGENT)
 
 
 async def main() -> None:
+    if False:
+        raise Exception("That was unexpected")
     inputs = {"messages": [("user", "Find me a recipe for chocolate chip cookies")]}
     result = await agent.ainvoke(
         inputs,
