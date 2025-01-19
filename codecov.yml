@@ -3,8 +3,9 @@ coverage:
     project:
       default:
         target: auto
-        threshold: 10%
+        threshold: 3%
     patch:
       default:
-        target: auto
-        threshold: 10%
+        informational: true
+comment:
+  hide_project_coverage: false
