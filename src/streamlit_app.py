@@ -96,7 +96,7 @@ async def main() -> None:
         with col2:
             st.header(APP_TITLE)  # Render the title in the second column
         ""
-        "Empower Your Workflow Like Never Before Unify. Simplify. Amplify."
+        "Empower Your Workflow Like Never Before With Assista Ai"
         with st.popover(":material/settings: Settings", use_container_width=True):
             model_idx = agent_client.info.models.index(agent_client.info.default_model)
             model = st.selectbox("LLM to use", options=agent_client.info.models, index=model_idx)
