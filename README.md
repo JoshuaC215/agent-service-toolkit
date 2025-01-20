@@ -9,7 +9,7 @@ It includes a [LangGraph](https://langchain-ai.github.io/langgraph/) agent, a [F
 
 This project offers a template for you to easily build and run your own agents using the LangGraph framework. It demonstrates a complete setup from agent definition to user interface, making it easier to get started with LangGraph-based projects by providing a full, robust toolkit.
 
-**[🎥 Watch a video walkthrough of the repo and app](https://www.youtube.com/watch?v=VqQti9nGoe4)**
+**[🎥 Watch a video walkthrough of the repo and app](https://www.youtube.com/watch?v=pdYVHw_YCNY)**
 
 ## Overview
 
