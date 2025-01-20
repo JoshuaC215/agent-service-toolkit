@@ -25,21 +25,21 @@ from schema.task_data import TaskData, TaskDataStatus
 
 APP_TITLE = "Assita Ai Agent"
 
-# Define the path to your PNG file
-PNG_PATH = os.path.join("src", "assets", "assista_logo_grey.png")
+# Define the path to your PNG file (remove this if not needed)
+# PNG_PATH = os.path.join("src", "assets", "assista_logo_grey.png")
 
 async def main() -> None:
     st.set_page_config(
         page_title=APP_TITLE,
-        page_icon=PNG_PATH,  # Set the page icon to the PNG file
+        page_icon=None,  # Remove the page icon
         menu_items={},
     )
     
-    # Set the page icon in the browser tab
-    st.markdown(
-        f'<link rel="icon" href="{PNG_PATH}" type="image/png">',
-        unsafe_allow_html=True
-    )
+    # Set the page icon in the browser tab (remove this if not needed)
+    # st.markdown(
+    #     f'<link rel="icon" href="{PNG_PATH}" type="image/png">',
+    #     unsafe_allow_html=True
+    # )
 
     # Hide the streamlit upper-right chrome
     st.html(
@@ -90,11 +90,7 @@ async def main() -> None:
 
     # Config options
     with st.sidebar:
-        col1, col2 = st.columns([1, 5])  # Create two columns with a ratio of 1:5
-        with col1:
-            st.image(PNG_PATH, width=32)  # Display the PNG in the first column
-        with col2:
-            st.header(APP_TITLE)  # Render the title in the second column
+        st.header(APP_TITLE)  # Render the title without the image
         ""
         "Empower Your Workflow Like Never Before With Assista Ai"
         with st.popover(":material/settings: Settings", use_container_width=True):
