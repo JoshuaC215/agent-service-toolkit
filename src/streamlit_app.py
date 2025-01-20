@@ -23,15 +23,22 @@ from schema.task_data import TaskData, TaskDataStatus
 # The app heavily uses AgentClient to interact with the agent's FastAPI endpoints.
 
 
-APP_TITLE = "Agent Service Toolkit"
-APP_ICON = "🧰"
+APP_TITLE = "Assita Ai Agent"
 
+# Define the path to your PNG file
+PNG_PATH = os.path.join("src", "assets", "assista_logo_grey.png")
 
 async def main() -> None:
     st.set_page_config(
         page_title=APP_TITLE,
-        page_icon=APP_ICON,
+        page_icon=PNG_PATH,  # Set the page icon to the PNG file
         menu_items={},
+    )
+    
+    # Set the page icon in the browser tab
+    st.markdown(
+        f'<link rel="icon" href="{PNG_PATH}" type="image/png">',
+        unsafe_allow_html=True
     )
 
     # Hide the streamlit upper-right chrome
@@ -83,9 +90,13 @@ async def main() -> None:
 
     # Config options
     with st.sidebar:
-        st.header(f"{APP_ICON} {APP_TITLE}")
+        col1, col2 = st.columns([1, 5])  # Create two columns with a ratio of 1:5
+        with col1:
+            st.image(PNG_PATH, width=32)  # Display the PNG in the first column
+        with col2:
+            st.header(APP_TITLE)  # Render the title in the second column
         ""
-        "Full toolkit for running an AI agent service built with LangGraph, FastAPI and Streamlit"
+        "Empower Your Workflow Like Never Before With Assista Ai"
         with st.popover(":material/settings: Settings", use_container_width=True):
             model_idx = agent_client.info.models.index(agent_client.info.default_model)
             model = st.selectbox("LLM to use", options=agent_client.info.models, index=model_idx)
@@ -98,44 +109,44 @@ async def main() -> None:
             )
             use_streaming = st.toggle("Stream results", value=True)
 
-        @st.dialog("Architecture")
-        def architecture_dialog() -> None:
-            st.image(
-                "https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png?raw=true"
-            )
-            "[View full size on Github](https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png)"
-            st.caption(
-                "App hosted on [Streamlit Cloud](https://share.streamlit.io/) with FastAPI service running in [Azure](https://learn.microsoft.com/en-us/azure/app-service/)"
-            )
+        # @st.dialog("Architecture")
+        # def architecture_dialog() -> None:
+        #     st.image(
+        #         "https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png?raw=true"
+        #     )
+        #     "[View full size on Github](https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png)"
+        #     st.caption(
+        #         "App hosted on [Streamlit Cloud](https://share.streamlit.io/) with FastAPI service running in [Azure](https://learn.microsoft.com/en-us/azure/app-service/)"
+        #     )
 
-        if st.button(":material/schema: Architecture", use_container_width=True):
-            architecture_dialog()
+        # if st.button(":material/schema: Architecture", use_container_width=True):
+        #     architecture_dialog()
 
-        with st.popover(":material/policy: Privacy", use_container_width=True):
-            st.write(
-                "Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only."
-            )
+        # with st.popover(":material/policy: Privacy", use_container_width=True):
+        #     st.write(
+        #         "Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only."
+        #     )
 
-        @st.dialog("Share/resume chat")
-        def share_chat_dialog() -> None:
-            session = st.runtime.get_instance()._session_mgr.list_active_sessions()[0]
-            st_base_url = urllib.parse.urlunparse(
-                [session.client.request.protocol, session.client.request.host, "", "", "", ""]
-            )
-            # if it's not localhost, switch to https by default
-            if not st_base_url.startswith("https") and "localhost" not in st_base_url:
-                st_base_url = st_base_url.replace("http", "https")
-            chat_url = f"{st_base_url}?thread_id={st.session_state.thread_id}"
-            st.markdown(f"**Chat URL:**\n```text\n{chat_url}\n```")
-            st.info("Copy the above URL to share or revisit this chat")
+        # @st.dialog("Share/resume chat")
+        # def share_chat_dialog() -> None:
+        #     session = st.runtime.get_instance()._session_mgr.list_active_sessions()[0]
+        #     st_base_url = urllib.parse.urlunparse(
+        #         [session.client.request.protocol, session.client.request.host, "", "", "", ""]
+        #     )
+        #     # if it's not localhost, switch to https by default
+        #     if not st_base_url.startswith("https") and "localhost" not in st_base_url:
+        #         st_base_url = st_base_url.replace("http", "https")
+        #     chat_url = f"{st_base_url}?thread_id={st.session_state.thread_id}"
+        #     st.markdown(f"**Chat URL:**\n```text\n{chat_url}\n```")
+        #     st.info("Copy the above URL to share or revisit this chat")
 
-        if st.button(":material/upload: Share/resume chat", use_container_width=True):
-            share_chat_dialog()
+        # if st.button(":material/upload: Share/resume chat", use_container_width=True):
+        #     share_chat_dialog()
 
-        "[View the source code](https://github.com/JoshuaC215/agent-service-toolkit)"
-        st.caption(
-            "Made with :material/favorite: by [Joshua](https://www.linkedin.com/in/joshua-k-carroll/) in Oakland"
-        )
+        # "[View the source code](https://github.com/JoshuaC215/agent-service-toolkit)"
+        # st.caption(
+        #     "Made with :material/favorite: by [Joshua](https://www.linkedin.com/in/joshua-k-carroll/) in Oakland"
+        # )
 
     # Draw existing messages
     messages: list[ChatMessage] = st.session_state.messages
