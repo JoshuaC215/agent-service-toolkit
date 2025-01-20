@@ -18,14 +18,14 @@ from composio_langgraph import Action, ComposioToolSet, App
 from .configuration import Configuration
 
 composio_toolset = ComposioToolSet(
-      auth = {
-          'apiKey': os.getenv("COMPOSIO_API_KEY")
-      }
+    auth = {
+        'apiKey': os.getenv("COMPOSIO_API_KEY"),
+        'entityId': "default"
+    }
 )
-        #   'entityId': 1
 
 composio_tools = composio_toolset.get_tools(
-      apps=[App.GMAIL, App.SLACK]
+      apps=[App.GMAIL, App.TRELLO]
 )
 
 print(composio_tools)
