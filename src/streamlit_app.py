@@ -23,7 +23,7 @@ from schema.task_data import TaskData, TaskDataStatus
 # The app heavily uses AgentClient to interact with the agent's FastAPI endpoints.
 
 
-APP_TITLE = "Assita Ai Agent"
+APP_TITLE = "Assista Ai Agent"
 
 # Define the path to your PNG file (remove this if not needed)
 # PNG_PATH = os.path.join("src", "assets", "assista_logo_grey.png")

@@ -39,7 +39,7 @@ async def call_model(
     except ValueError as e:
         print(f"Error loading model: {e}")
         # Fallback to a default model if the configured one fails
-        model = load_chat_model("openai/gpt-4").bind_tools(TOOLS)
+        model = load_chat_model("openai/gpt-4o").bind_tools(TOOLS)
 
     # Format the system prompt. Customize this to change the agent's behavior.
     system_message = configuration.system_prompt.format(
