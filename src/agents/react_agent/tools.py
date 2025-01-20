@@ -25,10 +25,8 @@ composio_toolset = ComposioToolSet(
 )
 
 composio_tools = composio_toolset.get_tools(
-      apps=[App.GMAIL, App.TRELLO]
+      apps=[App.GMAIL, App.GOOGLECALENDAR]
 )
-
-print(composio_tools)
 
 async def search(
     query: str, *, config: Annotated[RunnableConfig, InjectedToolArg]

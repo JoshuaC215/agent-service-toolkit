@@ -35,7 +35,7 @@ async def call_model(
 
     # Initialize the model with tool binding. Change the model or add more tools here.
     try:
-        model = load_chat_model("openai/gpt-4-turbo-preview").bind_tools(TOOLS)
+        model = load_chat_model("openai/gpt-4o").bind_tools(TOOLS)
     except ValueError as e:
         print(f"Error loading model: {e}")
         # Fallback to a default model if the configured one fails
