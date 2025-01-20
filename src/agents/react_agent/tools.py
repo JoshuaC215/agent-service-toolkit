@@ -19,14 +19,16 @@ from .configuration import Configuration
 
 composio_toolset = ComposioToolSet(
       auth = {
-          'apiKey': os.getenv("COMPOSIO_API_KEY"),
-          'entityId': 1
+          'apiKey': os.getenv("COMPOSIO_API_KEY")
       }
 )
+        #   'entityId': 1
 
 composio_tools = composio_toolset.get_tools(
-      apps=[App.GMAIL]
+      apps=[App.GMAIL, App.SLACK]
 )
+
+print(composio_tools)
 
 async def search(
     query: str, *, config: Annotated[RunnableConfig, InjectedToolArg]
