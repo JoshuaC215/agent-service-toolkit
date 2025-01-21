@@ -16,6 +16,7 @@ from typing_extensions import Annotated
 from composio_langgraph import Action, ComposioToolSet, App
 
 from .configuration import Configuration
+import pdb
 
 composio_toolset = ComposioToolSet(
     auth = {
@@ -24,9 +25,12 @@ composio_toolset = ComposioToolSet(
     }
 )
 
-composio_tools = composio_toolset.get_tools(
-      apps=[App.GMAIL, App.GOOGLECALENDAR]
-)
+gmail = composio_toolset.get_tools(apps=[App.GMAIL])
+calendar = composio_toolset.get_tools(apps=[App.GOOGLECALENDAR])
+linear = composio_toolset.get_tools(apps=[App.LINEAR])
+trello = composio_toolset.get_tools(apps=[App.TRELLO])
+twitter = composio_toolset.get_tools(apps=[App.TWITTER])
+# pdb.set_trace()
 
 async def search(
     query: str, *, config: Annotated[RunnableConfig, InjectedToolArg]
@@ -44,4 +48,4 @@ async def search(
 
 
 # Combine the search tool with Composio tools using spread operator
-TOOLS: List[Callable[..., Any]] = [search, *composio_tools]
+TOOLS: List[Callable[..., Any]] = [search, *gmail, *calendar, *linear, *trello, *twitter]
