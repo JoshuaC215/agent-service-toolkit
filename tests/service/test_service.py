@@ -91,6 +91,38 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     assert response.status_code == 422
 
 
+def test_invoke_custom_agent_config(test_client, mock_agent) -> None:
+    """Test that the agent_config parameter is correctly passed to the agent."""
+    QUESTION = "What is the weather in Tokyo?"
+    ANSWER = "The weather in Tokyo is sunny."
+    CUSTOM_CONFIG = {"spicy_level": 0.1, "additional_param": "value_foo"}
+
+    mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=ANSWER)]}
+
+    response = test_client.post(
+        "/invoke", json={"message": QUESTION, "agent_config": CUSTOM_CONFIG}
+    )
+    assert response.status_code == 200
+
+    # Verify the agent_config was passed correctly in the config
+    mock_agent.ainvoke.assert_awaited_once()
+    config = mock_agent.ainvoke.await_args.kwargs["config"]
+    assert config["configurable"]["spicy_level"] == 0.1
+    assert config["configurable"]["additional_param"] == "value_foo"
+
+    # Verify the response is still correct
+    output = ChatMessage.model_validate(response.json())
+    assert output.type == "ai"
+    assert output.content == ANSWER
+
+    # Verify a reserved key in agent_config throws a validation error
+    INVALID_CONFIG = {"model": "gpt-4o"}
+    response = test_client.post(
+        "/invoke", json={"message": QUESTION, "agent_config": INVALID_CONFIG}
+    )
+    assert response.status_code == 422
+
+
 @patch("service.service.LangsmithClient")
 def test_feedback(mock_client: langsmith.Client, test_client) -> None:
     ls_instance = mock_client.return_value

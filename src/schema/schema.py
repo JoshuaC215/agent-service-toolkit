@@ -55,6 +55,11 @@ class UserInput(BaseModel):
         default=None,
         examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
     )
+    agent_config: dict[str, Any] = Field(
+        description="Additional configuration to pass through to the agent",
+        default={},
+        examples=[{"spicy_level": 0.8}],
+    )
 
 
 class StreamInput(UserInput):

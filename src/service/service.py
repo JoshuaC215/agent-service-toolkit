@@ -83,10 +83,21 @@ async def info() -> ServiceMetadata:
 def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
+
+    configurable = {"thread_id": thread_id, "model": user_input.model}
+
+    if user_input.agent_config:
+        if overlap := configurable.keys() & user_input.agent_config.keys():
+            raise HTTPException(
+                status_code=422, detail=f"agent_config contains reserved keys: {overlap}"
+            )
+        configurable.update(user_input.agent_config)
+
     kwargs = {
         "input": {"messages": [HumanMessage(content=user_input.message)]},
         "config": RunnableConfig(
-            configurable={"thread_id": thread_id, "model": user_input.model}, run_id=run_id
+            configurable=configurable,
+            run_id=run_id,
         ),
     }
     return kwargs, run_id
