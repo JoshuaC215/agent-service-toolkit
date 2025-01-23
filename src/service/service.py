@@ -14,6 +14,7 @@ from langchain_core.messages import AnyMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import Command
 from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
@@ -140,7 +141,14 @@ async def message_generator(
     async for event in agent.astream_events(**kwargs, version="v2"):
         if not event:
             continue
-
+            
+        # Skip navigation events in multi-agent workflows
+        if (
+            event["event"] == "on_chain_end"
+            and isinstance(event["data"]["output"], Command)
+        ):
+            continue
+            
         new_messages = []
         # Yield messages written to the graph state after node execution finishes.
         if (
