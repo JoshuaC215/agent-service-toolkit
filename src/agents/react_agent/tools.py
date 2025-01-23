@@ -29,8 +29,8 @@ apps = [
     App.GMAIL,
     App.GOOGLECALENDAR,
     App.LINEAR,
-    App.TRELLO,
-    App.TWITTER
+    App.TWITTER,
+    App.WEBFLOW
 ]
 # for extracting the tools and flattening the list afterwards
 tools = [composio_toolset.get_tools(apps=[app]) for app in apps]

@@ -16,6 +16,13 @@ from .state import InputState, State
 from .tools import TOOLS
 from .utils import load_chat_model
 
+# TO Use Ollama
+# from langchain_openai import ChatOpenAI
+# llm = ChatOpenAI(
+#     api_key="ollama",
+#     model="deepseek-r1",
+#     base_url="http://localhost:11434/v1",
+# )
 
 async def call_model(
     state: State, config: RunnableConfig
@@ -35,7 +42,9 @@ async def call_model(
 
     # Initialize the model with tool binding. Change the model or add more tools here.
     try:
-        model = load_chat_model("openai/gpt-4o").bind_tools(TOOLS)
+        model = load_chat_model("openai/gpt-4o-mini").bind_tools(TOOLS)
+        # For Ollama
+        # model = llm
     except ValueError as e:
         print(f"Error loading model: {e}")
         # Fallback to a default model if the configured one fails
