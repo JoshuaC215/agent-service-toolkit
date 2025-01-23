@@ -25,11 +25,16 @@ composio_toolset = ComposioToolSet(
     }
 )
 
-gmail = composio_toolset.get_tools(apps=[App.GMAIL])
-calendar = composio_toolset.get_tools(apps=[App.GOOGLECALENDAR])
-linear = composio_toolset.get_tools(apps=[App.LINEAR])
-trello = composio_toolset.get_tools(apps=[App.TRELLO])
-twitter = composio_toolset.get_tools(apps=[App.TWITTER])
+apps = [
+    App.GMAIL,
+    App.GOOGLECALENDAR,
+    App.LINEAR,
+    App.TRELLO,
+    App.TWITTER
+]
+# for extracting the tools and flattening the list afterwards
+tools = [composio_toolset.get_tools(apps=[app]) for app in apps]
+combined_tools = [tool for sublist in tools for tool in sublist]
 # pdb.set_trace()
 
 async def search(
@@ -48,4 +53,4 @@ async def search(
 
 
 # Combine the search tool with Composio tools using spread operator
-TOOLS: List[Callable[..., Any]] = [search, *gmail, *calendar, *linear, *trello, *twitter]
+TOOLS: List[Callable[..., Any]] = [search, *combined_tools]
