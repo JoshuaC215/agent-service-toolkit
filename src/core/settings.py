@@ -8,6 +8,7 @@ from schema.models import (
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
+    DeepseekModelName,
     FakeModelName,
     GoogleModelName,
     GroqModelName,
@@ -37,6 +38,7 @@ class Settings(BaseSettings):
     AUTH_SECRET: SecretStr | None = None
 
     OPENAI_API_KEY: SecretStr | None = None
+    DEEPSEEK_API_KEY: SecretStr | None = None
     ANTHROPIC_API_KEY: SecretStr | None = None
     GOOGLE_API_KEY: SecretStr | None = None
     GROQ_API_KEY: SecretStr | None = None
@@ -59,6 +61,7 @@ class Settings(BaseSettings):
     def model_post_init(self, __context: Any) -> None:
         api_keys = {
             Provider.OPENAI: self.OPENAI_API_KEY,
+            Provider.DEEPSEEK: self.DEEPSEEK_API_KEY,
             Provider.ANTHROPIC: self.ANTHROPIC_API_KEY,
             Provider.GOOGLE: self.GOOGLE_API_KEY,
             Provider.GROQ: self.GROQ_API_KEY,
@@ -75,6 +78,10 @@ class Settings(BaseSettings):
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = OpenAIModelName.GPT_4O_MINI
                     self.AVAILABLE_MODELS.update(set(OpenAIModelName))
+                case Provider.DEEPSEEK:
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = DeepseekModelName.DEEPSEEK_CHAT
+                    self.AVAILABLE_MODELS.update(set(DeepseekModelName))
                 case Provider.ANTHROPIC:
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = AnthropicModelName.HAIKU_3

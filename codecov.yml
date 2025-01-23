@@ -1,0 +1,13 @@
+coverage:
+  status:
+    # Fail PRs that reduce total coverage by more than 2%
+    project:
+      default:
+        target: auto
+        threshold: 2%
+    # Treat patch coverage as informational only
+    patch:
+      default:
+        informational: true
+comment:
+  hide_project_coverage: false

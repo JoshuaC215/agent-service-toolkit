@@ -84,7 +84,11 @@ class AgentClient:
         self.agent = agent
 
     async def ainvoke(
-        self, message: str, model: str | None = None, thread_id: str | None = None
+        self,
+        message: str,
+        model: str | None = None,
+        thread_id: str | None = None,
+        agent_config: dict[str, Any] | None = None,
     ) -> ChatMessage:
         """
         Invoke the agent asynchronously. Only the final message is returned.
@@ -93,13 +97,20 @@ class AgentClient:
             message (str): The message to send to the agent
             model (str, optional): LLM model to use for the agent
             thread_id (str, optional): Thread ID for continuing a conversation
+            agent_config (dict[str, Any], optional): Additional configuration to pass through to the agent
 
         Returns:
             AnyMessage: The response from the agent
         """
         if not self.agent:
             raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
-        request = UserInput(message=message, thread_id=thread_id, model=model)
+        request = UserInput(message=message)
+        if thread_id:
+            request.thread_id = thread_id
+        if model:
+            request.model = model
+        if agent_config:
+            request.agent_config = agent_config
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
@@ -115,7 +126,11 @@ class AgentClient:
         return ChatMessage.model_validate(response.json())
 
     def invoke(
-        self, message: str, model: str | None = None, thread_id: str | None = None
+        self,
+        message: str,
+        model: str | None = None,
+        thread_id: str | None = None,
+        agent_config: dict[str, Any] | None = None,
     ) -> ChatMessage:
         """
         Invoke the agent synchronously. Only the final message is returned.
@@ -124,6 +139,7 @@ class AgentClient:
             message (str): The message to send to the agent
             model (str, optional): LLM model to use for the agent
             thread_id (str, optional): Thread ID for continuing a conversation
+            agent_config (dict[str, Any], optional): Additional configuration to pass through to the agent
 
         Returns:
             ChatMessage: The response from the agent
@@ -135,6 +151,8 @@ class AgentClient:
             request.thread_id = thread_id
         if model:
             request.model = model
+        if agent_config:
+            request.agent_config = agent_config
         try:
             response = httpx.post(
                 f"{self.base_url}/{self.agent}/invoke",
@@ -177,6 +195,7 @@ class AgentClient:
         message: str,
         model: str | None = None,
         thread_id: str | None = None,
+        agent_config: dict[str, Any] | None = None,
         stream_tokens: bool = True,
     ) -> Generator[ChatMessage | str, None, None]:
         """
@@ -190,6 +209,7 @@ class AgentClient:
             message (str): The message to send to the agent
             model (str, optional): LLM model to use for the agent
             thread_id (str, optional): Thread ID for continuing a conversation
+            agent_config (dict[str, Any], optional): Additional configuration to pass through to the agent
             stream_tokens (bool, optional): Stream tokens as they are generated
                 Default: True
 
@@ -203,6 +223,8 @@ class AgentClient:
             request.thread_id = thread_id
         if model:
             request.model = model
+        if agent_config:
+            request.agent_config = agent_config
         try:
             with httpx.stream(
                 "POST",
@@ -226,6 +248,7 @@ class AgentClient:
         message: str,
         model: str | None = None,
         thread_id: str | None = None,
+        agent_config: dict[str, Any] | None = None,
         stream_tokens: bool = True,
     ) -> AsyncGenerator[ChatMessage | str, None]:
         """
@@ -239,6 +262,7 @@ class AgentClient:
             message (str): The message to send to the agent
             model (str, optional): LLM model to use for the agent
             thread_id (str, optional): Thread ID for continuing a conversation
+            agent_config (dict[str, Any], optional): Additional configuration to pass through to the agent
             stream_tokens (bool, optional): Stream tokens as they are generated
                 Default: True
 
@@ -252,6 +276,8 @@ class AgentClient:
             request.thread_id = thread_id
         if model:
             request.model = model
+        if agent_config:
+            request.agent_config = agent_config
         async with httpx.AsyncClient() as client:
             try:
                 async with client.stream(
