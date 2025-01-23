@@ -140,19 +140,14 @@ async def message_generator(
     # Process streamed events from the graph and yield messages over the SSE stream.
     async for event in agent.astream_events(**kwargs, version="v2"):
         if not event:
-            continue
-            
-        # Skip navigation events in multi-agent workflows
-        if (
-            event["event"] == "on_chain_end"
-            and isinstance(event["data"]["output"], Command)
-        ):
-            continue
+            continue 
             
         new_messages = []
         # Yield messages written to the graph state after node execution finishes.
         if (
             event["event"] == "on_chain_end"
+            # Skip navigation events in multi-agent workflows
+            and not isinstance(event["data"]["output"], Command)
             # on_chain_end gets called a bunch of times in a graph execution
             # This filters out everything except for "graph node finished"
             and any(t.startswith("graph:step:") for t in event.get("tags", []))
