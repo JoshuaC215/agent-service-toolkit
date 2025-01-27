@@ -74,17 +74,6 @@ The repository is structured as follows:
 - `src/streamlit_app.py`: Streamlit app providing a chat interface
 - `tests/`: Unit and integration tests
 
-## Why LangGraph?
-
-AI agents are increasingly being built with more explicitly structured and tightly controlled [Compound AI Systems](https://bair.berkeley.edu/blog/2024/02/18/compound-ai-systems/), with careful attention to the [cognitive architecture](https://blog.langchain.dev/what-is-a-cognitive-architecture/). At the time of this repo's creation, LangGraph seems like the most advanced and popular open source framework for building such systems, with a high degree of control as well as support for features like concurrent execution, cycles in the graph, streaming results, built-in observability, and the rich ecosystem around LangChain.
-
-I've spent a decent amount of time building with LangChain over the past year and experienced some of the commonly cited pain points. In building this out with LangGraph I found a few similar issues, but overall I like the direction and I'm happy with my choice to use it.
-
-With that said, there are several other interesting projects in this space that are worth calling out. I haven't spent much time with these but I hope to explore them more soon!
-
-- [LlamaIndex Workflows](https://docs.llamaindex.ai/en/stable/module_guides/workflow/) and [LlamaDeploy](https://github.com/run-llama/llama_deploy)
-- [CrewAI Flows](https://docs.crewai.com/concepts/flows)
-
 ## Setup and Usage
 
 1. Clone the repository:
@@ -98,6 +87,14 @@ With that said, there are several other interesting projects in this space that 
    Create a `.env` file in the root directory. At least one LLM API key or configuration is required. See the [`.env.example` file](./.env.example) for a full list of available environment variables, including a variety of model provider API keys, header-based authentication, LangSmith tracing, testing and development modes, and OpenWeatherMap API key.
 
 3. You can now run the agent service and the Streamlit app locally, either with Docker or just using Python. The Docker setup is recommended for simpler environment setup and immediate reloading of the services when you make changes to your code.
+
+### Building or customizing your own agent
+
+To customize the agent for your own use case:
+
+1. Add your new agent to the `src/agents` directory. You can copy `research_assistant.py` or `chatbot.py` and modify it to change the agent's behavior and tools.
+1. Import and add your new agent to the `agents` dictionary in `src/agents/agents.py`. Your agent can be called by `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`.
+1. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
 
 ### Docker Setup
 
@@ -125,6 +122,31 @@ For local development, we recommend using [docker compose watch](https://docs.do
 
 This setup allows you to develop and test your changes in real-time without manually restarting the services.
 
+### Building other apps on the AgentClient
+
+The repo includes a generic `src/client/client.AgentClient` that can be used to interact with the agent service. This client is designed to be flexible and can be used to build other apps on top of the agent. It supports both synchronous and asynchronous invocations, and streaming and non-streaming requests.
+
+See the `src/run_client.py` file for full examples of how to use the `AgentClient`. A quick example:
+
+```python
+from client import AgentClient
+client = AgentClient()
+
+response = client.invoke("Tell me a brief joke?")
+response.pretty_print()
+# ================================== Ai Message ==================================
+#
+# A man walked into a library and asked the librarian, "Do you have any books on Pavlov's dogs and Schrödinger's cat?"
+# The librarian replied, "It rings a bell, but I'm not sure if it's here or not."
+
+```
+
+### Development with LangGraph Studio
+
+The agent supports [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio), a new IDE for developing agents in LangGraph.
+
+You can simply install LangGraph Studio, add your `.env` file to the root directory as described above, and then launch LangGraph studio pointed at the root directory. Customize `langgraph.json` as needed.
+
 ### Local development without Docker
 
 You can also run the agent service and the Streamlit app locally without Docker, just using a Python virtual environment.
@@ -151,15 +173,17 @@ You can also run the agent service and the Streamlit app locally without Docker,
 
 4. Open your browser and navigate to the URL provided by Streamlit (usually `http://localhost:8501`).
 
-### Development with LangGraph Studio
+## Projects built with or inspired by agent-service-toolkit
 
-The agent supports [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio), a new IDE for developing agents in LangGraph.
+The following are a few of the public projects that drew code or inspiration from this repo.
 
-You can simply install LangGraph Studio, add your `.env` file to the root directory as described above, and then launch LangGraph studio pointed at the root directory. Customize `langgraph.json` as needed.
+- **[raushan-in/dapa](https://github.com/raushan-in/dapa)** - Digital Arrest Protection App (DAPA) enables users to report financial scams and frauds efficiently via a user-friendly platform.
 
-### Contributing
+**Please create a pull request editing the README or open a discussion with any new ones to be added!** Would love to include more projects.
 
-Currently the tests need to be run using the local development without Docker setup. To run the tests for the agent service:
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. Currently the tests need to be run using the local development without Docker setup. To run the tests for the agent service:
 
 1. Ensure you're in the project root directory and have activated your virtual environment.
 
@@ -176,46 +200,6 @@ Currently the tests need to be run using the local development without Docker se
    ```sh
    pytest
    ```
-
-## Customization
-
-To customize the agent for your own use case:
-
-1. Add your new agent to the `src/agents` directory. You can copy `research_assistant.py` or `chatbot.py` and modify it to change the agent's behavior and tools.
-1. Import and add your new agent to the `agents` dictionary in `src/agents/agents.py`. Your agent can be called by `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`.
-1. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
-
-## Building other apps on the AgentClient
-
-The repo includes a generic `src/client/client.AgentClient` that can be used to interact with the agent service. This client is designed to be flexible and can be used to build other apps on top of the agent. It supports both synchronous and asynchronous invocations, and streaming and non-streaming requests.
-
-See the `src/run_client.py` file for full examples of how to use the `AgentClient`. A quick example:
-
-```python
-from client import AgentClient
-client = AgentClient()
-
-response = client.invoke("Tell me a brief joke?")
-response.pretty_print()
-# ================================== Ai Message ==================================
-#
-# A man walked into a library and asked the librarian, "Do you have any books on Pavlov's dogs and Schrödinger's cat?"
-# The librarian replied, "It rings a bell, but I'm not sure if it's here or not."
-
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-### Roadmap
-
-- [x] Get LlamaGuard working for content moderation (anyone know a reliable and fast hosted version?)
-- [x] Add more sophisticated tools for the research assistant
-- [x] Increase test coverage and add CI pipeline
-- [x] Add support for multiple agents running on the same service, including non-chat agent
-- [x] Service metadata endpoint `/info` and dynamic app configuration
-- [ ] More ideas? File an issue or create a discussion!
 
 ## License
 
