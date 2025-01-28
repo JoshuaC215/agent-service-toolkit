@@ -30,7 +30,14 @@ apps = [
     App.GOOGLECALENDAR,
     App.LINEAR,
     App.TWITTER,
-    App.WEBFLOW
+    App.WEBFLOW,
+    App.NOTION,
+    App.HUBSPOT,
+    App.GOOGLE_ANALYTICS,
+    App.LINKEDIN,
+    App.CANVA,
+    App.SLACK,
+    App.REDDIT
 ]
 # for extracting the tools and flattening the list afterwards
 tools = [composio_toolset.get_tools(apps=[app]) for app in apps]
