@@ -37,7 +37,8 @@ apps = [
     App.LINKEDIN,
     App.CANVA,
     App.SLACK,
-    App.REDDIT
+    App.REDDIT,
+    App.GITHUB
 ]
 # for extracting the tools and flattening the list afterwards
 tools = [composio_toolset.get_tools(apps=[app]) for app in apps]
