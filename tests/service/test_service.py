@@ -293,3 +293,54 @@ def test_info(test_client, mock_settings) -> None:
 
     assert output.default_model == OpenAIModelName.GPT_4O_MINI
     assert output.models == [OpenAIModelName.GPT_4O, OpenAIModelName.GPT_4O_MINI]
+
+
+@pytest.mark.asyncio
+async def test_stream_with_commands(test_client, mock_agent) -> None:
+    """Test streaming when agent returns Command objects."""
+    QUESTION = "Test command streaming"
+
+    # Configure mock agent to return a Command followed by a regular message
+    events = [
+        {
+            "event": "on_chain_end",
+            "data": {"output": {"messages": [AIMessage(content="Hello a")]}},
+            "tags": ["graph:step:1"],
+        },
+        {
+            "event": "on_chain_end",
+            "data": {"output": {"messages": [AIMessage(content="Hello B")]}},
+            "tags": ["graph:step:2"],
+        },
+    ]
+
+    async def mock_astream_events(**kwargs):
+        for event in events:
+            yield event
+
+    mock_agent.astream_events = mock_astream_events
+
+    # Make request with streaming
+    with test_client.stream(
+        "POST", "/stream", json={"message": QUESTION, "stream_tokens": True}
+    ) as response:
+        assert response.status_code == 200
+
+        # Collect all SSE messages
+        messages = []
+        for line in response.iter_lines():
+            if line and line.strip() != "data: [DONE]":  # Skip [DONE] message
+                messages.append(json.loads(line.lstrip("data: ")))
+
+    # Verify messages
+    final_messages = [msg for msg in messages if msg["type"] == "message"]
+    assert len(final_messages) == 2
+    first_message = final_messages[0]["content"]["content"]
+    second_message = final_messages[1]["content"]["content"]
+    assert first_message in ["Hello a", "Hello b"]
+    if first_message == "Hello a":
+        assert second_message == "Hello B"
+    else:
+        assert second_message == "Hello C"
+    assert final_messages[0]["content"]["type"] == "ai"
+    assert final_messages[1]["content"]["type"] == "ai"

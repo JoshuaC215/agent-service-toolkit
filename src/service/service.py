@@ -14,6 +14,7 @@ from langchain_core.messages import AnyMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import Command
 from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
@@ -148,9 +149,11 @@ async def message_generator(
             # on_chain_end gets called a bunch of times in a graph execution
             # This filters out everything except for "graph node finished"
             and any(t.startswith("graph:step:") for t in event.get("tags", []))
-            and "messages" in event["data"]["output"]
         ):
-            new_messages = event["data"]["output"]["messages"]
+            if isinstance(event["data"]["output"], Command):
+                new_messages = event["data"]["output"].update.get("messages", [])
+            elif "messages" in event["data"]["output"]:
+                new_messages = event["data"]["output"]["messages"]
 
         # Also yield intermediate messages from agents.utils.CustomData.adispatch().
         if event["event"] == "on_custom_event" and "custom_data_dispatch" in event.get("tags", []):
