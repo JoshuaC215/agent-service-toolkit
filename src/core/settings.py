@@ -12,6 +12,7 @@ from schema.models import (
     FakeModelName,
     GoogleModelName,
     GroqModelName,
+    OllamaModelName,
     OpenAIModelName,
     Provider,
 )
@@ -43,6 +44,8 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: SecretStr | None = None
     GROQ_API_KEY: SecretStr | None = None
     USE_AWS_BEDROCK: bool = False
+    OLLAMA_MODEL: str | None = None
+    OLLAMA_BASE_URL: str | None = None
     USE_FAKE_MODEL: bool = False
 
     # If DEFAULT_MODEL is None, it will be set in model_post_init
@@ -66,6 +69,7 @@ class Settings(BaseSettings):
             Provider.GOOGLE: self.GOOGLE_API_KEY,
             Provider.GROQ: self.GROQ_API_KEY,
             Provider.AWS: self.USE_AWS_BEDROCK,
+            Provider.OLLAMA: self.OLLAMA_MODEL,
             Provider.FAKE: self.USE_FAKE_MODEL,
         }
         active_keys = [k for k, v in api_keys.items() if v]
@@ -98,6 +102,10 @@ class Settings(BaseSettings):
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = AWSModelName.BEDROCK_HAIKU
                     self.AVAILABLE_MODELS.update(set(AWSModelName))
+                case Provider.OLLAMA:
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = OllamaModelName.OLLAMA_GENERIC
+                    self.AVAILABLE_MODELS.update(set(OllamaModelName))
                 case Provider.FAKE:
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = FakeModelName.FAKE

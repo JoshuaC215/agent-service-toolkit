@@ -5,6 +5,7 @@ import pytest
 from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_models import FakeListChatModel
 from langchain_groq import ChatGroq
+from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
 from core.llm import get_model
@@ -12,6 +13,7 @@ from schema.models import (
     AnthropicModelName,
     FakeModelName,
     GroqModelName,
+    OllamaModelName,
     OpenAIModelName,
 )
 
@@ -48,6 +50,14 @@ def test_get_model_groq_guard():
         assert isinstance(model, ChatGroq)
         assert model.model_name == "llama-guard-3-8b"
         assert model.temperature < 0.01
+
+
+def test_get_model_ollama():
+    with patch("core.settings.settings.OLLAMA_MODEL", "llama3.3"):
+        model = get_model(OllamaModelName.OLLAMA_GENERIC)
+        assert isinstance(model, ChatOllama)
+        assert model.model == "llama3.3"
+        assert model.temperature == 0.5
 
 
 def test_get_model_fake():
