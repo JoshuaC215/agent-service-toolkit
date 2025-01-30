@@ -14,7 +14,7 @@ def test_init(mock_env):
     """Test client initialization with different parameters."""
     # Test default values
     client = AgentClient(get_info=False)
-    assert client.base_url == "http://localhost"
+    assert client.base_url == "http://0.0.0.0"
     assert client.timeout is None
 
     # Test custom values

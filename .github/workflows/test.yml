@@ -90,12 +90,12 @@ jobs:
           file: docker/Dockerfile.app
 
       - name: Start service container
-        run: docker run -d --name service-container --network host -e USE_FAKE_MODEL=true agent-service-toolkit.service:${{ github.sha }}
+        run: docker run -d --name service-container --network host -e USE_FAKE_MODEL=true -e PORT=80 agent-service-toolkit.service:${{ github.sha }}
 
       - name: Confirm service starts correctly
         run: |
           timeout 30 bash -c '
-            while ! curl -s http://localhost/health; do
+            while ! curl -s http://0.0.0.0/health; do
               echo "Waiting for service to be ready..."
               docker logs service-container
               sleep 2
@@ -103,7 +103,7 @@ jobs:
           '
 
       - name: Run app container
-        run: docker run -d --name app-container --network host -e AGENT_URL=http://localhost agent-service-toolkit.app:${{ github.sha }}
+        run: docker run -d --name app-container --network host -e AGENT_URL=http://0.0.0.0 agent-service-toolkit.app:${{ github.sha }}
 
       - name: Confirm app starts correctly
         run: |
@@ -129,7 +129,10 @@ jobs:
         env:
           UV_SYSTEM_PYTHON: 1
       - name: Run integration tests
-        run: uv run pytest tests/integration -v --run-docker
+        run: |
+          uv run pytest tests/integration -v --run-docker
+        env:
+          AGENT_URL: http://0.0.0.0
 
       - name: Clean up containers
         if: always()

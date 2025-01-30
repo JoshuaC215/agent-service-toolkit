@@ -23,7 +23,7 @@ def test_check_str_is_http():
 def test_settings_default_values():
     settings = Settings(_env_file=None)
     assert settings.HOST == "0.0.0.0"
-    assert settings.PORT == 80
+    assert settings.PORT == 8080
     assert settings.USE_AWS_BEDROCK is False
     assert settings.USE_FAKE_MODEL is False
 
@@ -72,8 +72,8 @@ def test_settings_with_multiple_api_keys():
 
 
 def test_settings_base_url():
-    settings = Settings(HOST="localhost", PORT=8000, _env_file=None)
-    assert settings.BASE_URL == "http://localhost:8000"
+    settings = Settings(HOST="0.0.0.0", PORT=8000, _env_file=None)
+    assert settings.BASE_URL == "http://0.0.0.0:8000"
 
 
 def test_settings_is_dev():

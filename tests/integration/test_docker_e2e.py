@@ -10,7 +10,7 @@ def test_service_with_fake_model():
 
     This test requires the service container to be running with USE_FAKE_MODEL=true
     """
-    client = AgentClient("http://localhost", agent="chatbot")
+    client = AgentClient("http://0.0.0.0", agent="chatbot")
     response = client.invoke("Tell me a joke?", model="fake")
     assert response.type == "ai"
     assert response.content == "This is a test response from the fake model."

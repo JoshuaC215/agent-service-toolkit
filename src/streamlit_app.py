@@ -56,13 +56,13 @@ async def main() -> None:
         agent_url = os.getenv("AGENT_URL")
         if not agent_url:
             host = os.getenv("HOST", "0.0.0.0")
-            port = os.getenv("PORT", 80)
+            port = os.getenv("PORT", 8080)
             agent_url = f"http://{host}:{port}"
         try:
             with st.spinner("Connecting to agent service..."):
                 st.session_state.agent_client = AgentClient(base_url=agent_url)
         except AgentClientError as e:
-            st.error(f"Error connecting to agent service: {e}")
+            st.error(f"Error connecting to agent service at {agent_url}: {e}")
             st.markdown("The service might be booting up. Try again in a few seconds.")
             st.stop()
     agent_client: AgentClient = st.session_state.agent_client
