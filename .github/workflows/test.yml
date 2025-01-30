@@ -95,7 +95,7 @@ jobs:
       - name: Confirm service starts correctly
         run: |
           timeout 30 bash -c '
-            while ! curl -s http://localhost/health; do
+            while ! curl -s http://0.0.0.0/health; do
               echo "Waiting for service to be ready..."
               docker logs service-container
               sleep 2
@@ -103,7 +103,7 @@ jobs:
           '
 
       - name: Run app container
-        run: docker run -d --name app-container --network host -e AGENT_URL=http://localhost agent-service-toolkit.app:${{ github.sha }}
+        run: docker run -d --name app-container --network host -e AGENT_URL=http://0.0.0.0 agent-service-toolkit.app:${{ github.sha }}
 
       - name: Confirm app starts correctly
         run: |

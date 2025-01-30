@@ -116,7 +116,7 @@ For local development, we recommend using [docker compose watch](https://docs.do
 
 4. Access the Streamlit app by navigating to `http://localhost:8501` in your web browser.
 
-5. The agent service API will be available at `http://localhost:80`. You can also use the OpenAPI docs at `http://localhost:80/redoc`.
+5. The agent service API will be available at `http://0.0.0.0:8080`. You can also use the OpenAPI docs at `http://0.0.0.0:8080/redoc`.
 
 6. Use `docker compose down` to stop the services.
 
