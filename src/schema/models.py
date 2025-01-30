@@ -9,6 +9,7 @@ class Provider(StrEnum):
     GOOGLE = auto()
     GROQ = auto()
     AWS = auto()
+    OLLAMA = auto()
     FAKE = auto()
 
 
@@ -54,6 +55,12 @@ class AWSModelName(StrEnum):
     BEDROCK_HAIKU = "bedrock-3.5-haiku"
 
 
+class OllamaModelName(StrEnum):
+    """https://ollama.com/search"""
+
+    OLLAMA_GENERIC = "ollama"
+
+
 class FakeModelName(StrEnum):
     """Fake model for testing."""
 
@@ -67,5 +74,6 @@ AllModelEnum: TypeAlias = (
     | GoogleModelName
     | GroqModelName
     | AWSModelName
+    | OllamaModelName
     | FakeModelName
 )
