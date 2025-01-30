@@ -129,7 +129,10 @@ jobs:
         env:
           UV_SYSTEM_PYTHON: 1
       - name: Run integration tests
-        run: uv run pytest tests/integration -v --run-docker
+        run: |
+          uv run pytest tests/integration -v --run-docker
+        env:
+          AGENT_URL: http://0.0.0.0
 
       - name: Clean up containers
         if: always()
