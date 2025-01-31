@@ -80,7 +80,7 @@ async def info() -> ServiceMetadata:
     )
 
 
-def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
+def _parse_input(user_input: UserInput, entity_id: str = "default") -> tuple[dict[str, Any], UUID]:
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
 
@@ -98,6 +98,7 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
         "config": RunnableConfig(
             configurable=configurable,
             run_id=run_id,
+            entity_id=user_input.entity_id,
         ),
     }
     return kwargs, run_id
@@ -214,6 +215,7 @@ async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> Stre
 
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
+
     return StreamingResponse(
         message_generator(user_input, agent_id),
         media_type="text/event-stream",

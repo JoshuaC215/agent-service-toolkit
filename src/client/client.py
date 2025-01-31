@@ -193,6 +193,7 @@ class AgentClient:
     def stream(
         self,
         message: str,
+        entity_id: str,
         model: str | None = None,
         thread_id: str | None = None,
         agent_config: dict[str, Any] | None = None,
@@ -218,7 +219,7 @@ class AgentClient:
         """
         if not self.agent:
             raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
-        request = StreamInput(message=message, stream_tokens=stream_tokens)
+        request = StreamInput(message=message, entity_id=entity_id, stream_tokens=stream_tokens)
         if thread_id:
             request.thread_id = thread_id
         if model:

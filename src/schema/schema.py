@@ -50,6 +50,11 @@ class UserInput(BaseModel):
         default=OpenAIModelName.GPT_4O_MINI,
         examples=[OpenAIModelName.GPT_4O_MINI, AnthropicModelName.HAIKU_35],
     )
+    entity_id: str = Field(
+        description="Entity ID to use for Composio.",
+        default="default",
+        examples=["default", "my-entity"],
+    )
     thread_id: str | None = Field(
         description="Thread ID to persist and continue a multi-turn conversation.",
         default=None,
@@ -63,8 +68,14 @@ class UserInput(BaseModel):
 
 
 class StreamInput(UserInput):
-    """User input for streaming the agent's response."""
+    """Input for streaming responses."""
 
+    message: str
+    entity_id: str
+    system_prompt: str | None = None
+    model: str | None = None
+    temperature: float | None = None
+    max_tokens: int | None = None
     stream_tokens: bool = Field(
         description="Whether to stream LLM tokens to the client.",
         default=True,

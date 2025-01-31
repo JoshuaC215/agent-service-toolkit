@@ -4,7 +4,7 @@ Works with a chat model with tool calling support.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, List, Literal, cast
+from typing import Dict, List, Literal, Optional, cast
 
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig
@@ -13,8 +13,10 @@ from langgraph.prebuilt import ToolNode
 
 from .configuration import Configuration
 from .state import InputState, State
-from .tools import TOOLS
+from .tools import get_tools
 from .utils import load_chat_model
+from composio_langgraph import Action
+import pdb
 
 # TO Use Ollama
 # from langchain_openai import ChatOpenAI
@@ -23,6 +25,11 @@ from .utils import load_chat_model
 #     model="deepseek-r1",
 #     base_url="http://localhost:11434/v1",
 # )
+
+def get_all_tools(state: State, config: RunnableConfig) -> List[Action]:
+    configuration = Configuration.from_runnable_config(config)
+    tools = get_tools(configuration.entity_id)
+    return ToolNode(tools)
 
 async def call_model(
     state: State, config: RunnableConfig
@@ -40,15 +47,18 @@ async def call_model(
     """
     configuration = Configuration.from_runnable_config(config)
 
+    tools = get_tools(configuration.entity_id)
+    print("Loaded tools for:", configuration.entity_id)
+
     # Initialize the model with tool binding. Change the model or add more tools here.
     try:
-        model = load_chat_model("openai/gpt-4o-mini").bind_tools(TOOLS)
+        model = load_chat_model("openai/gpt-4o-mini").bind_tools(tools)
         # For Ollama
         # model = llm
     except ValueError as e:
         print(f"Error loading model: {e}")
         # Fallback to a default model if the configured one fails
-        model = load_chat_model("openai/gpt-4o").bind_tools(TOOLS)
+        model = load_chat_model("openai/gpt-4o").bind_tools(tools)
 
     # Format the system prompt. Customize this to change the agent's behavior.
     system_message = configuration.system_prompt.format(
@@ -83,8 +93,8 @@ async def call_model(
 builder = StateGraph(State, input=InputState, config_schema=Configuration)
 
 # Define the two nodes we will cycle between
-builder.add_node(call_model)
-builder.add_node("tools", ToolNode(TOOLS))
+builder.add_node("call_model", call_model)
+builder.add_node("tools", get_all_tools)
 
 # Set the entrypoint as `call_model`
 # This means that this node is the first one called

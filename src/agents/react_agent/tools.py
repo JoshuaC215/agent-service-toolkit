@@ -1,13 +1,6 @@
-"""This module provides example tools for web scraping and search functionality.
+"""This module dynamically loads tools based on the entity ID."""
 
-It includes a basic Tavily search function (as an example)
-
-These tools are intended as free examples to get started. For production use,
-consider implementing more robust and specialized tools tailored to your needs.
-"""
-
-import os
-from typing import Any, Callable, List, Optional, cast
+from typing import Any, Callable, List, Optional
 
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langchain_core.runnables import RunnableConfig
@@ -16,14 +9,6 @@ from typing_extensions import Annotated
 from composio_langgraph import Action, ComposioToolSet, App
 
 from .configuration import Configuration
-import pdb
-
-composio_toolset = ComposioToolSet(
-    auth = {
-        'apiKey': os.getenv("COMPOSIO_API_KEY"),
-        'entityId': "default"
-    }
-)
 
 apps = [
     App.GMAIL,
@@ -40,25 +25,21 @@ apps = [
     App.REDDIT,
     App.GITHUB
 ]
-# for extracting the tools and flattening the list afterwards
-tools = [composio_toolset.get_tools(apps=[app]) for app in apps]
-combined_tools = [tool for sublist in tools for tool in sublist]
-# pdb.set_trace()
 
 async def search(
     query: str, *, config: Annotated[RunnableConfig, InjectedToolArg]
 ) -> Optional[list[dict[str, Any]]]:
-    """Search for general web results.
-
-    This function performs a search using the Tavily search engine, which is designed
-    to provide comprehensive, accurate, and trusted results. It's particularly useful
-    for answering questions about current events.
-    """
+    """Search for general web results."""
     configuration = Configuration.from_runnable_config(config)
     wrapped = TavilySearchResults(max_results=configuration.max_search_results)
     result = await wrapped.ainvoke({"query": query})
-    return cast(list[dict[str, Any]], result)
+    return result
 
+def get_tools(entity_id: str) -> List[Callable[..., Any]]:
+    """Retrieve tools configured for a specific entity."""
+    composio_toolset = ComposioToolSet()
+    combined_tools = []
 
-# Combine the search tool with Composio tools using spread operator
-TOOLS: List[Callable[..., Any]] = [search, *combined_tools]
+    for app in apps:
+        combined_tools.extend(composio_toolset.get_tools(entity_id=entity_id, apps=[app]))
+    return [search, *combined_tools]

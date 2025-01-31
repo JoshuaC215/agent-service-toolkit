@@ -22,6 +22,13 @@ class Configuration:
         },
     )
 
+    entity_id: str = field(
+        default="default",
+        metadata={
+            "description": "The entity ID for Composio auth."
+        },
+    )
+
     model: Annotated[str, {"__template_metadata__": {"kind": "llm"}}] = field(
         default="anthropic/claude-3-5-sonnet-20240620",
         metadata={
