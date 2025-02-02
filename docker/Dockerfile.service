@@ -30,8 +30,8 @@ RUN if [ "$MCP_ENABLED" = "true" ] ; then \
     chown -R nobody:nogroup $AGENT_HOME ; \
     fi
 
-# Ensure paths are set
-ENV PATH="/usr/local/bin:/usr/bin:${PATH}"
+# Only set essential paths for Node.js/npm tools
+ENV PATH="/usr/local/bin:${PATH}"
 ENV NODE_PATH=/usr/local/lib/node_modules
 ENV AGENT_HOME=${AGENT_HOME:-/app/agent_home}
 
