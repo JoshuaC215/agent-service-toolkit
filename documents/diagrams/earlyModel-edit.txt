@@ -1,0 +1,271 @@
+{
+  "actors": [
+    {
+      "id": "49ba8bdb-0a1a-4541-870c-1a241564519f",
+      "text": "Sistema",
+      "type": "istar.Role",
+      "x": 303,
+      "y": 125,
+      "customProperties": {
+        "Description": ""
+      },
+      "nodes": [
+        {
+          "id": "cec5ea88-7c79-4c2c-aaa6-4db7b279fe43",
+          "text": "Task",
+          "type": "istar.Task",
+          "x": 303,
+          "y": 136,
+          "customProperties": {
+            "Description": ""
+          }
+        }
+      ]
+    },
+    {
+      "id": "8a7e0d82-d7c6-43e0-9345-8adbaeaf0552",
+      "text": "Agente 1",
+      "type": "istar.Agent",
+      "x": 311,
+      "y": 451,
+      "customProperties": {
+        "Description": ""
+      },
+      "nodes": []
+    },
+    {
+      "id": "1aa1888a-d4d1-4e3a-8084-d19c6bc07087",
+      "text": "Agente 2",
+      "type": "istar.Agent",
+      "x": 680,
+      "y": 124,
+      "customProperties": {
+        "Description": ""
+      },
+      "nodes": []
+    },
+    {
+      "id": "8af8497e-78a8-4dfe-a1b6-46f1dc21ef44",
+      "text": "Ator",
+      "type": "istar.Actor",
+      "x": 92,
+      "y": 25,
+      "customProperties": {
+        "Description": ""
+      },
+      "nodes": []
+    },
+    {
+      "id": "857c38df-4631-4d28-acdf-93518ff96e48",
+      "text": "Agente 3",
+      "type": "istar.Agent",
+      "x": 685,
+      "y": 452,
+      "customProperties": {
+        "Description": ""
+      },
+      "nodes": []
+    }
+  ],
+  "orphans": [],
+  "dependencies": [
+    {
+      "id": "8df86d01-73a1-45b0-8615-7f55e3203cf4",
+      "text": "Enviar pergunta",
+      "type": "istar.Task",
+      "x": 279,
+      "y": 286,
+      "customProperties": {
+        "Description": ""
+      },
+      "source": "49ba8bdb-0a1a-4541-870c-1a241564519f",
+      "target": "8a7e0d82-d7c6-43e0-9345-8adbaeaf0552"
+    },
+    {
+      "id": "8cdf5c55-670e-4d0c-90ba-8ab228517443",
+      "text": "Perguntar ao",
+      "type": "istar.Task",
+      "x": 275,
+      "y": 27,
+      "customProperties": {
+        "Description": ""
+      },
+      "source": "8af8497e-78a8-4dfe-a1b6-46f1dc21ef44",
+      "target": "49ba8bdb-0a1a-4541-870c-1a241564519f"
+    },
+    {
+      "id": "bc2efdd0-44a5-49c2-95c0-427d15a11d87",
+      "text": "Exibir resposta",
+      "type": "istar.Task",
+      "x": 65,
+      "y": 127,
+      "customProperties": {
+        "Description": ""
+      },
+      "source": "49ba8bdb-0a1a-4541-870c-1a241564519f",
+      "target": "8af8497e-78a8-4dfe-a1b6-46f1dc21ef44"
+    },
+    {
+      "id": "1c277d89-5c77-445e-b593-c808cd3f7186",
+      "text": "Enviar pergunta",
+      "type": "istar.Task",
+      "x": 459,
+      "y": 126,
+      "customProperties": {
+        "Description": ""
+      },
+      "source": "49ba8bdb-0a1a-4541-870c-1a241564519f",
+      "target": "1aa1888a-d4d1-4e3a-8084-d19c6bc07087"
+    },
+    {
+      "id": "b99b0333-dd6c-4ac0-835f-9ea913263529",
+      "text": "Enviar resposta",
+      "type": "istar.Task",
+      "x": 656,
+      "y": 281,
+      "customProperties": {
+        "Description": ""
+      },
+      "source": "1aa1888a-d4d1-4e3a-8084-d19c6bc07087",
+      "target": "857c38df-4631-4d28-acdf-93518ff96e48"
+    },
+    {
+      "id": "9687aca6-b3e9-4857-ae46-658b74d90fcf",
+      "text": "Enviar resposta",
+      "type": "istar.Task",
+      "x": 478,
+      "y": 453,
+      "customProperties": {
+        "Description": ""
+      },
+      "source": "8a7e0d82-d7c6-43e0-9345-8adbaeaf0552",
+      "target": "857c38df-4631-4d28-acdf-93518ff96e48"
+    },
+    {
+      "id": "cca615a1-2e50-4983-9375-95c839a01c2a",
+      "text": "Devolver resposta",
+      "type": "istar.Task",
+      "x": 467,
+      "y": 283,
+      "customProperties": {
+        "Description": ""
+      },
+      "source": "857c38df-4631-4d28-acdf-93518ff96e48",
+      "target": "49ba8bdb-0a1a-4541-870c-1a241564519f"
+    }
+  ],
+  "links": [
+    {
+      "id": "2ea3eedc-7d2d-40d5-989b-be3fc07ba2af",
+      "type": "istar.DependencyLink",
+      "source": "cca615a1-2e50-4983-9375-95c839a01c2a",
+      "target": "49ba8bdb-0a1a-4541-870c-1a241564519f"
+    },
+    {
+      "id": "4145d6bb-5117-4d95-93f4-22bd04fff633",
+      "type": "istar.DependencyLink",
+      "source": "857c38df-4631-4d28-acdf-93518ff96e48",
+      "target": "cca615a1-2e50-4983-9375-95c839a01c2a"
+    },
+    {
+      "id": "946b092e-5be4-4cce-ae0f-2418c791f170",
+      "type": "istar.DependencyLink",
+      "source": "9687aca6-b3e9-4857-ae46-658b74d90fcf",
+      "target": "857c38df-4631-4d28-acdf-93518ff96e48"
+    },
+    {
+      "id": "a2b11da4-b1d3-4e80-a012-a19ca4f0096c",
+      "type": "istar.DependencyLink",
+      "source": "8a7e0d82-d7c6-43e0-9345-8adbaeaf0552",
+      "target": "9687aca6-b3e9-4857-ae46-658b74d90fcf"
+    },
+    {
+      "id": "5b0e9389-14d4-4abc-90c8-22e81dbc5be4",
+      "type": "istar.DependencyLink",
+      "source": "b99b0333-dd6c-4ac0-835f-9ea913263529",
+      "target": "857c38df-4631-4d28-acdf-93518ff96e48"
+    },
+    {
+      "id": "8dfcff6b-428c-458e-973b-464e6a98da1f",
+      "type": "istar.DependencyLink",
+      "source": "1aa1888a-d4d1-4e3a-8084-d19c6bc07087",
+      "target": "b99b0333-dd6c-4ac0-835f-9ea913263529"
+    },
+    {
+      "id": "31361ffe-b2e9-4b26-8851-2dda83de47ab",
+      "type": "istar.DependencyLink",
+      "source": "1c277d89-5c77-445e-b593-c808cd3f7186",
+      "target": "1aa1888a-d4d1-4e3a-8084-d19c6bc07087"
+    },
+    {
+      "id": "b91e4676-cc0b-49ae-8b30-f0bfb55b34e3",
+      "type": "istar.DependencyLink",
+      "source": "49ba8bdb-0a1a-4541-870c-1a241564519f",
+      "target": "1c277d89-5c77-445e-b593-c808cd3f7186"
+    },
+    {
+      "id": "6d90c998-d033-4bcc-acc4-f2e99ef3585d",
+      "type": "istar.DependencyLink",
+      "source": "bc2efdd0-44a5-49c2-95c0-427d15a11d87",
+      "target": "8af8497e-78a8-4dfe-a1b6-46f1dc21ef44"
+    },
+    {
+      "id": "ed048698-7d11-4599-bdb4-cdbdc4b73f1a",
+      "type": "istar.DependencyLink",
+      "source": "49ba8bdb-0a1a-4541-870c-1a241564519f",
+      "target": "bc2efdd0-44a5-49c2-95c0-427d15a11d87"
+    },
+    {
+      "id": "868f47e2-d38a-4731-bd63-120641150388",
+      "type": "istar.DependencyLink",
+      "source": "8cdf5c55-670e-4d0c-90ba-8ab228517443",
+      "target": "49ba8bdb-0a1a-4541-870c-1a241564519f"
+    },
+    {
+      "id": "5845729a-26d7-4fcf-8101-ed59280ead8d",
+      "type": "istar.DependencyLink",
+      "source": "8af8497e-78a8-4dfe-a1b6-46f1dc21ef44",
+      "target": "8cdf5c55-670e-4d0c-90ba-8ab228517443"
+    },
+    {
+      "id": "1b721619-6c2e-468e-b10b-be650b0b8cab",
+      "type": "istar.DependencyLink",
+      "source": "8df86d01-73a1-45b0-8615-7f55e3203cf4",
+      "target": "8a7e0d82-d7c6-43e0-9345-8adbaeaf0552"
+    },
+    {
+      "id": "8724f82a-729d-4e77-8224-046a93efe0d7",
+      "type": "istar.DependencyLink",
+      "source": "49ba8bdb-0a1a-4541-870c-1a241564519f",
+      "target": "8df86d01-73a1-45b0-8615-7f55e3203cf4"
+    }
+  ],
+  "display": {
+    "49ba8bdb-0a1a-4541-870c-1a241564519f": {
+      "collapsed": true
+    },
+    "8a7e0d82-d7c6-43e0-9345-8adbaeaf0552": {
+      "collapsed": true
+    },
+    "1aa1888a-d4d1-4e3a-8084-d19c6bc07087": {
+      "collapsed": true
+    },
+    "8af8497e-78a8-4dfe-a1b6-46f1dc21ef44": {
+      "collapsed": true
+    },
+    "857c38df-4631-4d28-acdf-93518ff96e48": {
+      "collapsed": true
+    }
+  },
+  "tool": "pistar.2.1.0",
+  "istar": "2.0",
+  "saveDate": "Sun, 02 Feb 2025 02:41:47 GMT",
+  "diagram": {
+    "width": 1125,
+    "height": 700,
+    "name": "A Multi-Agent System for Adapting Responses to Users in the Context of Consumer Law",
+    "customProperties": {
+      "Description": ""
+    }
+  }
+}
