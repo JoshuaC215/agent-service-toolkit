@@ -1,43 +1,41 @@
-from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 
-from core import get_model, settings
+from src.agents.similarity_agent import SimilarityAgent  
 
 
 class AgentState(MessagesState, total=False):
-    """`total=False` is PEP589 specs.
-
-    documentation: https://typing.readthedocs.io/en/latest/spec/typeddict.html#totality
-    """
+    """Estado do agente, armazenando as mensagens da conversa."""
 
 
-def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
-    preprocessor = RunnableLambda(
-        lambda state: state["messages"],
-        name="StateModifier",
+async def process_query(state: AgentState, config: RunnableConfig) -> AgentState:
+    """Processa a consulta utilizando o agente de similaridade para buscar a melhor resposta."""
+    similarity_agent = SimilarityAgent()
+    
+    # Obtém a melhor resposta entre a base interna e a API do GPT
+    best_response = similarity_agent.get_best_response(state["messages"][-1].content)
+
+    response = AIMessage(
+        content=(
+            f"\n **Categoria**: {best_response['categoria']}\n"
+            f" **Pergunta**: {best_response['pergunta']}\n"
+            f" **Resposta**: {best_response['resposta']}\n"
+            f" **Contexto**: {best_response['contexto']}\n"
+        )
     )
-    return preprocessor | model
 
-
-async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
-    model_runnable = wrap_model(m)
-    response = await model_runnable.ainvoke(state, config)
-
-    # We return a list, because this will get added to the existing list
     return {"messages": [response]}
 
 
-# Define the graph
+# Define o fluxo do chatbot
 agent = StateGraph(AgentState)
-agent.add_node("model", acall_model)
-agent.set_entry_point("model")
+agent.add_node("process_query", process_query)
+agent.set_entry_point("process_query")
 
-# Always END after blocking unsafe content
-agent.add_edge("model", END)
+# Finaliza após o processamento da resposta
+agent.add_edge("process_query", END)
 
 chatbot = agent.compile(
     checkpointer=MemorySaver(),
