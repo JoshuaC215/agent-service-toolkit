@@ -1,9 +1,7 @@
 from pathlib import Path
-from typing import Any, List, Dict
+from typing import Any, List
 from ..client import MCPClient
-from core.settings import settings
 import os
-import shutil
 
 class FileServer(MCPClient):
     """Simple file operations server with basic list and read capabilities"""
@@ -11,14 +9,15 @@ class FileServer(MCPClient):
     def __init__(self):
         super().__init__()
         # Get the agent-service-toolkit directory
-        self.agent_service_toolkit_dir = str(Path(__file__).parent.parent.parent.parent.parent.resolve())
+        self.agent_home = os.getenv('AGENT_HOME')
+        if not self.agent_home:
+            raise ValueError("AGENT_HOME environment variable must be set")
 
         self.command = "npx"
-        # Tell MCP filesystem which directories it can access: the current directory and its parent
+        # Only allow access to agent_home directory
         self.args = [
             "@modelcontextprotocol/server-filesystem",
-            self.agent_service_toolkit_dir,
-            os.path.dirname(self.agent_service_toolkit_dir)
+            self.agent_home
         ]
 
     async def list_directory(self, path: str = "./") -> Any:

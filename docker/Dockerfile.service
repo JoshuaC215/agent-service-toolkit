@@ -2,13 +2,35 @@ FROM python:3.12.3-slim
 
 WORKDIR /app
 
-ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
+ENV UV_PROJECT_ENVIRONMENT="/app/.venv"
 ENV UV_COMPILE_BYTECODE=1
+ENV PYTHONPATH=/app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    python3-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Conditional Node.js and MCP installation
+ARG MCP_ENABLED=false
+RUN if [ "$MCP_ENABLED" = "true" ] ; then \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get update \
+    && apt-get install -y nodejs \
+    && npm install -g @modelcontextprotocol/server-filesystem \
+    && rm -rf /var/lib/apt/lists/* ; \
+    fi
 
 COPY pyproject.toml .
 COPY uv.lock .
-RUN pip install --no-cache-dir uv
-RUN uv sync --frozen --no-install-project --no-dev
+
+# Create venv first, then install packages
+RUN python -m venv .venv && \
+    .venv/bin/pip install --no-cache-dir uv && \
+    .venv/bin/uv pip install --system mcp && \
+    .venv/bin/uv pip install -e .
 
 COPY src/agents/ ./agents/
 COPY src/core/ ./core/
@@ -16,4 +38,13 @@ COPY src/schema/ ./schema/
 COPY src/service/ ./service/
 COPY src/run_service.py .
 
-CMD ["python", "run_service.py"]
+# Enable MCP by default
+ENV MCP_ENABLED=true
+ENV AGENT_HOME=/app/agent_home
+
+# Create and set permissions for agent home directory
+RUN mkdir -p /app/agent_home && \
+    chown -R nobody:nogroup /app/agent_home
+
+# Use the virtual environment's Python
+CMD [".venv/bin/python", "run_service.py"]

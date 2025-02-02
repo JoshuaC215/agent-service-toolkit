@@ -1,4 +1,4 @@
 from .client import MCPClient
-from .servers.file_server import FileServer
+from .adapters.file_adapters import FileServer
 
 __all__ = ['MCPClient', 'FileServer']

@@ -7,6 +7,8 @@ services:
       - "8080:8080"
     env_file:
       - .env
+    volumes:
+      - agent_home:/app/agent_home
     develop:
       watch:
         - path: src/agents/
@@ -40,3 +42,7 @@ services:
         - path: src/streamlit_app.py
           action: sync+restart
           target: /app/streamlit_app.py
+
+volumes:
+  agent_home:
+    name: ast_agent_home  # ast = agent service toolkit
