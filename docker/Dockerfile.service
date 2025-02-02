@@ -14,11 +14,12 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Conditional Node.js and MCP installation
-ARG MCP_ENABLED=false
+ARG MCP_ENABLED=true
 RUN if [ "$MCP_ENABLED" = "true" ] ; then \
     curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get update \
     && apt-get install -y nodejs \
+    && node -v \
     && npm install -g @modelcontextprotocol/server-filesystem \
     && rm -rf /var/lib/apt/lists/* ; \
     fi
