@@ -2,36 +2,43 @@ FROM python:3.12.3-slim
 
 WORKDIR /app
 
-ENV UV_PROJECT_ENVIRONMENT="/app/.venv"
+ENV UV_PROJECT_ENVIRONMENT="/usr/local/"
 ENV UV_COMPILE_BYTECODE=1
-ENV PYTHONPATH=/app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    python3-dev \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+# Build-time argument with default false
+ARG MCP_ENABLED=false
+# Runtime environment variable that can be overridden
+ENV MCP_ENABLED=${MCP_ENABLED}
 
-# Conditional Node.js and MCP installation
-ARG MCP_ENABLED=true
+# Install Node.js and MCP dependencies if enabled
 RUN if [ "$MCP_ENABLED" = "true" ] ; then \
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get update \
-    && apt-get install -y nodejs \
-    && node -v \
-    && npm install -g @modelcontextprotocol/server-filesystem \
-    && rm -rf /var/lib/apt/lists/* ; \
+    apt-get update && \
+    apt-get install -y curl build-essential && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get update && \
+    apt-get install -y nodejs && \
+    corepack enable && \
+    npm install -g @modelcontextprotocol/server-filesystem && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* ; \
     fi
+
+# Set default AGENT_HOME only if MCP is enabled and AGENT_HOME not provided
+RUN if [ "$MCP_ENABLED" = "true" ] ; then \
+    AGENT_HOME=${AGENT_HOME:-/app/agent_home} && \
+    mkdir -p $AGENT_HOME && \
+    chown -R nobody:nogroup $AGENT_HOME ; \
+    fi
+
+# Ensure paths are set
+ENV PATH="/usr/local/bin:/usr/bin:${PATH}"
+ENV NODE_PATH=/usr/local/lib/node_modules
+ENV AGENT_HOME=${AGENT_HOME:-/app/agent_home}
 
 COPY pyproject.toml .
 COPY uv.lock .
-
-# Create venv first, then install packages
-RUN python -m venv .venv && \
-    .venv/bin/pip install --no-cache-dir uv && \
-    .venv/bin/uv pip install --system mcp && \
-    .venv/bin/uv pip install -e .
+RUN pip install --no-cache-dir uv
+RUN uv sync --frozen --no-install-project --no-dev
 
 COPY src/agents/ ./agents/
 COPY src/core/ ./core/
@@ -39,13 +46,4 @@ COPY src/schema/ ./schema/
 COPY src/service/ ./service/
 COPY src/run_service.py .
 
-# Enable MCP by default
-ENV MCP_ENABLED=true
-ENV AGENT_HOME=/app/agent_home
-
-# Create and set permissions for agent home directory
-RUN mkdir -p /app/agent_home && \
-    chown -R nobody:nogroup /app/agent_home
-
-# Use the virtual environment's Python
-CMD [".venv/bin/python", "run_service.py"]
+CMD ["python", "run_service.py"]

@@ -3,12 +3,14 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.service
+      args:
+        MCP_ENABLED: ${MCP_ENABLED:-false}  # Use value from .env during build
     ports:
       - "8080:8080"
     env_file:
       - .env
     volumes:
-      - agent_home:/app/agent_home
+      - agent_home:${AGENT_HOME:-/app/agent_home}
     develop:
       watch:
         - path: src/agents/
@@ -45,4 +47,4 @@ services:
 
 volumes:
   agent_home:
-    name: ast_agent_home  # ast = agent service toolkit
+    name: ast_agent_home
