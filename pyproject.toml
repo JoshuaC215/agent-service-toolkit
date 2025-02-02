@@ -40,6 +40,7 @@ dependencies = [
     "streamlit ~=1.40.1",
     "tiktoken >=0.8.0", # python 3.13 support
     "uvicorn ~=0.32.1",
+    "mcp ~=0.1.0",
 ]
 
 [dependency-groups]

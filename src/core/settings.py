@@ -24,6 +24,9 @@ def check_str_is_http(x: str) -> str:
 
 
 class Settings(BaseSettings):
+    # MCP Configuration
+    MCP_ENABLED: bool = False
+
     model_config = SettingsConfigDict(
         env_file=find_dotenv(),
         env_file_encoding="utf-8",
