@@ -4,6 +4,7 @@ from typing import TypeAlias
 
 class Provider(StrEnum):
     OPENAI = auto()
+    AZURE_OPENAI = auto()
     DEEPSEEK = auto()
     ANTHROPIC = auto()
     GOOGLE = auto()
@@ -18,6 +19,12 @@ class OpenAIModelName(StrEnum):
 
     GPT_4O_MINI = "gpt-4o-mini"
     GPT_4O = "gpt-4o"
+
+
+class AzureOpenAIModelName(StrEnum):
+    """Azure OpenAI model names"""
+    AZURE_GPT_4O = "azure-gpt-4o"
+    AZURE_GPT_4O_MINI = "azure-gpt-4o-mini"
 
 
 class DeepseekModelName(StrEnum):
@@ -69,6 +76,7 @@ class FakeModelName(StrEnum):
 
 AllModelEnum: TypeAlias = (
     OpenAIModelName
+    | AzureOpenAIModelName
     | DeepseekModelName
     | AnthropicModelName
     | GoogleModelName

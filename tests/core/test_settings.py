@@ -1,11 +1,12 @@
 import os
 from unittest.mock import patch
+import json
 
 import pytest
 from pydantic import SecretStr, ValidationError
 
 from core.settings import Settings, check_str_is_http
-from schema.models import AnthropicModelName, OpenAIModelName
+from schema.models import AnthropicModelName, OpenAIModelName, AzureOpenAIModelName
 
 
 def test_check_str_is_http():
@@ -82,3 +83,119 @@ def test_settings_is_dev():
 
     settings = Settings(MODE="prod", _env_file=None)
     assert settings.is_dev() is False
+
+
+def test_settings_with_azure_openai_key():
+    with patch.dict(
+        os.environ,
+        {
+            "AZURE_OPENAI_API_KEY": "test_key",
+            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
+        },
+        clear=True,
+    ):
+        settings = Settings(_env_file=None)
+        assert settings.AZURE_OPENAI_API_KEY == SecretStr("test_key")
+        assert settings.DEFAULT_MODEL == AzureOpenAIModelName.AZURE_GPT_4O_MINI
+        assert settings.AVAILABLE_MODELS == set(AzureOpenAIModelName)
+
+
+def test_settings_with_both_openai_and_azure():
+    with patch.dict(
+        os.environ,
+        {
+            "OPENAI_API_KEY": "test_openai_key",
+            "AZURE_OPENAI_API_KEY": "test_azure_key",
+            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
+        },
+        clear=True,
+    ):
+        settings = Settings(_env_file=None)
+        assert settings.OPENAI_API_KEY == SecretStr("test_openai_key")
+        assert settings.AZURE_OPENAI_API_KEY == SecretStr("test_azure_key")
+        # When multiple providers are available, OpenAI should be the default
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_4O_MINI
+        # Available models should include both OpenAI and Azure OpenAI models
+        expected_models = set(OpenAIModelName)
+        expected_models.update(set(AzureOpenAIModelName))
+        assert settings.AVAILABLE_MODELS == expected_models
+
+
+def test_settings_azure_deployment_names():
+    with patch.dict(
+        os.environ,
+        {
+            "AZURE_OPENAI_API_KEY": "test_key",
+            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
+            "AZURE_GPT_4O_DEPLOYMENT_NAME": "gpt-4",
+            "AZURE_GPT_4O_MINI_DEPLOYMENT_NAME": "gpt-4-mini",
+        },
+        clear=True,
+    ):
+        settings = Settings(_env_file=None)
+        assert settings.AZURE_GPT_4O_DEPLOYMENT_NAME == "gpt-4"
+        assert settings.AZURE_GPT_4O_MINI_DEPLOYMENT_NAME == "gpt-4-mini"
+
+
+def test_settings_azure_missing_deployment_names():
+    with patch.dict(
+        os.environ,
+        {
+            "AZURE_OPENAI_API_KEY": "test_key",
+            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
+        },
+        clear=True,
+    ):
+        with pytest.raises(ValueError, match="AZURE_GPT_4O_DEPLOYMENT_NAME must be set"):
+            Settings(_env_file=None)
+
+
+def test_settings_azure_deployment_map():
+    with patch.dict(
+        os.environ,
+        {
+            "AZURE_OPENAI_API_KEY": "test_key",
+            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deploy1", "gpt-4o-mini": "deploy2"}',
+        },
+        clear=True,
+    ):
+        settings = Settings(_env_file=None)
+        assert settings.AZURE_OPENAI_DEPLOYMENT_MAP == {
+            "gpt-4o": "deploy1",
+            "gpt-4o-mini": "deploy2"
+        }
+
+
+def test_settings_azure_invalid_deployment_map():
+    with patch.dict(
+        os.environ,
+        {
+            "AZURE_OPENAI_API_KEY": "test_key",
+            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deploy1"}',  # Missing required model
+        },
+        clear=True,
+    ):
+        with pytest.raises(ValueError, match="Missing required Azure deployments"):
+            Settings(_env_file=None)
+
+
+def test_settings_azure_openai():
+    """Test Azure OpenAI settings."""
+    deployment_map = {
+        "gpt-4o": "deployment1",
+        "gpt-4o-mini": "deployment2"
+    }
+    with patch.dict(
+        os.environ,
+        {
+            "AZURE_OPENAI_API_KEY": "test-key",
+            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
+            "AZURE_OPENAI_DEPLOYMENT_MAP": json.dumps(deployment_map),
+        },
+    ):
+        settings = Settings(_env_file=None)
+        assert settings.AZURE_OPENAI_API_KEY.get_secret_value() == "test-key"
+        assert settings.AZURE_OPENAI_ENDPOINT == "https://test.openai.azure.com"
+        assert settings.AZURE_OPENAI_DEPLOYMENT_MAP == deployment_map

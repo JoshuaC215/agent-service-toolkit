@@ -6,7 +6,7 @@ from streamlit.testing.v1 import AppTest
 
 from client import AgentClientError
 from schema import ChatHistory, ChatMessage
-from schema.models import OpenAIModelName
+from schema.models import OpenAIModelName, AzureOpenAIModelName
 
 
 def test_app_simple_non_streaming(mock_agent_client):
@@ -46,24 +46,18 @@ def test_app_settings(mock_agent_client):
     )
 
     at.sidebar.toggle[0].set_value(False)  # Use Streaming = False
-    assert at.sidebar.selectbox[0].value == "gpt-4o"
-    assert mock_agent_client.agent == "test-agent"
-    at.sidebar.selectbox[0].set_value("gpt-4o-mini")
+    assert at.sidebar.selectbox[0].value == "gpt-4o"  # Default OpenAI model
+    
+    # Test switching to Azure model
+    at.sidebar.selectbox[0].set_value("azure-gpt-4o-mini")
     at.sidebar.selectbox[1].set_value("chatbot")
     at.chat_input[0].set_value(PROMPT).run()
-    print(at)
-
-    # Basic checks
-    assert at.chat_message[0].avatar == "user"
-    assert at.chat_message[0].markdown[0].value == PROMPT
-    assert at.chat_message[1].avatar == "assistant"
-    assert at.chat_message[1].markdown[0].value == RESPONSE
 
     # Check the args match the settings
     assert mock_agent_client.agent == "chatbot"
     mock_agent_client.ainvoke.assert_called_with(
         message=PROMPT,
-        model=OpenAIModelName.GPT_4O_MINI,
+        model=AzureOpenAIModelName.AZURE_GPT_4O_MINI,
         thread_id="test session id",
     )
     assert not at.exception

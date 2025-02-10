@@ -7,7 +7,7 @@ from langchain_community.chat_models import FakeListChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
-from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
 from core.settings import settings
 from schema.models import (
@@ -20,11 +20,14 @@ from schema.models import (
     GroqModelName,
     OllamaModelName,
     OpenAIModelName,
+    AzureOpenAIModelName,
 )
 
 _MODEL_TABLE = {
     OpenAIModelName.GPT_4O_MINI: "gpt-4o-mini",
     OpenAIModelName.GPT_4O: "gpt-4o",
+    AzureOpenAIModelName.AZURE_GPT_4O_MINI: settings.AZURE_OPENAI_DEPLOYMENT_MAP["gpt-4o-mini"],
+    AzureOpenAIModelName.AZURE_GPT_4O: settings.AZURE_OPENAI_DEPLOYMENT_MAP["gpt-4o"],
     DeepseekModelName.DEEPSEEK_CHAT: "deepseek-chat",
     AnthropicModelName.HAIKU_3: "claude-3-haiku-20240307",
     AnthropicModelName.HAIKU_35: "claude-3-5-haiku-latest",
@@ -53,6 +56,19 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
 
     if model_name in OpenAIModelName:
         return ChatOpenAI(model=api_model_name, temperature=0.5, streaming=True)
+    if model_name in AzureOpenAIModelName:
+        if not settings.AZURE_OPENAI_API_KEY or not settings.AZURE_OPENAI_ENDPOINT:
+            raise ValueError("Azure OpenAI API key and endpoint must be configured")
+            
+        return AzureChatOpenAI(
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
+            deployment_name=api_model_name,
+            api_version=settings.AZURE_OPENAI_API_VERSION,
+            temperature=0.5,
+            streaming=True,
+            timeout=60,
+            max_retries=3,
+        )
     if model_name in DeepseekModelName:
         return ChatOpenAI(
             model=api_model_name,
