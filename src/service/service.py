@@ -12,10 +12,12 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AnyMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 from langsmith import Client as LangsmithClient
+from psycopg_pool import AsyncConnectionPool
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
 from core import settings
@@ -39,10 +41,45 @@ warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
 
 
+def validate_postgres_config() -> None:
+    """
+    Validate that all required PostgreSQL configuration is present.
+    Raises ValueError if any required configuration is missing.
+    """
+    required_vars = [
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_DB",
+    ]
+
+    missing = [var for var in required_vars if not getattr(settings, var, None)]
+    if missing:
+        raise ValueError(
+            f"Missing required PostgreSQL configuration: {', '.join(missing)}. "
+            "These environment variables must be set to use PostgreSQL persistence."
+        )
+
+
+def get_postgres_connection_string() -> str:
+    """Build and return the PostgreSQL connection string from settings."""
+    return (
+        f"postgresql://{settings.POSTGRES_USER}:"
+        f"{settings.POSTGRES_PASSWORD.get_secret_value()}@"
+        f"{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/"
+        f"{settings.POSTGRES_DB}"
+    )
+
+
 def verify_bearer(
     http_auth: Annotated[
         HTTPAuthorizationCredentials | None,
-        Depends(HTTPBearer(description="Please provide AUTH_SECRET api key.", auto_error=False)),
+        Depends(
+            HTTPBearer(
+                description="Please provide AUTH_SECRET api key.", auto_error=False
+            )
+        ),
     ],
 ) -> None:
     if not settings.AUTH_SECRET:
@@ -53,19 +90,56 @@ def verify_bearer(
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    # Construct agent with Sqlite checkpointer
-    # TODO: It's probably dangerous to share the same checkpointer on multiple agents
-    async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as saver:
-        agents = get_all_agent_info()
-        for a in agents:
-            agent = get_agent(a.key)
-            agent.checkpointer = saver
-        yield
-    # context manager will clean up the AsyncSqliteSaver on exit
+async def configurable_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Configurable lifespan that switches between SQLite and PostgreSQL based on settings.
+    """
+    if settings.DATABASE_TYPE.lower() == "postgres":
+        # Validate configuration before attempting connection
+        validate_postgres_config()
+
+        connection_params = {
+            "autocommit": True,
+            "prepare_threshold": 0,
+        }
+
+        try:
+            async with AsyncConnectionPool(
+                conninfo=get_postgres_connection_string(),
+                max_size=settings.POSTGRES_POOL_SIZE,
+                min_size=settings.POSTGRES_MIN_SIZE,
+                max_idle=settings.POSTGRES_MAX_IDLE,
+                kwargs=connection_params,
+            ) as pool:
+                try:
+                    saver = AsyncPostgresSaver(pool)
+                    await saver.setup()
+
+                    agents = get_all_agent_info()
+                    for a in agents:
+                        agent = get_agent(a.key)
+                        agent.checkpointer = saver
+
+                    yield
+
+                except Exception as e:
+                    logger.error(f"Error during PostgreSQL checkpointer setup: {e}")
+                    raise
+
+        except Exception as e:
+            logger.error(f"Failed to establish PostgreSQL connection: {e}")
+            raise
+
+    else:  # Default to SQLite
+        async with AsyncSqliteSaver.from_conn_string(settings.SQLITE_DB_PATH) as saver:
+            agents = get_all_agent_info()
+            for a in agents:
+                agent = get_agent(a.key)
+                agent.checkpointer = saver
+            yield
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=configurable_lifespan)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 
@@ -90,7 +164,8 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
             raise HTTPException(
-                status_code=422, detail=f"agent_config contains reserved keys: {overlap}"
+                status_code=422,
+                detail=f"agent_config contains reserved keys: {overlap}",
             )
         configurable.update(user_input.agent_config)
 
@@ -156,7 +231,9 @@ async def message_generator(
                 new_messages = event["data"]["output"]["messages"]
 
         # Also yield intermediate messages from agents.utils.CustomData.adispatch().
-        if event["event"] == "on_custom_event" and "custom_data_dispatch" in event.get("tags", []):
+        if event["event"] == "on_custom_event" and "custom_data_dispatch" in event.get(
+            "tags", []
+        ):
             new_messages = [event["data"]]
 
         for message in new_messages:
@@ -168,7 +245,10 @@ async def message_generator(
                 yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
                 continue
             # LangGraph re-sends the input message, which feels weird, so drop it
-            if chat_message.type == "human" and chat_message.content == user_input.message:
+            if (
+                chat_message.type == "human"
+                and chat_message.content == user_input.message
+            ):
                 continue
             yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
@@ -204,10 +284,16 @@ def _sse_response_example() -> dict[int, Any]:
 
 
 @router.post(
-    "/{agent_id}/stream", response_class=StreamingResponse, responses=_sse_response_example()
+    "/{agent_id}/stream",
+    response_class=StreamingResponse,
+    responses=_sse_response_example(),
 )
-@router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
-async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> StreamingResponse:
+@router.post(
+    "/stream", response_class=StreamingResponse, responses=_sse_response_example()
+)
+async def stream(
+    user_input: StreamInput, agent_id: str = DEFAULT_AGENT
+) -> StreamingResponse:
     """
     Stream an agent's response to a user input, including intermediate messages and tokens.
 
@@ -259,7 +345,9 @@ def history(input: ChatHistoryInput) -> ChatHistory:
             )
         )
         messages: list[AnyMessage] = state_snapshot.values["messages"]
-        chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
+        chat_messages: list[ChatMessage] = [
+            langchain_to_chat_message(m) for m in messages
+        ]
         return ChatHistory(messages=chat_messages)
     except Exception as e:
         logger.error(f"An exception occurred: {e}")

@@ -29,6 +29,7 @@ dependencies = [
     "langchain-ollama ~=0.2.3",
     "langgraph ~=0.2.68",
     "langgraph-checkpoint-sqlite ~=2.0.1",
+    "langgraph-checkpoint-postgres ~=2.0.13",
     "langsmith ~=0.1.145",
     "numexpr ~=2.10.1",
     "pyarrow >=18.1.0", # python 3.13 support
