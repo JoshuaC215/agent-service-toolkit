@@ -1,3 +1,4 @@
+from enum import StrEnum
 from typing import Annotated, Any
 
 from dotenv import find_dotenv
@@ -23,6 +24,11 @@ from schema.models import (
     OpenAIModelName,
     Provider,
 )
+
+
+class DatabaseType(StrEnum):
+    SQLITE = "sqlite"
+    POSTGRES = "postgres"
 
 
 def check_str_is_http(x: str) -> str:
@@ -69,7 +75,9 @@ class Settings(BaseSettings):
     LANGCHAIN_API_KEY: SecretStr | None = None
 
     # Database Configuration
-    DATABASE_TYPE: str = "sqlite"  # Options: "sqlite" or "postgres"
+    DATABASE_TYPE: DatabaseType = (
+        DatabaseType.SQLITE
+    )  # Options: DatabaseType.SQLITE or DatabaseType.POSTGRES
     SQLITE_DB_PATH: str = "checkpoints.db"
 
     # PostgreSQL Configuration
@@ -84,9 +92,7 @@ class Settings(BaseSettings):
     POSTGRES_MIN_SIZE: int = Field(
         default=3, description="Minimum number of connections in the pool"
     )
-    POSTGRES_MAX_IDLE: int = Field(
-        default=5, description="Maximum number of idle connections"
-    )
+    POSTGRES_MAX_IDLE: int = Field(default=5, description="Maximum number of idle connections")
 
     def model_post_init(self, __context: Any) -> None:
         api_keys = {
