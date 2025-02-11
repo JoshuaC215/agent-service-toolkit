@@ -1,9 +1,16 @@
 from enum import StrEnum
-from typing import Annotated, Any
-from enum import Enum
 from json import loads
+from typing import Annotated, Any
 
 from dotenv import find_dotenv
+from pydantic import (
+    BeforeValidator,
+    Field,
+    HttpUrl,
+    SecretStr,
+    TypeAdapter,
+    computed_field,
+)
 from pydantic import (
     BeforeValidator,
     Field,
@@ -18,6 +25,7 @@ from schema.models import (
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
+    AzureOpenAIModelName,
     DeepseekModelName,
     FakeModelName,
     GoogleModelName,
@@ -25,7 +33,6 @@ from schema.models import (
     OllamaModelName,
     OpenAIModelName,
     Provider,
-    AzureOpenAIModelName,
 )
 
 
@@ -102,8 +109,7 @@ class Settings(BaseSettings):
     AZURE_OPENAI_ENDPOINT: str | None = None
     AZURE_OPENAI_API_VERSION: str = "2024-02-15-preview"
     AZURE_OPENAI_DEPLOYMENT_MAP: dict[str, str] = Field(
-        default_factory=dict,
-        description="Map of model names to Azure deployment IDs"
+        default_factory=dict, description="Map of model names to Azure deployment IDs"
     )
 
     def model_post_init(self, __context: Any) -> None:
@@ -167,11 +173,13 @@ class Settings(BaseSettings):
                         raise ValueError("AZURE_OPENAI_ENDPOINT must be set")
                     if not self.AZURE_OPENAI_DEPLOYMENT_MAP:
                         raise ValueError("AZURE_OPENAI_DEPLOYMENT_MAP must be set")
-                    
+
                     # Parse deployment map if it's a string
                     if isinstance(self.AZURE_OPENAI_DEPLOYMENT_MAP, str):
                         try:
-                            self.AZURE_OPENAI_DEPLOYMENT_MAP = loads(self.AZURE_OPENAI_DEPLOYMENT_MAP)
+                            self.AZURE_OPENAI_DEPLOYMENT_MAP = loads(
+                                self.AZURE_OPENAI_DEPLOYMENT_MAP
+                            )
                         except Exception as e:
                             raise ValueError(f"Invalid AZURE_OPENAI_DEPLOYMENT_MAP JSON: {e}")
 

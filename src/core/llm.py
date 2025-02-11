@@ -7,20 +7,20 @@ from langchain_community.chat_models import FakeListChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
-from langchain_openai import ChatOpenAI, AzureChatOpenAI
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 from core.settings import settings
 from schema.models import (
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
+    AzureOpenAIModelName,
     DeepseekModelName,
     FakeModelName,
     GoogleModelName,
     GroqModelName,
     OllamaModelName,
     OpenAIModelName,
-    AzureOpenAIModelName,
 )
 
 _MODEL_TABLE = {
@@ -59,7 +59,7 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
     if model_name in AzureOpenAIModelName:
         if not settings.AZURE_OPENAI_API_KEY or not settings.AZURE_OPENAI_ENDPOINT:
             raise ValueError("Azure OpenAI API key and endpoint must be configured")
-            
+
         return AzureChatOpenAI(
             azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
             deployment_name=api_model_name,
