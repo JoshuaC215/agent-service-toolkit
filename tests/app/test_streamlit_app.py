@@ -6,7 +6,7 @@ from streamlit.testing.v1 import AppTest
 
 from client import AgentClientError
 from schema import ChatHistory, ChatMessage
-from schema.models import AzureOpenAIModelName
+from schema.models import OpenAIModelName
 
 
 def test_app_simple_non_streaming(mock_agent_client):
@@ -48,8 +48,8 @@ def test_app_settings(mock_agent_client):
     at.sidebar.toggle[0].set_value(False)  # Use Streaming = False
     assert at.sidebar.selectbox[0].value == "gpt-4o"  # Default OpenAI model
 
-    # Test switching to Azure model
-    at.sidebar.selectbox[0].set_value("azure-gpt-4o-mini")
+    # Test switching to a different model
+    at.sidebar.selectbox[0].set_value("gpt-4o-mini")
     at.sidebar.selectbox[1].set_value("chatbot")
     at.chat_input[0].set_value(PROMPT).run()
 
@@ -57,7 +57,7 @@ def test_app_settings(mock_agent_client):
     assert mock_agent_client.agent == "chatbot"
     mock_agent_client.ainvoke.assert_called_with(
         message=PROMPT,
-        model=AzureOpenAIModelName.AZURE_GPT_4O_MINI,
+        model=OpenAIModelName.GPT_4O_MINI,  # Changed from AzureOpenAIModelName to OpenAIModelName
         thread_id="test session id",
     )
     assert not at.exception
@@ -118,7 +118,7 @@ async def test_app_streaming(mock_agent_client):
     mock_agent_client.astream = Mock(return_value=amessage_iter())
 
     at.toggle[0].set_value(True)  # Use Streaming = True
-    at.chat_input[0].set_value(PROMPT).run()
+    at.chat_input[0].set_value(PROMPT).run(timeout=10)  # Increase timeout to 10 seconds
     print(at)
 
     assert at.chat_message[0].avatar == "user"

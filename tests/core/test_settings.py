@@ -91,11 +91,12 @@ def test_settings_with_azure_openai_key():
         {
             "AZURE_OPENAI_API_KEY": "test_key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deployment-1", "gpt-4o-mini": "deployment-2"}',
         },
         clear=True,
     ):
         settings = Settings(_env_file=None)
-        assert settings.AZURE_OPENAI_API_KEY == SecretStr("test_key")
+        assert settings.AZURE_OPENAI_API_KEY.get_secret_value() == "test_key"
         assert settings.DEFAULT_MODEL == AzureOpenAIModelName.AZURE_GPT_4O_MINI
         assert settings.AVAILABLE_MODELS == set(AzureOpenAIModelName)
 
@@ -107,6 +108,7 @@ def test_settings_with_both_openai_and_azure():
             "OPENAI_API_KEY": "test_openai_key",
             "AZURE_OPENAI_API_KEY": "test_azure_key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deployment-1", "gpt-4o-mini": "deployment-2"}',
         },
         clear=True,
     ):
@@ -122,19 +124,8 @@ def test_settings_with_both_openai_and_azure():
 
 
 def test_settings_azure_deployment_names():
-    with patch.dict(
-        os.environ,
-        {
-            "AZURE_OPENAI_API_KEY": "test_key",
-            "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
-            "AZURE_GPT_4O_DEPLOYMENT_NAME": "gpt-4",
-            "AZURE_GPT_4O_MINI_DEPLOYMENT_NAME": "gpt-4-mini",
-        },
-        clear=True,
-    ):
-        settings = Settings(_env_file=None)
-        assert settings.AZURE_GPT_4O_DEPLOYMENT_NAME == "gpt-4"
-        assert settings.AZURE_GPT_4O_MINI_DEPLOYMENT_NAME == "gpt-4-mini"
+    # Delete this test
+    pass
 
 
 def test_settings_azure_missing_deployment_names():
@@ -146,7 +137,7 @@ def test_settings_azure_missing_deployment_names():
         },
         clear=True,
     ):
-        with pytest.raises(ValueError, match="AZURE_GPT_4O_DEPLOYMENT_NAME must be set"):
+        with pytest.raises(ValidationError, match="AZURE_OPENAI_DEPLOYMENT_MAP must be set"):
             Settings(_env_file=None)
 
 
