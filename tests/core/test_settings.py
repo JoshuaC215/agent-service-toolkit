@@ -1,12 +1,12 @@
+import json
 import os
 from unittest.mock import patch
-import json
 
 import pytest
 from pydantic import SecretStr, ValidationError
 
 from core.settings import Settings, check_str_is_http
-from schema.models import AnthropicModelName, OpenAIModelName, AzureOpenAIModelName
+from schema.models import AnthropicModelName, AzureOpenAIModelName, OpenAIModelName
 
 
 def test_check_str_is_http():
@@ -163,7 +163,7 @@ def test_settings_azure_deployment_map():
         settings = Settings(_env_file=None)
         assert settings.AZURE_OPENAI_DEPLOYMENT_MAP == {
             "gpt-4o": "deploy1",
-            "gpt-4o-mini": "deploy2"
+            "gpt-4o-mini": "deploy2",
         }
 
 
@@ -183,10 +183,7 @@ def test_settings_azure_invalid_deployment_map():
 
 def test_settings_azure_openai():
     """Test Azure OpenAI settings."""
-    deployment_map = {
-        "gpt-4o": "deployment1",
-        "gpt-4o-mini": "deployment2"
-    }
+    deployment_map = {"gpt-4o": "deployment1", "gpt-4o-mini": "deployment2"}
     with patch.dict(
         os.environ,
         {

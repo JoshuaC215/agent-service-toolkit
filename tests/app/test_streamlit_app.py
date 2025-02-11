@@ -6,7 +6,7 @@ from streamlit.testing.v1 import AppTest
 
 from client import AgentClientError
 from schema import ChatHistory, ChatMessage
-from schema.models import OpenAIModelName, AzureOpenAIModelName
+from schema.models import AzureOpenAIModelName
 
 
 def test_app_simple_non_streaming(mock_agent_client):
@@ -47,7 +47,7 @@ def test_app_settings(mock_agent_client):
 
     at.sidebar.toggle[0].set_value(False)  # Use Streaming = False
     assert at.sidebar.selectbox[0].value == "gpt-4o"  # Default OpenAI model
-    
+
     # Test switching to Azure model
     at.sidebar.selectbox[0].set_value("azure-gpt-4o-mini")
     at.sidebar.selectbox[1].set_value("chatbot")
