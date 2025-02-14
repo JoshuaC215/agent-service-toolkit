@@ -12,13 +12,13 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AnyMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
 from core import settings
+from memory import initialize_database
 from schema import (
     ChatHistory,
     ChatHistoryInput,
@@ -54,15 +54,20 @@ def verify_bearer(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    # Construct agent with Sqlite checkpointer
-    # TODO: It's probably dangerous to share the same checkpointer on multiple agents
-    async with AsyncSqliteSaver.from_conn_string("checkpoints.db") as saver:
-        agents = get_all_agent_info()
-        for a in agents:
-            agent = get_agent(a.key)
-            agent.checkpointer = saver
-        yield
-    # context manager will clean up the AsyncSqliteSaver on exit
+    """
+    Configurable lifespan that initializes the appropriate database checkpointer based on settings.
+    """
+    try:
+        async with initialize_database() as saver:
+            await saver.setup()
+            agents = get_all_agent_info()
+            for a in agents:
+                agent = get_agent(a.key)
+                agent.checkpointer = saver
+            yield
+    except Exception as e:
+        logger.error(f"Error during database initialization: {e}")
+        raise
 
 
 app = FastAPI(lifespan=lifespan)
@@ -90,7 +95,8 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
             raise HTTPException(
-                status_code=422, detail=f"agent_config contains reserved keys: {overlap}"
+                status_code=422,
+                detail=f"agent_config contains reserved keys: {overlap}",
             )
         configurable.update(user_input.agent_config)
 
@@ -204,7 +210,9 @@ def _sse_response_example() -> dict[int, Any]:
 
 
 @router.post(
-    "/{agent_id}/stream", response_class=StreamingResponse, responses=_sse_response_example()
+    "/{agent_id}/stream",
+    response_class=StreamingResponse,
+    responses=_sse_response_example(),
 )
 @router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
 async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> StreamingResponse:

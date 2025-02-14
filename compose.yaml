@@ -18,6 +18,12 @@ services:
         - path: src/service/
           action: sync+restart
           target: /app/service/
+        - path: src/core/
+          action: sync+restart
+          target: /app/core/
+        - path: src/memory/
+          action: sync+restart
+          target: /app/memory/
 
   streamlit_app:
     build:
