@@ -46,18 +46,24 @@ def test_app_settings(mock_agent_client):
     )
 
     at.sidebar.toggle[0].set_value(False)  # Use Streaming = False
-    assert at.sidebar.selectbox[0].value == "gpt-4o"  # Default OpenAI model
-
-    # Test switching to a different model
+    assert at.sidebar.selectbox[0].value == "gpt-4o"
+    assert mock_agent_client.agent == "test-agent"
     at.sidebar.selectbox[0].set_value("gpt-4o-mini")
     at.sidebar.selectbox[1].set_value("chatbot")
     at.chat_input[0].set_value(PROMPT).run()
+    print(at)
+
+    # Basic checks
+    assert at.chat_message[0].avatar == "user"
+    assert at.chat_message[0].markdown[0].value == PROMPT
+    assert at.chat_message[1].avatar == "assistant"
+    assert at.chat_message[1].markdown[0].value == RESPONSE
 
     # Check the args match the settings
     assert mock_agent_client.agent == "chatbot"
     mock_agent_client.ainvoke.assert_called_with(
         message=PROMPT,
-        model=OpenAIModelName.GPT_4O_MINI,  # Changed from AzureOpenAIModelName to OpenAIModelName
+        model=OpenAIModelName.GPT_4O_MINI,
         thread_id="test session id",
     )
     assert not at.exception
@@ -118,7 +124,7 @@ async def test_app_streaming(mock_agent_client):
     mock_agent_client.astream = Mock(return_value=amessage_iter())
 
     at.toggle[0].set_value(True)  # Use Streaming = True
-    at.chat_input[0].set_value(PROMPT).run(timeout=10)  # Increase timeout to 10 seconds
+    at.chat_input[0].set_value(PROMPT).run()
     print(at)
 
     assert at.chat_message[0].avatar == "user"
