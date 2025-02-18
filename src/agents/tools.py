@@ -3,6 +3,8 @@ import re
 
 import numexpr
 from langchain_core.tools import BaseTool, tool
+from langchain_openai import OpenAIEmbeddings
+from langchain_chroma import Chroma
 
 
 def calculator_func(expression: str) -> str:
@@ -38,3 +40,31 @@ def calculator_func(expression: str) -> str:
 
 calculator: BaseTool = tool(calculator_func)
 calculator.name = "Calculator"
+
+
+# Create the embedding function for our project description database
+embeddings = OpenAIEmbeddings()
+
+
+# Format retrieved documents
+def format_contexts(docs):
+    return "\n\n".join(doc.page_content for doc in docs)
+
+
+# Load the stored vector database
+chroma_db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+retriever = chroma_db.as_retriever(search_kwargs={"k": 5})
+
+
+def database_search_func(query: str) -> str:
+    """Searches chroma_db for [DETAILS ON THE PURPOSE / CONTENT OF YOUR DATABAS]."""
+
+    documents = retriever.invoke(query)
+    context_str = format_contexts(documents)
+    print(f"Context: {context_str}")
+
+    return context_str
+
+
+database_search: BaseTool = tool(database_search_func)
+database_search.name = "Database_Search"  # Update name with the purpose of your database
