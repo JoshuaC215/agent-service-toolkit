@@ -156,8 +156,11 @@ async def main() -> None:
                 WELCOME = "Hello! I'm an interrupt agent. Tell me your birthday and I will predict your personality!"
             case "research-assistant":
                 WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
+            case "rag-assistant":
+                WELCOME = """Hello! I'm an AI-powered [SPECIALITY] assistant with [DATABASE INFORMATION] search capabilities. Ask me anything!"""
             case _:
                 WELCOME = "Hello! I'm an AI agent. Ask me anything!"
+
         with st.chat_message("ai"):
             st.write(WELCOME)
 
