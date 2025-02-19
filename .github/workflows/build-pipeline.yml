@@ -1,0 +1,123 @@
+name: Build and Release Python Docker Image
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, closed]  # Trigger on PR creation, updates, and closure
+
+  push:
+    branches:
+      - main  # Triggered on pushing to the main branch
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.poetry/bin:$PATH"
+
+      - name: Install dependencies with Poetry
+        run: |
+          poetry install --no-interaction --no-dev  # Install production dependencies
+
+      - name: Install Pre-commit hooks
+        run: |
+          poetry run pre-commit install  # Install pre-commit hooks
+
+      - name: Run pre-commit hooks
+        run: |
+          poetry run pre-commit run --all-files  # Run pre-commit hooks for all files
+
+  build:
+    needs: pre-commit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/python-toml-app:latest .
+          docker tag ${{ secrets.DOCKER_USERNAME }}/python-toml-app:latest ${{ secrets.DOCKER_USERNAME }}/python-toml-app:${{ github.sha }}
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/python-toml-app:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/python-toml-app:${{ github.sha }}
+
+  release:
+    needs: build
+    if: github.event.pull_request.merged == true || startsWith(github.event.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.poetry/bin:$PATH"
+
+      - name: Install dependencies with Poetry
+        run: |
+          poetry install --no-interaction --no-dev
+
+      - name: Determine PR type and create tag
+        id: determine_tag
+        run: |
+          # Check for PR labels to decide on tag
+          PR_LABELS=$(jq -r '.pull_request.labels[].name' <<< "${{ github.event }}")
+
+          # Default tag prefix
+          TAG_PREFIX="dev"
+
+          # Determine tag based on label
+          if echo "$PR_LABELS" | grep -q "Bug"; then
+            TAG_PREFIX="bugfix"
+          elif echo "$PR_LABELS" | grep -q "Feature"; then
+            TAG_PREFIX="feature"
+          elif echo "$PR_LABELS" | grep -q "Refactor"; then
+            TAG_PREFIX="refactor"
+          elif echo "$PR_LABELS" | grep -q "Release"; then
+            TAG_PREFIX="release"
+          elif echo "$PR_LABELS" | grep -q "Documentation"; then
+            TAG_PREFIX="docs"
+          fi
+
+          # Create the version tag
+          VERSION_TAG="${TAG_PREFIX}-$(date +'%Y%m%d%H%M%S')"
+          echo "Generated version tag: $VERSION_TAG"
+          echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_ENV
+
+      - name: Push release tag
+        run: |
+          git tag ${{ env.VERSION_TAG }}
+          git push origin ${{ env.VERSION_TAG }}
