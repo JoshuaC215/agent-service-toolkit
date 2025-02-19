@@ -1,0 +1,134 @@
+name: Release
+
+on:
+  pull_request_target:
+    types:
+      - closed
+    branches: [main]
+    paths: ['pyproject.toml'] # don't bother with the workflow if the toml file hasn't changed
+
+jobs:
+  prerequisites:
+    name: Check version change and release label prerequisites
+    runs-on: ubuntu-latest
+    outputs:
+      version_changed: ${{ steps.check_version.outputs.version_changed }}
+      release_label_present: ${{ steps.check_labels.outputs.release_label_present }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for version change
+        id: check_version
+        run: |
+          # Fetch the full history
+          git fetch --no-tags --prune --depth=50 origin +refs/heads/*:refs/remotes/origin/* +refs/pull/*:refs/remotes/pull/*
+
+          # Get PR's base and head SHAs
+          BASE_SHA=$(jq -r .pull_request.base.sha "$GITHUB_EVENT_PATH")
+          HEAD_SHA=$(jq -r .pull_request.head.sha "$GITHUB_EVENT_PATH")
+
+          # Check out the base commit of the PR
+          git checkout $BASE_SHA
+          BASE_VERSION=$(grep '^version = ' pyproject.toml | cut -d '"' -f 2)
+
+          echo "Base version: $BASE_VERSION"
+
+          # Check out the head commit of the PR
+          git checkout $HEAD_SHA
+          VERSION=$(grep '^version = ' pyproject.toml | cut -d '"' -f 2)
+
+          echo "PR version: $VERSION"
+
+          if [ "$VERSION" != "$BASE_VERSION" ]; then
+            echo "Version changed."
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "Version unchanged."
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if the PR has a "release" label
+        id: check_labels
+        run: |
+          LABELS=$(gh api -H 'Accept: application/vnd.github.v3.raw+json' repos/RoyalAholdDelhaize/${{ github.event.repository.name }}/issues/${{ github.event.number }}/labels | jq -r '.[].name')
+          if echo "$LABELS" | grep -qw "release"; then
+              echo "Pull request has the 'release' label."
+              echo "release_label_present=true" >> $GITHUB_OUTPUT
+          else
+              echo "Pull request does not have the 'release' label."
+              echo "release_label_present=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release:
+    needs: prerequisites
+    # ----------------------------------------------------------------------------------
+    # Github action conditionals are very sensitive and sparsely documented. Note that:
+    # Outputs in the 'prerequisites' job are assigned without quotes (true and false).
+    # As the variables are set with bash and bash variables are untyped, the values are
+    # strings, *not booleans*. Therefore, the conditionals below evaluate strings.
+    #
+    # However, the conditional github.event.pull_request.merged is a boolean, so it is
+    # evaluated without quotes.
+    #
+    # When using quotes in a conditional, you should always use '${{}}' syntax or the
+    # conditional will not be evaluated correctly, and it will not be possible to write
+    # the condition in multiple lines.
+    # ----------------------------------------------------------------------------------
+    if:  ${{ needs.prerequisites.outputs.release_label_present == 'true' &&
+      github.event.pull_request.merged == true &&
+      needs.prerequisites.outputs.version_changed == 'true' }}
+    name: Release new version with package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: python -m pip install poetry==1.5.1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'poetry'
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Build Wheel
+        run: poetry build -f wheel
+
+      - name: Fetch package version
+        id: version
+        run: |
+          VERSION=$(grep '^version = ' pyproject.toml | cut -d '"' -f 2)
+          if [[ $VERSION =~ [a-z] ]]; then
+            IS_PRERELEASE=true
+          else
+            IS_PRERELEASE=false
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        id: github-release
+        uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+          name: Datakitchen Engine v${{ steps.version.outputs.version }}
+          tag: v${{ steps.version.outputs.version }}
+          version: v${{ steps.version.outputs.version }}
+          prerelease: ${{ steps.version.outputs.is_prerelease }}
+          publish: true
+          disable-autolabeler: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload whl to GitHub release
+        run: gh release upload $TAG $FILES --clobber
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.github-release.outputs.tag_name }}
+          FILES: "dist/*.whl"
