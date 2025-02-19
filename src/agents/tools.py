@@ -2,9 +2,9 @@ import math
 import re
 
 import numexpr
+from langchain_chroma import Chroma
 from langchain_core.tools import BaseTool, tool
 from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
 
 
 def calculator_func(expression: str) -> str:
