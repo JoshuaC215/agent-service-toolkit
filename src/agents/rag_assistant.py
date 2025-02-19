@@ -40,7 +40,7 @@ instructions = f"""
     NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.
 
     A few things to remember:
-    - If you have access to multiple databases, gather information from a diverse range of sources before crafting your response.  
+    - If you have access to multiple databases, gather information from a diverse range of sources before crafting your response.
     - Please include markdown-formatted links to any citations used in your response. Only include one
     or two citations per response unless more are needed. ONLY USE LINKS RETURNED BY THE TOOLS.
     - Only use information from the database. Do not use information from outside sources.
@@ -57,7 +57,9 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
 
 
 def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
-    content = f"This conversation was flagged for unsafe content: {', '.join(safety.unsafe_categories)}"
+    content = (
+        f"This conversation was flagged for unsafe content: {', '.join(safety.unsafe_categories)}"
+    )
     return AIMessage(content=content)
 
 
@@ -118,7 +120,9 @@ def check_safety(state: AgentState) -> Literal["unsafe", "safe"]:
             return "safe"
 
 
-agent.add_conditional_edges("guard_input", check_safety, {"unsafe": "block_unsafe_content", "safe": "model"})
+agent.add_conditional_edges(
+    "guard_input", check_safety, {"unsafe": "block_unsafe_content", "safe": "model"}
+)
 
 # Always END after blocking unsafe content
 agent.add_edge("block_unsafe_content", END)
