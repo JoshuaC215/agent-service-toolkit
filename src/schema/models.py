@@ -61,6 +61,7 @@ class AWSModelName(StrEnum):
     """https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html"""
 
     BEDROCK_HAIKU = "bedrock-3.5-haiku"
+    BEDROCK_SONNET = "bedrock-3.5-sonnet"
 
 
 class OllamaModelName(StrEnum):

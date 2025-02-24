@@ -39,6 +39,7 @@ _MODEL_TABLE = {
     GroqModelName.LLAMA_33_70B: "llama-3.3-70b-versatile",
     GroqModelName.LLAMA_GUARD_3_8B: "llama-guard-3-8b",
     AWSModelName.BEDROCK_HAIKU: "anthropic.claude-3-5-haiku-20241022-v1:0",
+    AWSModelName.BEDROCK_SONNET: "anthropic.claude-3-5-sonnet-20240620-v1:0",
     OllamaModelName.OLLAMA_GENERIC: "ollama",
     FakeModelName.FAKE: "fake",
 }
