@@ -141,7 +141,10 @@ async def main() -> None:
     messages: list[ChatMessage] = st.session_state.messages
 
     if len(messages) == 0:
-        WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
+        if agent_client.agent == "rag-assistant":
+            WELCOME = """Hello! I'm an AI-powered [SPECIALITY] assistant with [DATABASE INFORMATION] search capabilities. Ask me anything!"""
+        else:
+            WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
         with st.chat_message("ai"):
             st.write(WELCOME)
 
