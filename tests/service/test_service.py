@@ -6,6 +6,7 @@ import langsmith
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.pregel.types import StateSnapshot
+from langgraph.types import Command
 
 from agents.agents import Agent
 from schema import ChatHistory, ChatMessage, ServiceMetadata
@@ -17,11 +18,55 @@ def test_invoke(test_client, mock_agent) -> None:
     ANSWER = "The weather in Tokyo is 70 degrees."
     mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=ANSWER)]}
 
+    # Mock the agent state to ensure snapshot.next is empty
+    mock_agent.aget_state.return_value = StateSnapshot(
+        values={"messages": []},
+        next=(),
+        config={},
+        metadata=None,
+        created_at=None,
+        parent_config=None,
+        tasks=(),
+    )
+
     response = test_client.post("/invoke", json={"message": QUESTION})
     assert response.status_code == 200
 
     mock_agent.ainvoke.assert_awaited_once()
     input_message = mock_agent.ainvoke.await_args.kwargs["input"]["messages"][0]
+    assert input_message.content == QUESTION
+
+    output = ChatMessage.model_validate(response.json())
+    assert output.type == "ai"
+    assert output.content == ANSWER
+
+
+def test_interrupt_invoke(test_client, mock_agent) -> None:
+    QUESTION = "What is the weather in Tokyo?"
+    ANSWER = "The weather in Tokyo is 70 degrees."
+    mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=ANSWER)]}
+
+    # Mock the agent state to ensure snapshot.next is empty
+    mock_agent.aget_state.return_value = StateSnapshot(
+        values={"messages": []},
+        next=("human_input"),
+        config={},
+        metadata=None,
+        created_at=None,
+        parent_config=None,
+        tasks=(),
+    )
+
+    response = test_client.post("/invoke", json={"message": QUESTION})
+    assert response.status_code == 200
+
+    mock_agent.ainvoke.assert_awaited_once()
+    input_command = mock_agent.ainvoke.await_args.kwargs["input"]
+
+    # Assert that the input is an instance of Command
+    assert isinstance(input_command, Command)
+
+    input_message = input_command.update["messages"][0]
     assert input_message.content == QUESTION
 
     output = ChatMessage.model_validate(response.json())
@@ -42,6 +87,17 @@ def test_invoke_custom_agent(test_client, mock_agent) -> None:
 
     # Configure our custom mock agent
     mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=CUSTOM_ANSWER)]}
+
+    # Mock the agent state to ensure snapshot.next is empty
+    mock_agent.aget_state.return_value = StateSnapshot(
+        values={"messages": []},
+        next=(),
+        config={},
+        metadata=None,
+        created_at=None,
+        parent_config=None,
+        tasks=(),
+    )
 
     # Patch get_agent to return the correct agent based on the provided agent_id
     def agent_lookup(agent_id):

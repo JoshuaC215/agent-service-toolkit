@@ -86,12 +86,14 @@ async def info() -> ServiceMetadata:
     )
 
 
-def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
+async def _parse_input(
+    user_input: UserInput, agent: CompiledStateGraph
+) -> tuple[dict[str, Any], UUID]:
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
+    messages = {"messages": [HumanMessage(content=user_input.message)]}
 
     configurable = {"thread_id": thread_id, "model": user_input.model}
-
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
             raise HTTPException(
@@ -99,13 +101,20 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
                 detail=f"agent_config contains reserved keys: {overlap}",
             )
         configurable.update(user_input.agent_config)
+    config = RunnableConfig(configurable=configurable, run_id=run_id)
+
+    input = messages
+    # Human-in-the-loop: Retrieve the current state to check if an interruption has occurred.
+    snapshot = await agent.aget_state(config)
+    if snapshot.next:
+        resume_node_name = snapshot.next[0]
+        # Human-in-the-loop: Create a command to resume the node.
+        # https://langchain-ai.github.io/langgraph/concepts/human_in_the_loop/#validating-human-input
+        input = Command(goto=resume_node_name, update=messages)
 
     kwargs = {
-        "input": {"messages": [HumanMessage(content=user_input.message)]},
-        "config": RunnableConfig(
-            configurable=configurable,
-            run_id=run_id,
-        ),
+        "input": input,
+        "config": config,
     }
     return kwargs, run_id
 
@@ -121,7 +130,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     is also attached to messages for recording feedback.
     """
     agent: CompiledStateGraph = get_agent(agent_id)
-    kwargs, run_id = _parse_input(user_input)
+    kwargs, run_id = await _parse_input(user_input, agent)
     try:
         response = await agent.ainvoke(**kwargs)
         output = langchain_to_chat_message(response["messages"][-1])
@@ -141,7 +150,7 @@ async def message_generator(
     This is the workhorse method for the /stream endpoint.
     """
     agent: CompiledStateGraph = get_agent(agent_id)
-    kwargs, run_id = _parse_input(user_input)
+    kwargs, run_id = await _parse_input(user_input, agent)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
     async for event in agent.astream_events(**kwargs, version="v2"):
@@ -156,10 +165,13 @@ async def message_generator(
             # This filters out everything except for "graph node finished"
             and any(t.startswith("graph:step:") for t in event.get("tags", []))
         ):
-            if isinstance(event["data"]["output"], Command):
-                new_messages = event["data"]["output"].update.get("messages", [])
-            elif "messages" in event["data"]["output"]:
-                new_messages = event["data"]["output"]["messages"]
+            output = event.get("data", {}).get("output", None)
+            if output is None:
+                pass
+            elif isinstance(output, Command):
+                new_messages = output.update.get("messages", [])
+            elif "messages" in output:
+                new_messages = output["messages"]
 
         # Also yield intermediate messages from agents.utils.CustomData.adispatch().
         if event["event"] == "on_custom_event" and "custom_data_dispatch" in event.get("tags", []):
