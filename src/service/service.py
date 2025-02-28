@@ -157,7 +157,16 @@ async def message_generator(
             and any(t.startswith("graph:step:") for t in event.get("tags", []))
         ):
             if isinstance(event["data"]["output"], Command):
-                new_messages = event["data"]["output"].update.get("messages", [])
+                update_data = event["data"]["output"].update
+                if isinstance(update_data, list):
+                    new_messages = []
+                    for key, value in update_data:
+                        if key == "messages":
+                            new_messages.extend(value)
+                        else:
+                            new_messages = update_data.get("messages", [])
+                else:
+                    new_messages = event["data"]["output"].update.get("messages", [])
             elif "messages" in event["data"]["output"]:
                 new_messages = event["data"]["output"]["messages"]
 

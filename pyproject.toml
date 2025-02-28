@@ -30,6 +30,7 @@ dependencies = [
     "langgraph ~=0.2.68",
     "langgraph-checkpoint-sqlite ~=2.0.1",
     "langgraph-checkpoint-postgres ~=2.0.13",
+    "langgraph-supervisor ~=0.0.4",
     "langsmith ~=0.1.145",
     "numexpr ~=2.10.1",
     "psycopg[binary,pool] ~=3.2.4",
