@@ -71,10 +71,12 @@ class OllamaModelName(StrEnum):
 
     OLLAMA_GENERIC = "ollama"
 
+
 class OpenAICompatibleName(StrEnum):
     """https://platform.openai.com/docs/guides/text-generation"""
 
     OPENAI_COMPATIBLE = "openai-compatible"
+
 
 class FakeModelName(StrEnum):
     """Fake model for testing."""

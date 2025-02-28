@@ -64,8 +64,8 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         return ChatOpenAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in OpenAICompatibleName:
         return ChatOpenAI(
-            model=settings.COMPATIBLE_MODEL, 
-            temperature=0.5, 
+            model=settings.COMPATIBLE_MODEL,
+            temperature=0.5,
             streaming=True,
             openai_api_base=settings.COMPATIBLE_BASE_URL,
             openai_api_key=settings.COMPATIBLE_API_KEY,
