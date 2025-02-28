@@ -23,8 +23,8 @@ from schema.models import (
     GoogleModelName,
     GroqModelName,
     OllamaModelName,
-    OpenAIModelName,
     OpenAICompatibleName,
+    OpenAIModelName,
     Provider,
 )
 

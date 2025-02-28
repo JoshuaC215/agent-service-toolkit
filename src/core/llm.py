@@ -20,8 +20,8 @@ from schema.models import (
     GoogleModelName,
     GroqModelName,
     OllamaModelName,
-    OpenAIModelName,
     OpenAICompatibleName,
+    OpenAIModelName,
 )
 
 _MODEL_TABLE = {
