@@ -46,6 +46,7 @@ class GoogleModelName(StrEnum):
     """https://ai.google.dev/gemini-api/docs/models/gemini"""
 
     GEMINI_15_FLASH = "gemini-1.5-flash"
+    GEMINI_20_FLASH = "gemini-2.0-flash"
 
 
 class GroqModelName(StrEnum):
