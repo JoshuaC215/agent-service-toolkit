@@ -21,11 +21,13 @@ from schema.models import (
     GroqModelName,
     OllamaModelName,
     OpenAIModelName,
+    OpenAICompatibleName,
 )
 
 _MODEL_TABLE = {
     OpenAIModelName.GPT_4O_MINI: "gpt-4o-mini",
     OpenAIModelName.GPT_4O: "gpt-4o",
+    OpenAICompatibleName.OPENAI_COMPATIBLE: settings.COMPATIBLE_MODEL,
     AzureOpenAIModelName.AZURE_GPT_4O_MINI: settings.AZURE_OPENAI_DEPLOYMENT_MAP.get(
         "gpt-4o-mini", ""
     ),
@@ -59,6 +61,14 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
 
     if model_name in OpenAIModelName:
         return ChatOpenAI(model=api_model_name, temperature=0.5, streaming=True)
+    if model_name in OpenAICompatibleName:
+        return ChatOpenAI(
+            model=settings.COMPATIBLE_MODEL, 
+            temperature=0.5, 
+            streaming=True,
+            openai_api_base=settings.COMPATIBLE_BASE_URL,
+            openai_api_key=settings.COMPATIBLE_API_KEY,
+        )
     if model_name in AzureOpenAIModelName:
         if not settings.AZURE_OPENAI_API_KEY or not settings.AZURE_OPENAI_ENDPOINT:
             raise ValueError("Azure OpenAI API key and endpoint must be configured")

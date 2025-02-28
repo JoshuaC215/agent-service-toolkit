@@ -4,6 +4,7 @@ from typing import TypeAlias
 
 class Provider(StrEnum):
     OPENAI = auto()
+    OPENAI_COMPATIBLE = auto()
     AZURE_OPENAI = auto()
     DEEPSEEK = auto()
     ANTHROPIC = auto()
@@ -70,6 +71,10 @@ class OllamaModelName(StrEnum):
 
     OLLAMA_GENERIC = "ollama"
 
+class OpenAICompatibleName(StrEnum):
+    """https://platform.openai.com/docs/guides/text-generation"""
+
+    OPENAI_COMPATIBLE = "openai-compatible"
 
 class FakeModelName(StrEnum):
     """Fake model for testing."""
@@ -79,6 +84,7 @@ class FakeModelName(StrEnum):
 
 AllModelEnum: TypeAlias = (
     OpenAIModelName
+    | OpenAICompatibleName
     | AzureOpenAIModelName
     | DeepseekModelName
     | AnthropicModelName
