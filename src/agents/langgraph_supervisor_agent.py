@@ -30,18 +30,18 @@ def web_search(query: str) -> str:
 
 
 math_agent = create_react_agent(
-    model=model,
+    model=model.with_config(tags=["skip_stream"]),
     tools=[add, multiply],
     name="math_expert",
     prompt="You are a math expert. Always use one tool at a time.",
-)
+).with_config(tags=["skip_stream"])
 
 research_agent = create_react_agent(
-    model=model,
+    model=model.with_config(tags=["skip_stream"]),
     tools=[web_search],
     name="research_expert",
     prompt="You are a world class researcher with access to web search. Do not do any math.",
-)
+).with_config(tags=["skip_stream"])
 
 # Create supervisor workflow
 workflow = create_supervisor(

@@ -191,7 +191,7 @@ async def message_generator(
         if (
             event["event"] == "on_chat_model_stream"
             and user_input.stream_tokens
-            and "llama_guard" not in event.get("tags", [])
+            and "skip_stream" not in event.get("tags", [])
         ):
             content = remove_tool_calls(event["data"]["chunk"].content)
             if content:
