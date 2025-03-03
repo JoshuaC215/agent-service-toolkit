@@ -236,11 +236,11 @@ async def draw_messages(
 
         if msg.tool_calls:
             if any(
-                tool_call["name"].startswith("transfer_to_") or
-                tool_call["name"].startswith("transfer_back_to_")
+                tool_call["name"].startswith("transfer_to_")
+                or tool_call["name"].startswith("transfer_back_to_")
                 for tool_call in msg.tool_calls
             ):
-                #print("skipping supervisor handoff message", msg)
+                # print("skipping supervisor handoff message", msg)
                 continue
         match msg.type:
             # A message from the user, the easiest case
@@ -328,7 +328,7 @@ async def draw_messages(
                 status.add_and_draw_task_data(task_data)
 
             case "tool":
-                #print("skipping tool message", msg)
+                # print("skipping tool message", msg)
                 continue
 
             # In case of an unexpected message type, log an error and stop

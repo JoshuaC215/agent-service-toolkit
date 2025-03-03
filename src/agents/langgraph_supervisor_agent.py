@@ -1,17 +1,21 @@
-from langgraph_supervisor import create_supervisor
-from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.prebuilt import create_react_agent
+from langgraph_supervisor import create_supervisor
+
 from core import get_model, settings
 
 model = get_model(settings.DEFAULT_MODEL)
+
 
 def add(a: float, b: float) -> float:
     """Add two numbers."""
     return a + b
 
+
 def multiply(a: float, b: float) -> float:
     """Multiply two numbers."""
     return a * b
+
 
 def web_search(query: str) -> str:
     """Search the web for information."""
@@ -24,18 +28,19 @@ def web_search(query: str) -> str:
         "5. **Google (Alphabet)**: 181,269 employees."
     )
 
+
 math_agent = create_react_agent(
     model=model,
     tools=[add, multiply],
     name="math_expert",
-    prompt="You are a math expert. Always use one tool at a time."
+    prompt="You are a math expert. Always use one tool at a time.",
 )
 
 research_agent = create_react_agent(
     model=model,
     tools=[web_search],
     name="research_expert",
-    prompt="You are a world class researcher with access to web search. Do not do any math."
+    prompt="You are a world class researcher with access to web search. Do not do any math.",
 )
 
 # Create supervisor workflow
