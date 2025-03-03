@@ -47,6 +47,7 @@ dependencies = [
     "streamlit ~=1.40.1",
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",
+    "mcp ~=1.2.1",
 ]
 
 [dependency-groups]
