@@ -15,8 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Python 3.13 should theoretically work,
-        # but having trouble running in Github Actions
         python-version: ["3.11", "3.12", "3.13"]
 
     steps:
