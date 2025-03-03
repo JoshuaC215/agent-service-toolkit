@@ -33,6 +33,8 @@ dependencies = [
     "langgraph-checkpoint-postgres ~=2.0.13",
     "langsmith ~=0.1.145",
     "numexpr ~=2.10.1",
+    "numpy ~=1.26.4; python_version <= '3.12'",
+    "numpy ~=2.2.3; python_version >= '3.13'",
     "psycopg[binary,pool] ~=3.2.4",
     "pyarrow >=18.1.0",
     "pydantic ~=2.10.1",
