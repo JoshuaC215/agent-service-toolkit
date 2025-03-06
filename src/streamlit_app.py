@@ -141,7 +141,15 @@ async def main() -> None:
     messages: list[ChatMessage] = st.session_state.messages
 
     if len(messages) == 0:
-        WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
+        match agent_client.agent:
+            case "chatbot":
+                WELCOME = "Hello! I'm a simple chatbot. Ask me anything!"
+            case "interrupt-agent":
+                WELCOME = "Hello! I'm an interrupt agent. Tell me your birthday and I will predict your personality!"
+            case "research-assistant":
+                WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
+            case _:
+                WELCOME = "Hello! I'm an AI agent. Ask me anything!"
         with st.chat_message("ai"):
             st.write(WELCOME)
 
