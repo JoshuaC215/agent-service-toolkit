@@ -34,6 +34,10 @@ async def main() -> None:
             if not interrupted_tasks:
                 result["messages"][-1].pretty_print()
                 break
+            
+            # we have interrupts, but print any other messages
+            if len(result["messages"]) > 0:
+                result["messages"][-1].pretty_print()
 
             # print value of first interrupted task
             print("================================ Interrupt =================================")
