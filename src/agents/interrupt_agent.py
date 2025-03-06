@@ -28,19 +28,34 @@ def wrap_model(model: BaseChatModel, system_prompt: SystemMessage) -> RunnableSe
     )
     return preprocessor | model
 
+background_prompt = SystemMessagePromptTemplate.from_template("""
+You are a helpful assistant that tells users there zodiac sign.
+Provide a one paragraph summary of the origin of zodiac signs.
+Don't tell the user what their sign is, you are just demonstrating your knowledge on the topic.
+""")
+
+async def background(state: AgentState, config: RunnableConfig) -> AgentState:
+    """This node is to demonstrate doing work before the interrupt"""
+
+    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    model_runnable = wrap_model(m, background_prompt.format())
+    response = await model_runnable.ainvoke(state, config)
+
+    return {
+        "messages": [
+            AIMessage(content=response.content) 
+        ]
+    }
+
 
 birthdate_extraction_prompt = SystemMessagePromptTemplate.from_template("""
 You are an expert at extracting birthdates from conversational text.
     
 Rules for extraction:
-- Look for explicit mentions of birthdates
+- Look for user messages that mention birthdates
 - Consider various date formats (MM/DD/YYYY, YYYY-MM-DD, Month Day, Year)
 - Validate that the date is reasonable (not in the future)
-- If no clear birthdate is found, return None
-
-Output a JSON object with:
-- birthdate: A datetime object or null
-- reasoning: Explanation of the extraction process
+- If no clear birthdate was provided by the user, return None
 """)
 
 class BirthdateExtraction(BaseModel):
@@ -52,6 +67,7 @@ class BirthdateExtraction(BaseModel):
     )
 
 async def determine_birthdate(state: AgentState, config: RunnableConfig) -> AgentState:
+    """This node examines the conversation history to determine user's birthdate.  If no birthdate is found, it will perform an interrupt before proceeding."""
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m.with_structured_output(BirthdateExtraction), birthdate_extraction_prompt.format())
     response = await model_runnable.ainvoke(state, config)
@@ -78,6 +94,7 @@ What is the sign of somebody born on {birthdate}?
 """)
 
 async def determine_sign(state: AgentState, config: RunnableConfig) -> AgentState:
+    """This node determines the zodiac sign of the user based on their birthdate."""
     if not state.get("birthdate"):
          raise ValueError("No birthdate found in state")
 
@@ -94,9 +111,12 @@ async def determine_sign(state: AgentState, config: RunnableConfig) -> AgentStat
 
 # Define the graph
 agent = StateGraph(AgentState)
+agent.add_node("background", background)
 agent.add_node("determine_birthdate", determine_birthdate)
 agent.add_node("determine_sign", determine_sign)
-agent.set_entry_point("determine_birthdate")
+
+agent.set_entry_point("background")
+agent.add_edge("background","determine_birthdate")
 agent.add_edge("determine_birthdate", "determine_sign")
 agent.add_edge("determine_sign", END)
 
