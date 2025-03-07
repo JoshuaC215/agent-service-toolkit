@@ -7,6 +7,7 @@ from agents.chatbot import chatbot
 from agents.command_agent import command_agent
 from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
 from agents.research_assistant import research_assistant
+from agents.interrupt_agent import interrupt_agent
 from schema import AgentInfo
 
 DEFAULT_AGENT = "research-assistant"
@@ -28,6 +29,7 @@ agents: dict[str, Agent] = {
     "langgraph-supervisor-agent": Agent(
         description="A langgraph supervisor agent", graph=langgraph_supervisor_agent
     ),
+    "interrupt-agent": Agent(description="An agent the uses interrupts.", graph=interrupt_agent),
 }
 
 
