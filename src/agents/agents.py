@@ -6,6 +6,7 @@ from agents.bg_task_agent.bg_task_agent import bg_task_agent
 from agents.chatbot import chatbot
 from agents.command_agent import command_agent
 from agents.research_assistant import research_assistant
+from agents.interrupt_agent import interrupt_agent
 from schema import AgentInfo
 
 DEFAULT_AGENT = "research-assistant"
@@ -24,6 +25,7 @@ agents: dict[str, Agent] = {
     ),
     "command-agent": Agent(description="A command agent.", graph=command_agent),
     "bg-task-agent": Agent(description="A background task agent.", graph=bg_task_agent),
+    "interrupt-agent": Agent(description="An agent the uses interrupts.", graph=interrupt_agent),
 }
 
 
