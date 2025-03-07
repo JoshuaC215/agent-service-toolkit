@@ -13,7 +13,7 @@ def test_app_simple_non_streaming(mock_agent_client):
     """Test the full app - happy path"""
     at = AppTest.from_file("../../src/streamlit_app.py").run()
 
-    WELCOME_START = "Hello! I'm an AI-powered research assistant"
+    WELCOME_START = "Hello! I'm an AI agent. Ask me anything!"
     PROMPT = "Know any jokes?"
     RESPONSE = "Sure! Here's a joke:"
 
