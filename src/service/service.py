@@ -98,16 +98,27 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
                 detail=f"agent_config contains reserved keys: {overlap}",
             )
         configurable.update(user_input.agent_config)
-
-    kwargs = {
-        "input": {"messages": [HumanMessage(content=user_input.message)]},
-        "config": RunnableConfig(
+    
+    config = RunnableConfig(
             configurable=configurable,
             run_id=run_id,
-        ),
+    )
+    input = {"messages": [HumanMessage(content=user_input.message)]}
+    kwargs = {
+        # leaving this here for future use
     }
-    return kwargs, run_id
+    return kwargs, run_id, config, input
 
+async def _resume_interrupt_if_required(agent: CompiledStateGraph, config: RunnableConfig, user_input: UserInput, intiial_input: Any) -> Any:
+    # Get current state to check for interrupts
+    state = await agent.aget_state(config=config)
+    # Create array of interrupted tasks
+    interrupted_tasks = [task for task in state.tasks if hasattr(task, 'interrupts') and task.interrupts]
+    if interrupted_tasks:
+        # assume user input is response to resume agent execution from interrupt
+        return Command(resume=user_input.message)
+    else:
+        return intiial_input
 
 @router.post("/{agent_id}/invoke")
 @router.post("/invoke")
@@ -120,9 +131,23 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     is also attached to messages for recording feedback.
     """
     agent: CompiledStateGraph = get_agent(agent_id)
-    kwargs, run_id = _parse_input(user_input)
+    kwargs, run_id, config, input = _parse_input(user_input)
     try:
-        response = await agent.ainvoke(**kwargs)
+        input = await _resume_interrupt_if_required(agent, config, user_input, input)
+
+        response = await agent.ainvoke(input=input, config=config, **kwargs)
+
+        # see if any task was interrupted
+        state = await agent.aget_state(config=config)
+        interrupted_tasks = [task for task in state.tasks if hasattr(task, 'interrupts') and task.interrupts]
+        if interrupted_tasks:
+            # return the value of the first interrupt in the first interrupted task
+            output = langchain_to_chat_message(
+                AIMessage(content=interrupted_tasks[0].interrupts[0].value)
+            )
+            output.run_id = str(run_id)
+            return output
+
         output = langchain_to_chat_message(response["messages"][-1])
         output.run_id = str(run_id)
         return output
@@ -140,37 +165,56 @@ async def message_generator(
     This is the workhorse method for the /stream endpoint.
     """
     agent: CompiledStateGraph = get_agent(agent_id)
-    kwargs, run_id = _parse_input(user_input)
+    kwargs, run_id, config, input = _parse_input(user_input)
+    
+    input = await _resume_interrupt_if_required(agent, config, user_input, input)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
     async for stream_event in agent.astream(
-        **kwargs, stream_mode=["updates", "messages", "custom"]
-    ):
+        input=input, config=config, stream_mode=["updates", "messages", "custom"]
+    , **kwargs):
         if not isinstance(stream_event, tuple):
             continue
         stream_mode, event = stream_event
         new_messages = []
         if stream_mode == "updates":
+            if "config" in kwargs:
+                # Get current state to check for interrupts
+                state = await agent.aget_state(kwargs["config"])
+                # Create array of interrupted tasks
+                interrupted_tasks = [task for task in state.tasks if hasattr(task, 'interrupts') and task.interrupts]
+                if interrupted_tasks:
+                    # for every interrupted task, add value of every interrupt to new_messages
+                    for task in interrupted_tasks:
+                        for interrupt in task.interrupts:
+                            new_messages.append(AIMessage(content=interrupt.value))
             for node, updates in event.items():
-                new_messages = updates.get("messages", [])
+                update_messages = updates.get("messages", [])
                 # special cases for using langgraph-supervisor library
                 if node == "supervisor":
                     # Get only the last AIMessage since supervisor includes all previous messages
                     ai_messages = [msg for msg in new_messages if isinstance(msg, AIMessage)]
                     if ai_messages:
-                        new_messages = [ai_messages[-1]]
+                        update_messages = [ai_messages[-1]]
                 if node in ("research_expert", "math_expert"):
                     # By default the sub-agent output is returned as an AIMessage.
                     # Convert it to a ToolMessage so it displays in the UI as a tool response.
                     msg = ToolMessage(
-                        content=new_messages[0].content,
+                        content=update_messages[0].content,
                         name=node,
                         tool_call_id="",
                     )
-                    new_messages = [msg]
+                    update_messages = [msg]
+                new_messages.extend(update_messages)
 
         if stream_mode == "custom":
             new_messages = [event]
+
+        ## TODO: REWORK THIS FOR NEW METHOD
+        # Also yield interrupts from the agent (event['data']['chunk']['__interrupt__'] will be defined)
+        if event["event"] == "on_chain_stream" and 'data' in event and 'chunk' in event['data'] and type(event['data']['chunk']) is dict and '__interrupt__' in event['data']['chunk']:
+            for interrupt in event['data']['chunk']['__interrupt__']:
+                new_messages.append(AIMessage(content=interrupt.value))
 
         for message in new_messages:
             try:
