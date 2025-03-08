@@ -49,6 +49,14 @@ ModelT: TypeAlias = (
 )
 
 
+class FakeToolModel(FakeListChatModel):
+    def __init__(self, responses: list[str]):
+        super().__init__(responses=responses)
+
+    def bind_tools(self, tools):
+        return self
+
+
 @cache
 def get_model(model_name: AllModelEnum, /) -> ModelT:
     # NOTE: models with streaming=True will send tokens as they are generated
@@ -99,4 +107,4 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             chat_ollama = ChatOllama(model=settings.OLLAMA_MODEL, temperature=0.5)
         return chat_ollama
     if model_name in FakeModelName:
-        return FakeListChatModel(responses=["This is a test response from the fake model."])
+        return FakeToolModel(responses=["This is a test response from the fake model."])

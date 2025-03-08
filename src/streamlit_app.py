@@ -233,6 +233,7 @@ async def draw_messages(
             st.error(f"Unexpected message type: {type(msg)}")
             st.write(msg)
             st.stop()
+
         match msg.type:
             # A message from the user, the easiest case
             case "human":
@@ -317,6 +318,7 @@ async def draw_messages(
                         status = TaskDataStatus()
 
                 status.add_and_draw_task_data(task_data)
+
 
             # In case of an unexpected message type, log an error and stop
             case _:
