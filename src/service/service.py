@@ -10,10 +10,9 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import AnyMessage, HumanMessage
+from langchain_core.messages import AnyMessage, HumanMessage, AIMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.types import Command
 from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
@@ -30,9 +29,7 @@ from schema import (
     UserInput,
 )
 from service.utils import (
-    convert_message_content_to_string,
     langchain_to_chat_message,
-    remove_tool_calls,
 )
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
@@ -144,62 +141,36 @@ async def message_generator(
     kwargs, run_id = _parse_input(user_input)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
-    async for event in agent.astream_events(**kwargs, version="v2"):
-        if not event:
+    async for event in agent.astream(**kwargs, stream_mode=["updates"]):
+        if not isinstance(event, tuple):
             continue
-
-        new_messages = []
-        # Yield messages written to the graph state after node execution finishes.
-        if (
-            event["event"] == "on_chain_end"
-            # on_chain_end gets called a bunch of times in a graph execution
-            # This filters out everything except for "graph node finished"
-            and any(t.startswith("graph:step:") for t in event.get("tags", []))
-        ):
-            if isinstance(event["data"]["output"], Command):
-                update_data = event["data"]["output"].update
-                if isinstance(update_data, list):
-                    new_messages = []
-                    for key, value in update_data:
-                        if key == "messages":
-                            new_messages.extend(value)
-                        else:
-                            new_messages = update_data.get("messages", [])
+        stream_mode, payload = event
+        if stream_mode == "updates":
+            new_messages = []
+            for key, value in payload.items():
+                # special case for using langgraph-supervisor lib WIP
+                if key == "supervisor":
+                    # Get only the most recent AIMessage since supervisor includes all pervious messages
+                    ai_messages = [
+                        msg for msg in value.get("messages", []) if isinstance(msg, AIMessage)
+                    ]
+                    # Skip supervisor transfer tool messages
+                    if ai_messages and not ai_messages[-1].tool_calls:
+                        new_messages = [ai_messages[-1]]
                 else:
-                    new_messages = event["data"]["output"].update.get("messages", [])
-            elif "messages" in event["data"]["output"]:
-                new_messages = event["data"]["output"]["messages"]
-
-        # Also yield intermediate messages from agents.utils.CustomData.adispatch().
-        if event["event"] == "on_custom_event" and "custom_data_dispatch" in event.get("tags", []):
-            new_messages = [event["data"]]
-
-        for message in new_messages:
-            try:
-                chat_message = langchain_to_chat_message(message)
-                chat_message.run_id = str(run_id)
-            except Exception as e:
-                logger.error(f"Error parsing message: {e}")
-                yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
-                continue
-            # LangGraph re-sends the input message, which feels weird, so drop it
-            if chat_message.type == "human" and chat_message.content == user_input.message:
-                continue
-            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
-
-        # Yield tokens streamed from LLMs.
-        if (
-            event["event"] == "on_chat_model_stream"
-            and user_input.stream_tokens
-            and "skip_stream" not in event.get("tags", [])
-        ):
-            content = remove_tool_calls(event["data"]["chunk"].content)
-            if content:
-                # Empty content in the context of OpenAI usually means
-                # that the model is asking for a tool to be invoked.
-                # So we only print non-empty content.
-                yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
-            continue
+                    new_messages = value.get('messages', [])
+                for message in new_messages:
+                    try:
+                        chat_message = langchain_to_chat_message(message)
+                        chat_message.run_id = str(run_id)
+                    except Exception as e:
+                        logger.error(f"Error parsing message: {e}")
+                        yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
+                        continue
+                    # LangGraph re-sends the input message, which feels weird, so drop it
+                    if chat_message.type == "human" and chat_message.content == user_input.message:
+                        continue
+                    yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
     yield "data: [DONE]\n\n"
 

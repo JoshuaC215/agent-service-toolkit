@@ -69,10 +69,10 @@ requires-dist = [
     { name = "langchain-groq", specifier = "~=0.2.1" },
     { name = "langchain-ollama", specifier = "~=0.2.3" },
     { name = "langchain-openai", specifier = "~=0.2.9" },
-    { name = "langgraph", specifier = "~=0.2.68" },
+    { name = "langgraph", specifier = "~=0.3.5" },
     { name = "langgraph-checkpoint-postgres", specifier = "~=2.0.13" },
     { name = "langgraph-checkpoint-sqlite", specifier = "~=2.0.1" },
-    { name = "langgraph-supervisor", specifier = "~=0.0.4" },
+    { name = "langgraph-supervisor", specifier = "~=0.0.8" },
     { name = "langsmith", specifier = "~=0.1.145" },
     { name = "numexpr", specifier = "~=2.10.1" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = "~=3.2.4" },
@@ -1093,16 +1093,17 @@ wheels = [
 
 [[package]]
 name = "langgraph"
-version = "0.2.76"
+version = "0.3.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "langchain-core" },
     { name = "langgraph-checkpoint" },
+    { name = "langgraph-prebuilt" },
     { name = "langgraph-sdk" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ee/62/8d484e498ec95d5a8c71e78f5a2d09ff280db0c99737b7aef0524cd67076/langgraph-0.2.76.tar.gz", hash = "sha256:688f8dcd9b6797ba78384599e0de944773000c75156ad1e186490e99e89fa5c0", size = 133005 }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/fa/b1ecc95a2464bc7dbe5e67fbd21096013829119899c33236090b98c75508/langgraph-0.3.5.tar.gz", hash = "sha256:7c0d8e61aa02578b41036c9f7a599ccba2562d269f66ef76bacbba47a99a7eca", size = 114020 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c5/52/a9a84d94353ebcc565b2246849d59d71023b4c33109f46e1ef799ab40bd1/langgraph-0.2.76-py3-none-any.whl", hash = "sha256:076b8b5d2fc5a9761c46a7618430cfa5c978a8012257c43cbc127b27e0fd7872", size = 153684 },
+    { url = "https://files.pythonhosted.org/packages/a4/5f/1e1d9173b5c41eff54f88d9f4ee82c38eb4928120ab6a21a68a78d1c499e/langgraph-0.3.5-py3-none-any.whl", hash = "sha256:be313ec300633c857873ea3e44aece4dd7d0b11f131d385108b359d377a85bf7", size = 131527 },
 ]
 
 [[package]]
@@ -1147,6 +1148,19 @@ wheels = [
 ]
 
 [[package]]
+name = "langgraph-prebuilt"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langchain-core" },
+    { name = "langgraph-checkpoint" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/99/68/e1e692dbaeb4e9159b60a585fbfc26fbf073b3bb061caa2ff3153f85121a/langgraph_prebuilt-0.1.2.tar.gz", hash = "sha256:cfa7e54006d45e8f3d034ee88fa1d457c381bf6a2a0de0e64c5d3a776659e6d0", size = 23310 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/73/2c/2fd70d557b7343f766f79dc8184b391f3417fc85b34dd04439cdd12dc2e1/langgraph_prebuilt-0.1.2-py3-none-any.whl", hash = "sha256:32028c4c4370576748e6c2e075cab1e13b5e3f2c196a390d71cacfb455212311", size = 24684 },
+]
+
+[[package]]
 name = "langgraph-sdk"
 version = "0.1.51"
 source = { registry = "https://pypi.org/simple" }
@@ -1161,15 +1175,15 @@ wheels = [
 
 [[package]]
 name = "langgraph-supervisor"
-version = "0.0.4"
+version = "0.0.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "langchain-core" },
     { name = "langgraph" },
+    { name = "langgraph-prebuilt" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/e3/9b0c9f0b557b3b2853ab9adb00f471affaf2c4e90894d1a52be1338cb64c/langgraph_supervisor-0.0.4.tar.gz", hash = "sha256:89c43d88a4dda0f08773df783201a0228c99d6bbd3e32625e688c32c3f87137a", size = 8409 }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/33/c75f2b095bad1f92450daea3f26d780b2d08b3c54d38280f9957aad69516/langgraph_supervisor-0.0.8.tar.gz", hash = "sha256:d3ffaae25b1cef91aab7b7882c9b703bf428a52771abd08901b021dddfff3100", size = 12381 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5b/3d/9369f772e551099c3766b31cbf88142d9a88d092f538029f9ddf873c262b/langgraph_supervisor-0.0.4-py3-none-any.whl", hash = "sha256:1523b390f222a5854f169b9af6c4f0ce8be4ecf365d49a76b06f22d58af36937", size = 7597 },
+    { url = "https://files.pythonhosted.org/packages/fd/63/53d3affc93863b279a4d9f6c40270b86bb9b7928871deda46285928be65d/langgraph_supervisor-0.0.8-py3-none-any.whl", hash = "sha256:147ba95d63268dcf31e89b4265bea6558724d97fb56a1b806ac39b2d3a3b7c4a", size = 9600 },
 ]
 
 [[package]]
