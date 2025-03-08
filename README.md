@@ -194,6 +194,7 @@ You can also run the agent service and the Streamlit app locally without Docker,
 
 The following are a few of the public projects that drew code or inspiration from this repo.
 
+- **[alexrisch/agent-web-kit](https://github.com/alexrisch/agent-web-kit)** A Next.JS frontend for agent-service-toolkit
 - **[raushan-in/dapa](https://github.com/raushan-in/dapa)** - Digital Arrest Protection App (DAPA) enables users to report financial scams and frauds efficiently via a user-friendly platform.
 
 **Please create a pull request editing the README or open a discussion with any new ones to be added!** Would love to include more projects.
