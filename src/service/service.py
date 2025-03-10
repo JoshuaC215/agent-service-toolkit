@@ -148,14 +148,13 @@ async def message_generator(
         if stream_mode == "updates":
             new_messages = []
             for key, value in payload.items():
-                # special case for using langgraph-supervisor lib WIP
+                # special case for using langgraph-supervisor lib
                 if key == "supervisor":
-                    # Get only the most recent AIMessage since supervisor includes all pervious messages
+                    # Get only the last AIMessage since supervisor includes all pervious messages
                     ai_messages = [
                         msg for msg in value.get("messages", []) if isinstance(msg, AIMessage)
                     ]
-                    # Skip supervisor transfer tool messages
-                    if ai_messages and not ai_messages[-1].tool_calls:
+                    if ai_messages:
                         new_messages = [ai_messages[-1]]
                 else:
                     new_messages = value.get('messages', [])
@@ -171,7 +170,6 @@ async def message_generator(
                     if chat_message.type == "human" and chat_message.content == user_input.message:
                         continue
                     yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
-
     yield "data: [DONE]\n\n"
 
 
