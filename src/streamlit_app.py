@@ -321,7 +321,6 @@ async def draw_messages(
 
                 status.add_and_draw_task_data(task_data)
 
-
             # In case of an unexpected message type, log an error and stop
             case _:
                 st.error(f"Unexpected ChatMessage type: {msg.type}")

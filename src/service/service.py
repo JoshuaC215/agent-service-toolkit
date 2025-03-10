@@ -157,7 +157,7 @@ async def message_generator(
                     if ai_messages:
                         new_messages = [ai_messages[-1]]
                 else:
-                    new_messages = value.get('messages', [])
+                    new_messages = value.get("messages", [])
                 for message in new_messages:
                     try:
                         chat_message = langchain_to_chat_message(message)
