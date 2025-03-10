@@ -152,7 +152,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(AnthropicModelName))
                 case Provider.GOOGLE:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_15_FLASH
+                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_20_FLASH
                     self.AVAILABLE_MODELS.update(set(GoogleModelName))
                 case Provider.VERTEXAI:
                     if self.DEFAULT_MODEL is None:

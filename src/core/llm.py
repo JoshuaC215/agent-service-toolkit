@@ -26,6 +26,8 @@ from schema.models import (
     VertexAIModelName,
 )
 
+google_models = {m: m.value for m in GoogleModelName}
+
 _MODEL_TABLE = {
     OpenAIModelName.GPT_4O_MINI: "gpt-4o-mini",
     OpenAIModelName.GPT_4O: "gpt-4o",
@@ -52,7 +54,7 @@ _MODEL_TABLE = {
     AWSModelName.BEDROCK_SONNET: "anthropic.claude-3-5-sonnet-20240620-v1:0",
     OllamaModelName.OLLAMA_GENERIC: "ollama",
     FakeModelName.FAKE: "fake",
-}
+} | google_models
 
 
 class FakeToolModel(FakeListChatModel):
