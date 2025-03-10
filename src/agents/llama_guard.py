@@ -81,7 +81,7 @@ class LlamaGuard:
             print("GROQ_API_KEY not set, skipping LlamaGuard")
             self.model = None
             return
-        self.model = get_model(GroqModelName.LLAMA_GUARD_3_8B).with_config(tags=["llama_guard"])
+        self.model = get_model(GroqModelName.LLAMA_GUARD_3_8B).with_config(tags=["skip_stream"])
         self.prompt = PromptTemplate.from_template(llama_guard_instructions)
 
     def _compile_prompt(self, role: str, messages: list[AnyMessage]) -> str:
