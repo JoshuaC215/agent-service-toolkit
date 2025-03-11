@@ -1,9 +1,9 @@
 from unittest.mock import patch
 
 from langchain_core.messages import AIMessage, ToolCall, ToolMessage
-from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
+from langgraph.types import StreamWriter
 
 from agents.agents import Agent
 from agents.utils import CustomData
@@ -67,8 +67,8 @@ def test_messages_conversion() -> None:
     assert messages[4].custom_data == {"time": "end"}
 
 
-async def static_messages(state: MessagesState, config: RunnableConfig) -> MessagesState:
-    await START_MESSAGE.adispatch(config)
+async def static_messages(state: MessagesState, writer: StreamWriter) -> MessagesState:
+    START_MESSAGE.dispatch(writer)
     return {"messages": STATIC_MESSAGES}
 
 

@@ -280,8 +280,12 @@ async def draw_messages(
                         # Expect one ToolMessage for each tool call.
                         for _ in range(len(call_results)):
                             tool_result: ChatMessage = await anext(messages_agen)
-                            # langgraph-superisor lib sends ToolMessage as AIMessage
-                            if tool_result.type != "tool" and tool_result.type != "ai":
+
+                            if tool_result.type != "tool" and not (
+                                # Slight hack: langgraph-supervisor lib sends ToolMessage as AIMessage
+                                st.session_state.agent_client.agent == "langgraph-supervisor-agent"
+                                and tool_result.type == "ai"
+                            ):
                                 st.error(f"Unexpected ChatMessage type: {tool_result.type}")
                                 st.write(tool_result)
                                 st.stop()

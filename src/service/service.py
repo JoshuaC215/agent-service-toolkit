@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
@@ -29,7 +29,9 @@ from schema import (
     UserInput,
 )
 from service.utils import (
+    convert_message_content_to_string,
     langchain_to_chat_message,
+    remove_tool_calls,
 )
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
@@ -141,35 +143,54 @@ async def message_generator(
     kwargs, run_id = _parse_input(user_input)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
-    async for event in agent.astream(**kwargs, stream_mode=["updates"]):
-        if not isinstance(event, tuple):
+    async for stream_event in agent.astream(
+        **kwargs, stream_mode=["updates", "messages", "custom"]
+    ):
+        if not isinstance(stream_event, tuple):
             continue
-        stream_mode, payload = event
+        stream_mode, event = stream_event
+        new_messages = []
         if stream_mode == "updates":
-            new_messages = []
-            for key, value in payload.items():
-                # special case for using langgraph-supervisor lib
-                if key == "supervisor":
-                    # Get only the last AIMessage since supervisor includes all pervious messages
-                    ai_messages = [
-                        msg for msg in value.get("messages", []) if isinstance(msg, AIMessage)
-                    ]
+            for node, updates in event.items():
+                new_messages = updates.get("messages", [])
+                # special case for using langgraph-supervisor library
+                if node == "supervisor":
+                    # Get only the last AIMessage since supervisor includes all previous messages
+                    ai_messages = [msg for msg in new_messages if isinstance(msg, AIMessage)]
                     if ai_messages:
                         new_messages = [ai_messages[-1]]
-                else:
-                    new_messages = value.get("messages", [])
-                for message in new_messages:
-                    try:
-                        chat_message = langchain_to_chat_message(message)
-                        chat_message.run_id = str(run_id)
-                    except Exception as e:
-                        logger.error(f"Error parsing message: {e}")
-                        yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
-                        continue
-                    # LangGraph re-sends the input message, which feels weird, so drop it
-                    if chat_message.type == "human" and chat_message.content == user_input.message:
-                        continue
-                    yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
+
+        if stream_mode == "custom":
+            new_messages = [event]
+
+        for message in new_messages:
+            try:
+                chat_message = langchain_to_chat_message(message)
+                chat_message.run_id = str(run_id)
+            except Exception as e:
+                logger.error(f"Error parsing message: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
+                continue
+            # LangGraph re-sends the input message, which feels weird, so drop it
+            if chat_message.type == "human" and chat_message.content == user_input.message:
+                continue
+            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
+
+        if stream_mode == "messages":
+            if not user_input.stream_tokens:
+                continue
+            msg, metadata = event
+            if "skip_stream" in metadata.get("tags", []):
+                continue
+            # For some reason, astream("messages") causes ToolMessages to be sent as "messages" type twice
+            if not isinstance(msg, AIMessageChunk):
+                continue
+            content = remove_tool_calls(msg.content)
+            if content:
+                # Empty content in the context of OpenAI usually means
+                # that the model is asking for a tool to be invoked.
+                # So we only print non-empty content.
+                yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
     yield "data: [DONE]\n\n"
 
 

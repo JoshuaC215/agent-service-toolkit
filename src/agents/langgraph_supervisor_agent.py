@@ -30,14 +30,14 @@ def web_search(query: str) -> str:
 
 
 math_agent = create_react_agent(
-    model=model.with_config(tags=["skip_stream"]),
+    model=model,
     tools=[add, multiply],
     name="math_expert",
     prompt="You are a math expert. Always use one tool at a time.",
 ).with_config(tags=["skip_stream"])
 
 research_agent = create_react_agent(
-    model=model.with_config(tags=["skip_stream"]),
+    model=model,
     tools=[web_search],
     name="research_expert",
     prompt="You are a world class researcher with access to web search. Do not do any math.",
