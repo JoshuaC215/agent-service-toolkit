@@ -233,6 +233,7 @@ async def draw_messages(
             st.error(f"Unexpected message type: {type(msg)}")
             st.write(msg)
             st.stop()
+
         match msg.type:
             # A message from the user, the easiest case
             case "human":
@@ -279,6 +280,7 @@ async def draw_messages(
                         # Expect one ToolMessage for each tool call.
                         for _ in range(len(call_results)):
                             tool_result: ChatMessage = await anext(messages_agen)
+
                             if tool_result.type != "tool":
                                 st.error(f"Unexpected ChatMessage type: {tool_result.type}")
                                 st.write(tool_result)
@@ -288,7 +290,8 @@ async def draw_messages(
                             # status container with the result
                             if is_new:
                                 st.session_state.messages.append(tool_result)
-                            status = call_results[tool_result.tool_call_id]
+                            if tool_result.tool_call_id:
+                                status = call_results[tool_result.tool_call_id]
                             status.write("Output:")
                             status.write(tool_result.content)
                             status.update(state="complete")

@@ -10,10 +10,9 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import AnyMessage, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.types import Command
 from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
@@ -144,26 +143,34 @@ async def message_generator(
     kwargs, run_id = _parse_input(user_input)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
-    async for event in agent.astream_events(**kwargs, version="v2"):
-        if not event:
+    async for stream_event in agent.astream(
+        **kwargs, stream_mode=["updates", "messages", "custom"]
+    ):
+        if not isinstance(stream_event, tuple):
             continue
-
+        stream_mode, event = stream_event
         new_messages = []
-        # Yield messages written to the graph state after node execution finishes.
-        if (
-            event["event"] == "on_chain_end"
-            # on_chain_end gets called a bunch of times in a graph execution
-            # This filters out everything except for "graph node finished"
-            and any(t.startswith("graph:step:") for t in event.get("tags", []))
-        ):
-            if isinstance(event["data"]["output"], Command):
-                new_messages = event["data"]["output"].update.get("messages", [])
-            elif "messages" in event["data"]["output"]:
-                new_messages = event["data"]["output"]["messages"]
+        if stream_mode == "updates":
+            for node, updates in event.items():
+                new_messages = updates.get("messages", [])
+                # special cases for using langgraph-supervisor library
+                if node == "supervisor":
+                    # Get only the last AIMessage since supervisor includes all previous messages
+                    ai_messages = [msg for msg in new_messages if isinstance(msg, AIMessage)]
+                    if ai_messages:
+                        new_messages = [ai_messages[-1]]
+                if node in ("research_expert", "math_expert"):
+                    # By default the sub-agent output is returned as an AIMessage.
+                    # Convert it to a ToolMessage so it displays in the UI as a tool response.
+                    msg = ToolMessage(
+                        content=new_messages[0].content,
+                        name=node,
+                        tool_call_id="",
+                    )
+                    new_messages = [msg]
 
-        # Also yield intermediate messages from agents.utils.CustomData.adispatch().
-        if event["event"] == "on_custom_event" and "custom_data_dispatch" in event.get("tags", []):
-            new_messages = [event["data"]]
+        if stream_mode == "custom":
+            new_messages = [event]
 
         for message in new_messages:
             try:
@@ -178,20 +185,22 @@ async def message_generator(
                 continue
             yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
-        # Yield tokens streamed from LLMs.
-        if (
-            event["event"] == "on_chat_model_stream"
-            and user_input.stream_tokens
-            and "llama_guard" not in event.get("tags", [])
-        ):
-            content = remove_tool_calls(event["data"]["chunk"].content)
+        if stream_mode == "messages":
+            if not user_input.stream_tokens:
+                continue
+            msg, metadata = event
+            if "skip_stream" in metadata.get("tags", []):
+                continue
+            # For some reason, astream("messages") causes non-LLM nodes to send extra messages.
+            # Drop them.
+            if not isinstance(msg, AIMessageChunk):
+                continue
+            content = remove_tool_calls(msg.content)
             if content:
                 # Empty content in the context of OpenAI usually means
                 # that the model is asking for a tool to be invoked.
                 # So we only print non-empty content.
                 yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
-            continue
-
     yield "data: [DONE]\n\n"
 
 
