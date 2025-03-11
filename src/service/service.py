@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage
+from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 from langsmith import Client as LangsmithClient
@@ -153,12 +153,21 @@ async def message_generator(
         if stream_mode == "updates":
             for node, updates in event.items():
                 new_messages = updates.get("messages", [])
-                # special case for using langgraph-supervisor library
+                # special cases for using langgraph-supervisor library
                 if node == "supervisor":
                     # Get only the last AIMessage since supervisor includes all previous messages
                     ai_messages = [msg for msg in new_messages if isinstance(msg, AIMessage)]
                     if ai_messages:
                         new_messages = [ai_messages[-1]]
+                if node in ("research_expert", "math_expert"):
+                    # By default the sub-agent output is returned as an AIMessage.
+                    # Convert it to a ToolMessage so it displays in the UI as a tool response.
+                    msg = ToolMessage(
+                        content=new_messages[0].content,
+                        name=node,
+                        tool_call_id="",
+                    )
+                    new_messages = [msg]
 
         if stream_mode == "custom":
             new_messages = [event]
@@ -182,7 +191,8 @@ async def message_generator(
             msg, metadata = event
             if "skip_stream" in metadata.get("tags", []):
                 continue
-            # For some reason, astream("messages") causes ToolMessages to be sent as "messages" type twice
+            # For some reason, astream("messages") causes non-LLM nodes to send extra messages.
+            # Drop them.
             if not isinstance(msg, AIMessageChunk):
                 continue
             content = remove_tool_calls(msg.content)
