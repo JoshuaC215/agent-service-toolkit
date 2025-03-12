@@ -13,7 +13,7 @@ from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.types import Command
+from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
@@ -187,19 +187,15 @@ async def message_generator(
         stream_mode, event = stream_event
         new_messages = []
         if stream_mode == "updates":
-            if "config" in kwargs:
-                # Get current state to check for interrupts
-                state = await agent.aget_state(kwargs["config"])
-                # Create array of interrupted tasks
-                interrupted_tasks = [
-                    task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
-                ]
-                if interrupted_tasks:
-                    # for every interrupted task, add value of every interrupt to new_messages
-                    for task in interrupted_tasks:
-                        for interrupt in task.interrupts:
-                            new_messages.append(AIMessage(content=interrupt.value))
             for node, updates in event.items():
+                # A simple approach to handle agent interrupts.
+                # In a more sophisticated implementation, we could add
+                # some structured ChatMessage type to return the interrupt value.
+                if node == "__interrupt__":
+                    interrupt: Interrupt
+                    for interrupt in updates:
+                        new_messages.append(AIMessage(content=interrupt.value))
+                    continue
                 update_messages = updates.get("messages", [])
                 # special cases for using langgraph-supervisor library
                 if node == "supervisor":
@@ -220,18 +216,6 @@ async def message_generator(
 
         if stream_mode == "custom":
             new_messages = [event]
-
-        ## TODO: REWORK THIS FOR NEW METHOD
-        # Also yield interrupts from the agent (event['data']['chunk']['__interrupt__'] will be defined)
-        if (
-            event["event"] == "on_chain_stream"
-            and "data" in event
-            and "chunk" in event["data"]
-            and type(event["data"]["chunk"]) is dict
-            and "__interrupt__" in event["data"]["chunk"]
-        ):
-            for interrupt in event["data"]["chunk"]["__interrupt__"]:
-                new_messages.append(AIMessage(content=interrupt.value))
 
         for message in new_messages:
             try:
