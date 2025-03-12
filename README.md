@@ -50,15 +50,14 @@ docker compose watch
 
 ### Key Features
 
-1. **LangGraph Agent**: A customizable agent built using the LangGraph framework.
+1. **LangGraph Agent and latest features**: A customizable agent built using the LangGraph framework. Implements the latest LangGraph v0.3 features including human in the loop with `interrupt()`, and flow control with `Command`, and `langgraph-supervisor`.
 1. **FastAPI Service**: Serves the agent with both streaming and non-streaming endpoints.
 1. **Advanced Streaming**: A novel approach to support both token-based and message-based streaming.
-1. **Content Moderation**: Implements LlamaGuard for content moderation (requires Groq API key).
 1. **Streamlit Interface**: Provides a user-friendly chat interface for interacting with the agent.
-1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path
+1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path. Available agents and models are described in `/info`
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
+1. **Content Moderation**: Implements LlamaGuard for content moderation (requires Groq API key).
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
-1. **Dynamic Metadata**: `/info` endpoint provides dynamically configured metadata about the service and available agents and models.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
 1. **Testing**: Includes robust unit and integration tests for the full repo.
 
