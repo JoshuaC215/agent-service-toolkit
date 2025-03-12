@@ -1,44 +1,25 @@
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage
-from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.messages import BaseMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import END, MessagesState, StateGraph
+from langgraph.func import entrypoint
+from langgraph.graph import add_messages
 
 from core import get_model, settings
 
 
-class AgentState(MessagesState, total=False):
-    """`total=False` is PEP589 specs.
+@entrypoint(checkpointer=MemorySaver())
+async def chatbot(
+    inputs: dict[str, list[BaseMessage]],
+    *,
+    previous: dict[str, list[BaseMessage]],
+    config: RunnableConfig,
+):
+    messages = inputs["messages"]
+    if previous:
+        messages = add_messages(previous["messages"], messages)
 
-    documentation: https://typing.readthedocs.io/en/latest/spec/typeddict.html#totality
-    """
-
-
-def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
-    preprocessor = RunnableLambda(
-        lambda state: state["messages"],
-        name="StateModifier",
+    model = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    response = await model.ainvoke(messages)
+    return entrypoint.final(
+        value={"messages": [response]}, save={"messages": add_messages(messages, response)}
     )
-    return preprocessor | model
-
-
-async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
-    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
-    model_runnable = wrap_model(m)
-    response = await model_runnable.ainvoke(state, config)
-
-    # We return a list, because this will get added to the existing list
-    return {"messages": [response]}
-
-
-# Define the graph
-agent = StateGraph(AgentState)
-agent.add_node("model", acall_model)
-agent.set_entry_point("model")
-
-# Always END after blocking unsafe content
-agent.add_edge("model", END)
-
-chatbot = agent.compile(
-    checkpointer=MemorySaver(),
-)
