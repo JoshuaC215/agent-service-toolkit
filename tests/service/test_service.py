@@ -14,7 +14,7 @@ from schema.models import OpenAIModelName
 def test_invoke(test_client, mock_agent) -> None:
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is 70 degrees."
-    mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=ANSWER)]}
+    mock_agent.ainvoke.return_value = [("values", {"messages": [AIMessage(content=ANSWER)]})]
 
     response = test_client.post("/invoke", json={"message": QUESTION})
     assert response.status_code == 200
@@ -37,10 +37,12 @@ def test_invoke_custom_agent(test_client, mock_agent) -> None:
 
     # Create a separate mock for the default agent
     default_mock = AsyncMock()
-    default_mock.ainvoke.return_value = {"messages": [AIMessage(content=DEFAULT_ANSWER)]}
+    default_mock.ainvoke.return_value = [
+        ("values", {"messages": [AIMessage(content=DEFAULT_ANSWER)]})
+    ]
 
     # Configure our custom mock agent
-    mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=CUSTOM_ANSWER)]}
+    mock_agent.ainvoke.return_value = [("values", {"messages": [AIMessage(content=CUSTOM_ANSWER)]})]
 
     # Patch get_agent to return the correct agent based on the provided agent_id
     def agent_lookup(agent_id):
@@ -69,7 +71,7 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is sunny."
     CUSTOM_MODEL = "claude-3.5-sonnet"
-    mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=ANSWER)]}
+    mock_agent.ainvoke.return_value = [("values", {"messages": [AIMessage(content=ANSWER)]})]
 
     response = test_client.post("/invoke", json={"message": QUESTION, "model": CUSTOM_MODEL})
     assert response.status_code == 200
@@ -96,7 +98,7 @@ def test_invoke_custom_agent_config(test_client, mock_agent) -> None:
     ANSWER = "The weather in Tokyo is sunny."
     CUSTOM_CONFIG = {"spicy_level": 0.1, "additional_param": "value_foo"}
 
-    mock_agent.ainvoke.return_value = {"messages": [AIMessage(content=ANSWER)]}
+    mock_agent.ainvoke.return_value = [("values", {"messages": [AIMessage(content=ANSWER)]})]
 
     response = test_client.post(
         "/invoke", json={"message": QUESTION, "agent_config": CUSTOM_CONFIG}

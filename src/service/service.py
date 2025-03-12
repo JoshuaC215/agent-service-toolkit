@@ -141,25 +141,28 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to messages for recording feedback.
     """
+    # NOTE: Currently this only returns the last message or interrupt.
+    # In the case of an agent outputting multiple AIMessages (such as the background step
+    # in interrupt-agent, or a tool step in research-assistant), it's omitted. Arguably,
+    # you'd want to include it. You could update the API to return a list of ChatMessages
+    # in that case.
     agent: CompiledStateGraph = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent)
     try:
-        response = await agent.ainvoke(**kwargs)
-
-        # see if any task was interrupted
-        state = await agent.aget_state(config=kwargs["config"])
-        interrupted_tasks = [
-            task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
-        ]
-        if interrupted_tasks:
-            # return the value of the first interrupt in the first interrupted task
+        response_events = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])
+        response_type, response = response_events[-1]
+        if response_type == "values":
+            # Normal response, the agent completed successfully
+            output = langchain_to_chat_message(response["messages"][-1])
+        elif response_type == "updates" and "__interrupt__" in response:
+            # The last thing to occur was an interrupt
+            # Return the value of the first interrupt as an AIMessage
             output = langchain_to_chat_message(
-                AIMessage(content=interrupted_tasks[0].interrupts[0].value)
+                AIMessage(content=response["__interrupt__"][0].value)
             )
-            output.run_id = str(run_id)
-            return output
+        else:
+            raise ValueError(f"Unexpected response type: {response_type}")
 
-        output = langchain_to_chat_message(response["messages"][-1])
         output.run_id = str(run_id)
         return output
     except Exception as e:

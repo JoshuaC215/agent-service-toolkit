@@ -17,7 +17,9 @@ def test_client():
 def mock_agent():
     """Fixture to create a mock agent that can be configured for different test scenarios."""
     agent_mock = AsyncMock()
-    agent_mock.ainvoke = AsyncMock(return_value={"messages": [AIMessage(content="Test response")]})
+    agent_mock.ainvoke = AsyncMock(
+        return_value=[("values", {"messages": [AIMessage(content="Test response")]})]
+    )
     agent_mock.get_state = Mock()  # Default empty mock for get_state
     with patch("service.service.get_agent", Mock(return_value=agent_mock)):
         yield agent_mock
