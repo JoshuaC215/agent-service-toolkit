@@ -5,9 +5,9 @@ from langgraph.graph.state import CompiledStateGraph
 from agents.bg_task_agent.bg_task_agent import bg_task_agent
 from agents.chatbot import chatbot
 from agents.command_agent import command_agent
+from agents.interrupt_agent import interrupt_agent
 from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
 from agents.research_assistant import research_assistant
-from agents.interrupt_agent import interrupt_agent
 from schema import AgentInfo
 
 DEFAULT_AGENT = "research-assistant"

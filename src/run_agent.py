@@ -13,7 +13,7 @@ agent = get_agent(DEFAULT_AGENT)
 
 
 async def main() -> None:
-    thread_config=RunnableConfig(configurable={"thread_id": uuid4()})
+    thread_config = RunnableConfig(configurable={"thread_id": uuid4()})
 
     # get user input from console
     user_input = input(f"({agent.name}) Please enter your message: ")
@@ -23,18 +23,17 @@ async def main() -> None:
     while True:
         try:
             # invoke the agent
-            result = await agent.ainvoke(
-                input=current_input,
-                config=thread_config
-            )    
+            result = await agent.ainvoke(input=current_input, config=thread_config)
             # Get current state to check for interrupts
             state = agent.get_state(thread_config)
             # Create array of interrupted tasks
-            interrupted_tasks = [task for task in state.tasks if hasattr(task, 'interrupts') and task.interrupts]
+            interrupted_tasks = [
+                task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
+            ]
             if not interrupted_tasks:
                 result["messages"][-1].pretty_print()
                 break
-            
+
             # we have interrupts, but print any other messages
             if len(result["messages"]) > 0:
                 result["messages"][-1].pretty_print()
@@ -43,11 +42,11 @@ async def main() -> None:
             print("================================ Interrupt =================================")
             print(f"Task: {interrupted_tasks[0].name}")
             print(f"Value:\n{interrupted_tasks[0].interrupts[0].value}")
-            
+
             # get user input from console
             user_input = input(f"({agent.name}) Please enter your message: ")
             current_input = Command(resume=user_input)
-                
+
         except Exception as e:
             print(f"An error occurred: {e}")
 
