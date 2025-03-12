@@ -86,7 +86,13 @@ async def info() -> ServiceMetadata:
     )
 
 
-def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
+async def _handle_input(
+    user_input: UserInput, agent: CompiledStateGraph
+) -> tuple[dict[str, Any], UUID]:
+    """
+    Parse user input and handle any required interrupt resumption.
+    Returns kwargs for agent invocation and the run_id.
+    """
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
 
@@ -104,27 +110,25 @@ def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
         configurable=configurable,
         run_id=run_id,
     )
-    input = {"messages": [HumanMessage(content=user_input.message)]}
-    kwargs = {
-        # leaving this here for future use
-    }
-    return kwargs, run_id, config, input
 
-
-async def _resume_interrupt_if_required(
-    agent: CompiledStateGraph, config: RunnableConfig, user_input: UserInput, initial_input: Any
-) -> Any:
-    # Get current state to check for interrupts
+    # Check for interrupts that need to be resumed
     state = await agent.aget_state(config=config)
-    # Create array of interrupted tasks
     interrupted_tasks = [
         task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
     ]
+
     if interrupted_tasks:
         # assume user input is response to resume agent execution from interrupt
-        return Command(resume=user_input.message)
+        input = Command(resume=user_input.message)
     else:
-        return initial_input
+        input = {"messages": [HumanMessage(content=user_input.message)]}
+
+    kwargs = {
+        "input": input,
+        "config": config,
+    }
+
+    return kwargs, run_id
 
 
 @router.post("/{agent_id}/invoke")
@@ -138,14 +142,12 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     is also attached to messages for recording feedback.
     """
     agent: CompiledStateGraph = get_agent(agent_id)
-    kwargs, run_id, config, input = _parse_input(user_input)
+    kwargs, run_id = await _handle_input(user_input, agent)
     try:
-        input = await _resume_interrupt_if_required(agent, config, user_input, input)
-
-        response = await agent.ainvoke(input=input, config=config, **kwargs)
+        response = await agent.ainvoke(**kwargs)
 
         # see if any task was interrupted
-        state = await agent.aget_state(config=config)
+        state = await agent.aget_state(config=kwargs["config"])
         interrupted_tasks = [
             task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
         ]
@@ -174,13 +176,11 @@ async def message_generator(
     This is the workhorse method for the /stream endpoint.
     """
     agent: CompiledStateGraph = get_agent(agent_id)
-    kwargs, run_id, config, input = _parse_input(user_input)
-
-    input = await _resume_interrupt_if_required(agent, config, user_input, input)
+    kwargs, run_id = await _handle_input(user_input, agent)
 
     # Process streamed events from the graph and yield messages over the SSE stream.
     async for stream_event in agent.astream(
-        input=input, config=config, stream_mode=["updates", "messages", "custom"], **kwargs
+        **kwargs, stream_mode=["updates", "messages", "custom"]
     ):
         if not isinstance(stream_event, tuple):
             continue
