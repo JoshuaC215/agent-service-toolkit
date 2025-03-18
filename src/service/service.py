@@ -203,7 +203,7 @@ async def message_generator(
                 # special cases for using langgraph-supervisor library
                 if node == "supervisor":
                     # Get only the last AIMessage since supervisor includes all previous messages
-                    ai_messages = [msg for msg in new_messages if isinstance(msg, AIMessage)]
+                    ai_messages = [msg for msg in update_messages if isinstance(msg, AIMessage)]
                     if ai_messages:
                         update_messages = [ai_messages[-1]]
                 if node in ("research_expert", "math_expert"):
