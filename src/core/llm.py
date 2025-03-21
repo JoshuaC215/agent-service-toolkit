@@ -20,12 +20,14 @@ from schema.models import (
     GoogleModelName,
     GroqModelName,
     OllamaModelName,
+    OpenAICompatibleName,
     OpenAIModelName,
 )
 
 _MODEL_TABLE = {
     OpenAIModelName.GPT_4O_MINI: "gpt-4o-mini",
     OpenAIModelName.GPT_4O: "gpt-4o",
+    OpenAICompatibleName.OPENAI_COMPATIBLE: settings.COMPATIBLE_MODEL,
     AzureOpenAIModelName.AZURE_GPT_4O_MINI: settings.AZURE_OPENAI_DEPLOYMENT_MAP.get(
         "gpt-4o-mini", ""
     ),
@@ -35,6 +37,7 @@ _MODEL_TABLE = {
     AnthropicModelName.HAIKU_35: "claude-3-5-haiku-latest",
     AnthropicModelName.SONNET_35: "claude-3-5-sonnet-latest",
     GoogleModelName.GEMINI_15_FLASH: "gemini-1.5-flash",
+    GoogleModelName.GEMINI_20_FLASH: "gemini-2.0-flash",
     GroqModelName.LLAMA_31_8B: "llama-3.1-8b-instant",
     GroqModelName.LLAMA_33_70B: "llama-3.3-70b-versatile",
     GroqModelName.LLAMA_GUARD_3_8B: "llama-guard-3-8b",
@@ -67,6 +70,17 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
 
     if model_name in OpenAIModelName:
         return ChatOpenAI(model=api_model_name, temperature=0.5, streaming=True)
+    if model_name in OpenAICompatibleName:
+        if not settings.COMPATIBLE_BASE_URL or not settings.COMPATIBLE_MODEL:
+            raise ValueError("OpenAICompatible base url and endpoint must be configured")
+
+        return ChatOpenAI(
+            model=settings.COMPATIBLE_MODEL,
+            temperature=0.5,
+            streaming=True,
+            openai_api_base=settings.COMPATIBLE_BASE_URL,
+            openai_api_key=settings.COMPATIBLE_API_KEY,
+        )
     if model_name in AzureOpenAIModelName:
         if not settings.AZURE_OPENAI_API_KEY or not settings.AZURE_OPENAI_ENDPOINT:
             raise ValueError("Azure OpenAI API key and endpoint must be configured")

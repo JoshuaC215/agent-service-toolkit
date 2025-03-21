@@ -23,6 +23,7 @@ from schema.models import (
     GoogleModelName,
     GroqModelName,
     OllamaModelName,
+    OpenAICompatibleName,
     OpenAIModelName,
     Provider,
 )
@@ -67,6 +68,11 @@ class Settings(BaseSettings):
     DEFAULT_MODEL: AllModelEnum | None = None  # type: ignore[assignment]
     AVAILABLE_MODELS: set[AllModelEnum] = set()  # type: ignore[assignment]
 
+    # Set openai compatible api, mainly used for proof of concept
+    COMPATIBLE_MODEL: str | None = None
+    COMPATIBLE_API_KEY: SecretStr | None = None
+    COMPATIBLE_BASE_URL: str | None = None
+
     OPENWEATHERMAP_API_KEY: SecretStr | None = None
 
     LANGCHAIN_TRACING_V2: bool = False
@@ -107,6 +113,7 @@ class Settings(BaseSettings):
     def model_post_init(self, __context: Any) -> None:
         api_keys = {
             Provider.OPENAI: self.OPENAI_API_KEY,
+            Provider.OPENAI_COMPATIBLE: self.COMPATIBLE_BASE_URL and self.COMPATIBLE_MODEL,
             Provider.DEEPSEEK: self.DEEPSEEK_API_KEY,
             Provider.ANTHROPIC: self.ANTHROPIC_API_KEY,
             Provider.GOOGLE: self.GOOGLE_API_KEY,
@@ -126,6 +133,10 @@ class Settings(BaseSettings):
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = OpenAIModelName.GPT_4O_MINI
                     self.AVAILABLE_MODELS.update(set(OpenAIModelName))
+                case Provider.OPENAI_COMPATIBLE:
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = OpenAICompatibleName.OPENAI_COMPATIBLE
+                    self.AVAILABLE_MODELS.update(set(OpenAICompatibleName))
                 case Provider.DEEPSEEK:
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = DeepseekModelName.DEEPSEEK_CHAT
