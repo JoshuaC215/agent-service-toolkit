@@ -63,6 +63,9 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
     if model_name in OpenAIModelName:
         return ChatOpenAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in OpenAICompatibleName:
+        if not settings.COMPATIBLE_BASE_URL or not settings.COMPATIBLE_MODEL:
+            raise ValueError("OpenAICompatible base url and endpoint must be configured")
+
         return ChatOpenAI(
             model=settings.COMPATIBLE_MODEL,
             temperature=0.5,
