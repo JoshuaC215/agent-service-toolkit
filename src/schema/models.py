@@ -4,6 +4,7 @@ from typing import TypeAlias
 
 class Provider(StrEnum):
     OPENAI = auto()
+    OPENAI_COMPATIBLE = auto()
     AZURE_OPENAI = auto()
     DEEPSEEK = auto()
     ANTHROPIC = auto()
@@ -46,6 +47,7 @@ class GoogleModelName(StrEnum):
     """https://ai.google.dev/gemini-api/docs/models/gemini"""
 
     GEMINI_15_FLASH = "gemini-1.5-flash"
+    GEMINI_20_FLASH = "gemini-2.0-flash"
 
 
 class GroqModelName(StrEnum):
@@ -70,6 +72,12 @@ class OllamaModelName(StrEnum):
     OLLAMA_GENERIC = "ollama"
 
 
+class OpenAICompatibleName(StrEnum):
+    """https://platform.openai.com/docs/guides/text-generation"""
+
+    OPENAI_COMPATIBLE = "openai-compatible"
+
+
 class FakeModelName(StrEnum):
     """Fake model for testing."""
 
@@ -78,6 +86,7 @@ class FakeModelName(StrEnum):
 
 AllModelEnum: TypeAlias = (
     OpenAIModelName
+    | OpenAICompatibleName
     | AzureOpenAIModelName
     | DeepseekModelName
     | AnthropicModelName
