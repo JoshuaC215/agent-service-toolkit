@@ -66,6 +66,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             for a in agents:
                 agent = get_agent(a.key)
                 agent.checkpointer = saver
+                # TODO: Add a store to the agent
             yield
     except Exception as e:
         logger.error(f"Error during database initialization: {e}")
@@ -96,6 +97,7 @@ async def _handle_input(user_input: UserInput, agent: Pregel) -> tuple[dict[str,
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
 
+    # TODO: Get the run_id from the API request body. The run_id is the same as the user_id, which can be used to retrieve from the store.
     configurable = {"thread_id": thread_id, "model": user_input.model}
 
     if user_input.agent_config:
