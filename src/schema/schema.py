@@ -55,6 +55,11 @@ class UserInput(BaseModel):
         default=None,
         examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
     )
+    user_id: str | None = Field(
+        description="User ID to persist and continue a conversation across multiple threads.",
+        default=None,
+        examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
+    )
     agent_config: dict[str, Any] = Field(
         description="Additional configuration to pass through to the agent",
         default={},
@@ -164,7 +169,11 @@ class ChatHistoryInput(BaseModel):
         description="Thread ID to persist and continue a multi-turn conversation.",
         examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
     )
-
+    user_id: str | None = Field(
+        description="User ID to persist and continue a conversation across multiple threads.",
+        default=None,
+        examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
+    )
 
 class ChatHistory(BaseModel):
     messages: list[ChatMessage]

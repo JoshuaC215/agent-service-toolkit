@@ -106,9 +106,9 @@ async def _handle_input(user_input: UserInput, agent: Pregel) -> tuple[dict[str,
     """
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
+    user_id = user_input.user_id or str(uuid4())
 
-    # TODO: Get the run_id from the API request body. The run_id is the same as the user_id, which can be used to retrieve from the store.
-    configurable = {"thread_id": thread_id, "model": user_input.model}
+    configurable = {"thread_id": thread_id, "model": user_input.model, "user_id": user_id}
 
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
@@ -152,6 +152,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
 
     If agent_id is not provided, the default agent will be used.
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
+    Use user_id to persist and continue a conversation across multiple threads.
     is also attached to messages for recording feedback.
     """
     # NOTE: Currently this only returns the last message or interrupt.
@@ -326,6 +327,7 @@ async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> Stre
 
     If agent_id is not provided, the default agent will be used.
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
+    Use user_id to persist and continue a conversation across multiple threads.
     is also attached to all messages for recording feedback.
 
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
@@ -368,6 +370,7 @@ def history(input: ChatHistoryInput) -> ChatHistory:
             config=RunnableConfig(
                 configurable={
                     "thread_id": input.thread_id,
+                    "user_id": input.user_id,
                 }
             )
         )
