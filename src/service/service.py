@@ -19,7 +19,7 @@ from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
 from core import settings
-from memory import initialize_database
+from memory import initialize_database, initialize_store
 from schema import (
     ChatHistory,
     ChatHistoryInput,
@@ -56,20 +56,30 @@ def verify_bearer(
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
-    Configurable lifespan that initializes the appropriate database checkpointer based on settings.
+    Configurable lifespan that initializes the appropriate database checkpointer and store
+    based on settings.
     """
     try:
-        async with initialize_database() as saver:
-            if hasattr(saver, "setup"):  # ignore: union-attr
+        # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
+        async with initialize_database() as saver, initialize_store() as store:
+            # Set up both components
+            if hasattr(saver, "setup"): # ignore: union-attr
                 await saver.setup()
+            # Only setup store for Postgres as InMemoryStore doesn't need setup
+            if hasattr(store, "setup"): # ignore: union-attr
+                await store.setup()
+            
+            # Configure agents with both memory components
             agents = get_all_agent_info()
             for a in agents:
                 agent = get_agent(a.key)
+                # Set checkpointer for thread-scoped memory (conversation history)
                 agent.checkpointer = saver
-                # TODO: Add a store to the agent
+                # Set store for long-term memory (cross-conversation knowledge)
+                agent.store = store
             yield
     except Exception as e:
-        logger.error(f"Error during database initialization: {e}")
+        logger.error(f"Error during database/store initialization: {e}")
         raise
 
 
