@@ -8,6 +8,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda, RunnableSerializable
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
+from langgraph.store.base import BaseStore
 from langgraph.store.memory import InMemoryStore
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
@@ -70,9 +71,22 @@ class BirthdateExtraction(BaseModel):
         description="Explanation of how the birthdate was extracted or why no birthdate was found"
     )
 
-
-async def determine_birthdate(state: AgentState, config: RunnableConfig) -> AgentState:
-    """This node examines the conversation history to determine user's birthdate.  If no birthdate is found, it will perform an interrupt before proceeding."""
+async def determine_birthdate(state: AgentState, config: RunnableConfig, store: BaseStore) -> AgentState:
+    """This node examines the conversation history to determine user's birthdate, checking store first."""
+    
+    # Check if we already have the birthdate in the store
+    namespace = ("user_data",)
+    try:
+        user_data = store.get(namespace, key="birthdate")[0]
+        if user_data.value.get("birthdate"):
+            # We already have the birthdate, no need to extract again
+            return {
+                "birthdate": user_data.value["birthdate"],
+            }
+    except:
+        # No birthdate in store, proceed with extraction
+        pass
+    
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(
         m.with_structured_output(BirthdateExtraction), birthdate_extraction_prompt.format()
@@ -84,7 +98,7 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig) -> Agen
         birthdate_input = interrupt(f"{response.reasoning}\nPlease tell me your birthdate?")
         # Re-run extraction with the new input
         state["messages"].append(HumanMessage(birthdate_input))
-        return await determine_birthdate(state, config)
+        return await determine_birthdate(state, config, store)
 
     # Birthdate found - convert string to datetime
     try:
@@ -97,12 +111,13 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig) -> Agen
         state["messages"].append(HumanMessage(birthdate_input))
         return await determine_birthdate(state, config)
 
-    # Birthdate found
+    # Birthdate found, store it for future use
+    store.put(namespace, "birthdate", {"birthdate": response.birthdate})
+    
     return {
         "messages": [],
         "birthdate": birthdate,
     }
-
 
 sign_prompt = SystemMessagePromptTemplate.from_template("""
 You are a helpful assistant that tells users there zodiac sign.

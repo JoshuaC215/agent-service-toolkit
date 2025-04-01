@@ -3,7 +3,6 @@ from typing import Literal
 
 from langchain_core.messages import AIMessage
 from langgraph.graph import START, MessagesState, StateGraph
-from langgraph.store.memory import InMemoryStore
 from langgraph.types import Command
 
 
@@ -52,4 +51,4 @@ builder.add_node(node_b)
 builder.add_node(node_c)
 # NOTE: there are no edges between nodes A, B and C!
 
-command_agent = builder.compile(store=InMemoryStore())
+command_agent = builder.compile()

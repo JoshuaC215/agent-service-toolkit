@@ -2,7 +2,6 @@ import logging
 from contextlib import AbstractAsyncContextManager
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-from langgraph.store.base import BaseStore
 from langgraph.store.postgres import AsyncPostgresStore
 
 from core.settings import settings
