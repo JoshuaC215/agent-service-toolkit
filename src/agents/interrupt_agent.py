@@ -77,11 +77,15 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig, store: 
     # Check if we already have the birthdate in the store
     namespace = ("user_data",)
     try:
-        user_data = store.get(namespace, key="birthdate")[0]
-        if user_data.value.get("birthdate"):
+        result = await store.aget(namespace, key="birthdate")
+        user_data = result[0] if result else None
+        if user_data and user_data.value.get("birthdate"):
+            # Convert ISO format string back to datetime object
+            birthdate_str = user_data.value["birthdate"]
+            birthdate = datetime.fromisoformat(birthdate_str) if birthdate_str else None
             # We already have the birthdate, no need to extract again
             return {
-                "birthdate": user_data.value["birthdate"],
+                "birthdate": birthdate,
             }
     except:
         # No birthdate in store, proceed with extraction
@@ -112,7 +116,9 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig, store: 
         return await determine_birthdate(state, config)
 
     # Birthdate found, store it for future use
-    store.put(namespace, "birthdate", {"birthdate": response.birthdate})
+    # Convert datetime to ISO format string for JSON serialization
+    birthdate_str = response.birthdate.isoformat() if response.birthdate else None
+    await store.aput(namespace, "birthdate", {"birthdate": birthdate_str})
     
     return {
         "messages": [],
