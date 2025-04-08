@@ -30,6 +30,9 @@ def initialize_store():
     Initialize the appropriate store based on configuration.
     Returns an async context manager for the initialized store.
     """
-    return get_postgres_store()
+    if settings.DATABASE_TYPE == DatabaseType.POSTGRES:
+        return get_postgres_store()
+    else:  # Default to SQLite
+        return get_sqlite_store()
 
 __all__ = ["initialize_database", "initialize_store"]
