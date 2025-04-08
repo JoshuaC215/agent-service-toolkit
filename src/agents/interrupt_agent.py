@@ -112,13 +112,13 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig, store: 
                 }
         except Exception as e:
             # Log the error or handle cases where the store might be unavailable
-            print(f"Error reading from store for namespace {namespace}, key {key}: {e}")
+            logger.error(f"Error reading from store for namespace {namespace}, key {key}: {e}")
             # Proceed with extraction if read fails
             pass
     else:
         # If no user_id, we cannot reliably store/retrieve user-specific data.
         # Consider logging this situation.
-        print("Warning: user_id not found in config. Skipping persistent birthdate storage/retrieval for this run.")
+        logger.warning("Warning: user_id not found in config. Skipping persistent birthdate storage/retrieval for this run.")
 
     # If birthdate wasn't retrieved from store, proceed with extraction
     # Also extract if the birthdate was retrieved but is None (shouldn't happen with current logic but good practice)
@@ -149,34 +149,13 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig, store: 
                 await store.aput(namespace, key, {"birthdate": birthdate_str})
             except Exception as e:
                 # Log the error or handle cases where the store write might fail
-                print(f"Error writing to store for namespace {namespace}, key {key}: {e}")
+                logger.error(f"Error writing to store for namespace {namespace}, key {key}: {e}")
 
     # Return the determined birthdate (either from store or extracted)
     logger.info(f"[determine_birthdate] Returning birthdate {birthdate} for user {user_id}")
     return {
         "birthdate": birthdate,
     }
-
-
-# Remove the old sign_prompt
-# sign_prompt = SystemMessagePromptTemplate.from_template("""
-# You are a helpful assistant that tells users there zodiac sign.
-# What is the sign of somebody born on {birthdate}?
-# """)
-
-# Remove the old determine_sign function
-# async def determine_sign(state: AgentState, config: RunnableConfig) -> AgentState:
-#     """This node determines the zodiac sign of the user based on their birthdate."""
-#     if not state.get("birthdate"):
-#         raise ValueError("No birthdate found in state")
-# 
-#     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
-#     model_runnable = wrap_model(
-#         m, sign_prompt.format(birthdate=state["birthdate"].strftime("%Y-%m-%d"))
-#     )
-#     response = await model_runnable.ainvoke(state, config)
-# 
-#     return {"messages": [AIMessage(content=response.content)]}
 
 response_prompt = SystemMessagePromptTemplate.from_template("""
 You are a helpful assistant. 
@@ -219,15 +198,12 @@ async def generate_response(state: AgentState, config: RunnableConfig) -> AgentS
 agent = StateGraph(AgentState)
 agent.add_node("background", background)
 agent.add_node("determine_birthdate", determine_birthdate)
-# agent.add_node("determine_sign", determine_sign) # Removed
-agent.add_node("generate_response", generate_response) # Added
+agent.add_node("generate_response", generate_response)
 
 agent.set_entry_point("background")
 agent.add_edge("background", "determine_birthdate")
-# agent.add_edge("determine_birthdate", "determine_sign") # Removed
-agent.add_edge("determine_birthdate", "generate_response") # Added
-# agent.add_edge("determine_sign", END) # Removed
-agent.add_edge("generate_response", END) # Added
+agent.add_edge("determine_birthdate", "generate_response")
+agent.add_edge("generate_response", END)
 
 interrupt_agent = agent.compile(
     checkpointer=MemorySaver(),

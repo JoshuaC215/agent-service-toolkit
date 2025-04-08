@@ -152,8 +152,8 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
 
     If agent_id is not provided, the default agent will be used.
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
-    Use user_id to persist and continue a conversation across multiple threads.
     is also attached to messages for recording feedback.
+    Use user_id to persist and continue a conversation across multiple threads.
     """
     # NOTE: Currently this only returns the last message or interrupt.
     # In the case of an agent outputting multiple AIMessages (such as the background step
@@ -327,8 +327,8 @@ async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> Stre
 
     If agent_id is not provided, the default agent will be used.
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
-    Use user_id to persist and continue a conversation across multiple threads.
     is also attached to all messages for recording feedback.
+    Use user_id to persist and continue a conversation across multiple threads.
 
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
@@ -369,8 +369,7 @@ def history(input: ChatHistoryInput) -> ChatHistory:
         state_snapshot = agent.get_state(
             config=RunnableConfig(
                 configurable={
-                    "thread_id": input.thread_id,
-                    "user_id": input.user_id,
+                    "thread_id": input.thread_id
                 }
             )
         )

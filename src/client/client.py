@@ -340,8 +340,7 @@ class AgentClient:
 
     def get_history(
         self,
-        thread_id: str,
-        user_id: str | None = None,
+        thread_id: str
     ) -> ChatHistory:
         """
         Get chat history.
@@ -350,7 +349,7 @@ class AgentClient:
             thread_id (str, optional): Thread ID for identifying a conversation
             user_id (str, optional): User ID for continuing a conversation across multiple threads
         """
-        request = ChatHistoryInput(thread_id=thread_id, user_id=user_id)
+        request = ChatHistoryInput(thread_id=thread_id)
         try:
             response = httpx.post(
                 f"{self.base_url}/history",
