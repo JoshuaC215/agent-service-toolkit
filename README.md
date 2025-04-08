@@ -97,27 +97,38 @@ To customize the agent for your own use case:
 
 ### Docker Setup
 
-This project includes a Docker setup for easy development and deployment. The `compose.yaml` file defines two services: `agent_service` and `streamlit_app`. The `Dockerfile` for each is in their respective directories.
+This project includes a Docker setup for easy development and deployment. The `compose.yaml` file defines three services: `postgres`, `agent_service` and `streamlit_app`. The `Dockerfile` for each service is in their respective directories.
 
 For local development, we recommend using [docker compose watch](https://docs.docker.com/compose/file-watch/). This feature allows for a smoother development experience by automatically updating your containers when changes are detected in your source code.
 
 1. Make sure you have Docker and Docker Compose (>=[2.23.0](https://docs.docker.com/compose/release-notes/#2230)) installed on your system.
 
-2. Build and launch the services in watch mode:
+2. Create a `.env` file from the `.env.example`. At minimum, you need to provide an LLM API key (e.g., OPENAI_API_KEY).
+   ```sh
+   cp .env.example .env
+   # Edit .env to add your API keys
+   ```
+
+3. Build and launch the services in watch mode:
 
    ```sh
    docker compose watch
    ```
 
-3. The services will now automatically update when you make changes to your code:
-   - Changes in the relevant python files and directories will trigger updates for the relevantservices.
+   This will automatically:
+   - Start a PostgreSQL database service that the agent service connects to
+   - Start the agent service with FastAPI
+   - Start the Streamlit app for the user interface
+
+4. The services will now automatically update when you make changes to your code:
+   - Changes in the relevant python files and directories will trigger updates for the relevant services.
    - NOTE: If you make changes to the `pyproject.toml` or `uv.lock` files, you will need to rebuild the services by running `docker compose up --build`.
 
-4. Access the Streamlit app by navigating to `http://localhost:8501` in your web browser.
+5. Access the Streamlit app by navigating to `http://localhost:8501` in your web browser.
 
-5. The agent service API will be available at `http://0.0.0.0:8080`. You can also use the OpenAPI docs at `http://0.0.0.0:8080/redoc`.
+6. The agent service API will be available at `http://0.0.0.0:8080`. You can also use the OpenAPI docs at `http://0.0.0.0:8080/redoc`.
 
-6. Use `docker compose down` to stop the services.
+7. Use `docker compose down` to stop the services.
 
 This setup allows you to develop and test your changes in real-time without manually restarting the services.
 

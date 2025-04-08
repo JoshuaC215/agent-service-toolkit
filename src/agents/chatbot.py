@@ -3,11 +3,11 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.func import entrypoint
 from langgraph.graph import add_messages
+from langgraph.store.memory import InMemoryStore
 
 from core import get_model, settings
 
-
-@entrypoint(checkpointer=MemorySaver())
+@entrypoint(checkpointer=MemorySaver(), store=InMemoryStore())
 async def chatbot(
     inputs: dict[str, list[BaseMessage]],
     *,

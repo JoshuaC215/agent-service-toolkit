@@ -18,7 +18,7 @@ from langsmith import Client as LangsmithClient
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
 from core import settings
-from memory import initialize_database
+from memory import initialize_database, initialize_store
 from schema import (
     ChatHistory,
     ChatHistoryInput,
@@ -55,18 +55,29 @@ def verify_bearer(
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
-    Configurable lifespan that initializes the appropriate database checkpointer based on settings.
+    Configurable lifespan that initializes the appropriate database checkpointer and store
+    based on settings.
     """
     try:
-        async with initialize_database() as saver:
+        # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
+        async with initialize_database() as saver, initialize_store() as store:
+            # Set up both components
             await saver.setup()
+            # Only setup store for Postgres as InMemoryStore doesn't need setup
+            if hasattr(store, "setup"):
+                await store.setup()
+            
+            # Configure agents with both memory components
             agents = get_all_agent_info()
             for a in agents:
                 agent = get_agent(a.key)
+                # Set checkpointer for thread-scoped memory (conversation history)
                 agent.checkpointer = saver
+                # Set store for long-term memory (cross-conversation knowledge)
+                agent.store = store
             yield
     except Exception as e:
-        logger.error(f"Error during database initialization: {e}")
+        logger.error(f"Error during database/store initialization: {e}")
         raise
 
 
@@ -95,8 +106,9 @@ async def _handle_input(
     """
     run_id = uuid4()
     thread_id = user_input.thread_id or str(uuid4())
+    user_id = user_input.user_id or str(uuid4())
 
-    configurable = {"thread_id": thread_id, "model": user_input.model}
+    configurable = {"thread_id": thread_id, "model": user_input.model, "user_id": user_id}
 
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
@@ -140,6 +152,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     If agent_id is not provided, the default agent will be used.
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to messages for recording feedback.
+    Use user_id to persist and continue a conversation across multiple threads.
     """
     # NOTE: Currently this only returns the last message or interrupt.
     # In the case of an agent outputting multiple AIMessages (such as the background step
@@ -279,6 +292,7 @@ async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> Stre
     If agent_id is not provided, the default agent will be used.
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to all messages for recording feedback.
+    Use user_id to persist and continue a conversation across multiple threads.
 
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
@@ -319,7 +333,7 @@ def history(input: ChatHistoryInput) -> ChatHistory:
         state_snapshot = agent.get_state(
             config=RunnableConfig(
                 configurable={
-                    "thread_id": input.thread_id,
+                    "thread_id": input.thread_id
                 }
             )
         )
