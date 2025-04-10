@@ -1,6 +1,6 @@
 import logging
+from contextlib import AbstractAsyncContextManager
 
-from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
 from core.settings import settings
@@ -39,7 +39,7 @@ def get_postgres_connection_string() -> str:
     )
 
 
-def get_postgres_saver() -> BaseCheckpointSaver:
+def get_postgres_saver() -> AbstractAsyncContextManager[AsyncPostgresSaver]:
     """Initialize and return a PostgreSQL saver instance."""
     validate_postgres_config()
     return AsyncPostgresSaver.from_conn_string(get_postgres_connection_string())
