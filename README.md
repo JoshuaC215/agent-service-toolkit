@@ -60,6 +60,7 @@ docker compose watch
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
 1. **Testing**: Includes robust unit and integration tests for the full repo.
+1. **Configurable Connection Pools**: Custom PostgreSQL connection pool settings for database performance tuning.
 
 ### Key Files
 
