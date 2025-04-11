@@ -66,7 +66,7 @@ def create_chroma_db(
 
 if __name__ == "__main__":
     # Path to the folder containing the documents
-    folder_path = "path/to/your/documents"
+    folder_path = "./data"
 
     # Create the Chroma database
     chroma = create_chroma_db(folder_path=folder_path)
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     retriever = chroma.as_retriever(search_kwargs={"k": 3})
 
     # Perform a similarity search
-    query = "[ADD QUESTION RELATING TO INFORMATION IN YOUR DATABASE]"
+    query = "What's my company's mission and values"
     similar_docs = retriever.invoke(query)
 
     # Display results
