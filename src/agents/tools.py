@@ -33,7 +33,8 @@ def calculator_func(expression: str) -> str:
         return re.sub(r"^\[|\]$", "", output)
     except Exception as e:
         raise ValueError(
-            f'calculator("{expression}") raised error: {e}.' " Please try again with a valid numerical expression"
+            f'calculator("{expression}") raised error: {e}.'
+            " Please try again with a valid numerical expression"
         )
 
 
@@ -51,7 +52,9 @@ def load_chroma_db():
     try:
         embeddings = OpenAIEmbeddings()
     except Exception as e:
-        raise RuntimeError("Failed to initialize OpenAIEmbeddings. Ensure the OpenAI API key is set.") from e
+        raise RuntimeError(
+            "Failed to initialize OpenAIEmbeddings. Ensure the OpenAI API key is set."
+        ) from e
 
     # Load the stored vector database
     chroma_db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)

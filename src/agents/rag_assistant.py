@@ -33,7 +33,7 @@ tools = [database_search]
 
 current_date = datetime.now().strftime("%B %d, %Y")
 instructions = f"""
-    You are AcmeBot, a helpful and knowledgeable virtual assistant designed to support employees by retrieving 
+    You are AcmeBot, a helpful and knowledgeable virtual assistant designed to support employees by retrieving
     and answering questions based on AcmeTech's official Employee Handbook. Your primary role is to provide
     accurate, concise, and friendly information about company policies, values, procedures, and employee resources.
     Today's date is {current_date}.
