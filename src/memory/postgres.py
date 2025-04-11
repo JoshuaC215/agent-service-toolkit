@@ -2,6 +2,7 @@ import logging
 from contextlib import AbstractAsyncContextManager
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from psycopg_pool import AsyncConnectionPool
 
 from core.settings import settings
 
@@ -39,7 +40,33 @@ def get_postgres_connection_string() -> str:
     )
 
 
+def create_connection_pool() -> AsyncConnectionPool:
+    """Create and return a PostgreSQL connection pool with configured settings."""
+    conn_string = get_postgres_connection_string()
+
+    # Create connection pool with settings from config
+    pool = AsyncConnectionPool(
+        conn_string,
+        min_size=settings.POSTGRES_MIN_SIZE,
+        max_size=settings.POSTGRES_POOL_SIZE,
+        max_idle=settings.POSTGRES_MAX_IDLE,
+    )
+
+    logger.info(
+        f"Created PostgreSQL connection pool: min_size={settings.POSTGRES_MIN_SIZE}, "
+        f"max_size={settings.POSTGRES_POOL_SIZE}, max_idle={settings.POSTGRES_MAX_IDLE}"
+    )
+
+    return pool
+
+
 def get_postgres_saver() -> AbstractAsyncContextManager[AsyncPostgresSaver]:
-    """Initialize and return a PostgreSQL saver instance."""
+    """Initialize and return a PostgreSQL saver instance with connection pool."""
     validate_postgres_config()
-    return AsyncPostgresSaver.from_conn_string(get_postgres_connection_string())
+
+    # Create connection pool with custom settings
+    pool = create_connection_pool()
+
+    # Initialize saver with the pool
+    saver = AsyncPostgresSaver(conn=pool)
+    return saver
