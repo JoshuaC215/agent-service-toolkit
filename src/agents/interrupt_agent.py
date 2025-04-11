@@ -80,7 +80,7 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig) -> Agen
 
     # If no birthdate found, interrupt
     if response.birthdate is None:
-        birthdate_input = interrupt(f"{response.reasoning}\n" "Please tell me your birthdate?")
+        birthdate_input = interrupt(f"{response.reasoning}\nPlease tell me your birthdate?")
         # Re-run extraction with the new input
         state["messages"].append(HumanMessage(birthdate_input))
         return await determine_birthdate(state, config)
