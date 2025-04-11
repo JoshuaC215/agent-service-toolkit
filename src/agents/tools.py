@@ -33,8 +33,7 @@ def calculator_func(expression: str) -> str:
         return re.sub(r"^\[|\]$", "", output)
     except Exception as e:
         raise ValueError(
-            f'calculator("{expression}") raised error: {e}.'
-            " Please try again with a valid numerical expression"
+            f'calculator("{expression}") raised error: {e}.' " Please try again with a valid numerical expression"
         )
 
 
@@ -42,26 +41,34 @@ calculator: BaseTool = tool(calculator_func)
 calculator.name = "Calculator"
 
 
-# Create the embedding function for our project description database
-embeddings = OpenAIEmbeddings()
-
-
 # Format retrieved documents
 def format_contexts(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
 
-# Load the stored vector database
-chroma_db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
-retriever = chroma_db.as_retriever(search_kwargs={"k": 5})
+def load_chroma_db():
+    # Create the embedding function for our project description database
+    try:
+        embeddings = OpenAIEmbeddings()
+    except Exception as e:
+        raise RuntimeError("Failed to initialize OpenAIEmbeddings. Ensure the OpenAI API key is set.") from e
+
+    # Load the stored vector database
+    chroma_db = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+    retriever = chroma_db.as_retriever(search_kwargs={"k": 5})
+    return retriever
 
 
 def database_search_func(query: str) -> str:
-    """Searches chroma_db for [DETAILS ON THE PURPOSE / CONTENT OF YOUR DATABAS]."""
+    """Searches chroma_db for information in the company's handbook."""
+    # Get the chroma retriever
+    retriever = load_chroma_db()
 
+    # Search the database for relevant documents
     documents = retriever.invoke(query)
+
+    # Format the documents into a string
     context_str = format_contexts(documents)
-    print(f"Context: {context_str}")
 
     return context_str
 
