@@ -1,6 +1,8 @@
 import json
 import logging
 import warnings
+from asyncio import CancelledError
+from builtins import GeneratorExit
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
@@ -181,75 +183,88 @@ async def message_generator(
     agent: CompiledStateGraph = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent)
 
-    # Process streamed events from the graph and yield messages over the SSE stream.
-    async for stream_event in agent.astream(
-        **kwargs, stream_mode=["updates", "messages", "custom"]
-    ):
-        if not isinstance(stream_event, tuple):
-            continue
-        stream_mode, event = stream_event
-        new_messages = []
-        if stream_mode == "updates":
-            for node, updates in event.items():
-                # A simple approach to handle agent interrupts.
-                # In a more sophisticated implementation, we could add
-                # some structured ChatMessage type to return the interrupt value.
-                if node == "__interrupt__":
-                    interrupt: Interrupt
-                    for interrupt in updates:
-                        new_messages.append(AIMessage(content=interrupt.value))
+    try:
+        # Process streamed events from the graph and yield messages over the SSE stream.
+        async for stream_event in agent.astream(
+            **kwargs, stream_mode=["updates", "messages", "custom"]
+        ):
+            if not isinstance(stream_event, tuple):
+                continue
+            stream_mode, event = stream_event
+            new_messages = []
+            if stream_mode == "updates":
+                for node, updates in event.items():
+                    # A simple approach to handle agent interrupts.
+                    # In a more sophisticated implementation, we could add
+                    # some structured ChatMessage type to return the interrupt value.
+                    if node == "__interrupt__":
+                        interrupt: Interrupt
+                        for interrupt in updates:
+                            new_messages.append(AIMessage(content=interrupt.value))
+                        continue
+                    update_messages = updates.get("messages", [])
+                    # special cases for using langgraph-supervisor library
+                    if node == "supervisor":
+                        # Get only the last AIMessage since supervisor includes all previous messages
+                        ai_messages = [msg for msg in update_messages if isinstance(msg, AIMessage)]
+                        if ai_messages:
+                            update_messages = [ai_messages[-1]]
+                    if node in ("research_expert", "math_expert"):
+                        # By default the sub-agent output is returned as an AIMessage.
+                        # Convert it to a ToolMessage so it displays in the UI as a tool response.
+                        msg = ToolMessage(
+                            content=update_messages[0].content,
+                            name=node,
+                            tool_call_id="",
+                        )
+                        update_messages = [msg]
+                    new_messages.extend(update_messages)
+
+            if stream_mode == "custom":
+                new_messages = [event]
+
+            for message in new_messages:
+                try:
+                    chat_message = langchain_to_chat_message(message)
+                    chat_message.run_id = str(run_id)
+                except Exception as e:
+                    logger.error(f"Error parsing message: {e}")
+                    yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
                     continue
-                update_messages = updates.get("messages", [])
-                # special cases for using langgraph-supervisor library
-                if node == "supervisor":
-                    # Get only the last AIMessage since supervisor includes all previous messages
-                    ai_messages = [msg for msg in update_messages if isinstance(msg, AIMessage)]
-                    if ai_messages:
-                        update_messages = [ai_messages[-1]]
-                if node in ("research_expert", "math_expert"):
-                    # By default the sub-agent output is returned as an AIMessage.
-                    # Convert it to a ToolMessage so it displays in the UI as a tool response.
-                    msg = ToolMessage(
-                        content=update_messages[0].content,
-                        name=node,
-                        tool_call_id="",
-                    )
-                    update_messages = [msg]
-                new_messages.extend(update_messages)
+                # LangGraph re-sends the input message, which feels weird, so drop it
+                if chat_message.type == "human" and chat_message.content == user_input.message:
+                    continue
+                yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
 
-        if stream_mode == "custom":
-            new_messages = [event]
-
-        for message in new_messages:
-            try:
-                chat_message = langchain_to_chat_message(message)
-                chat_message.run_id = str(run_id)
-            except Exception as e:
-                logger.error(f"Error parsing message: {e}")
-                yield f"data: {json.dumps({'type': 'error', 'content': 'Unexpected error'})}\n\n"
-                continue
-            # LangGraph re-sends the input message, which feels weird, so drop it
-            if chat_message.type == "human" and chat_message.content == user_input.message:
-                continue
-            yield f"data: {json.dumps({'type': 'message', 'content': chat_message.model_dump()})}\n\n"
-
-        if stream_mode == "messages":
-            if not user_input.stream_tokens:
-                continue
-            msg, metadata = event
-            if "skip_stream" in metadata.get("tags", []):
-                continue
-            # For some reason, astream("messages") causes non-LLM nodes to send extra messages.
-            # Drop them.
-            if not isinstance(msg, AIMessageChunk):
-                continue
-            content = remove_tool_calls(msg.content)
-            if content:
-                # Empty content in the context of OpenAI usually means
-                # that the model is asking for a tool to be invoked.
-                # So we only print non-empty content.
-                yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
-    yield "data: [DONE]\n\n"
+            if stream_mode == "messages":
+                if not user_input.stream_tokens:
+                    continue
+                msg, metadata = event
+                if "skip_stream" in metadata.get("tags", []):
+                    continue
+                # For some reason, astream("messages") causes non-LLM nodes to send extra messages.
+                # Drop them.
+                if not isinstance(msg, AIMessageChunk):
+                    continue
+                content = remove_tool_calls(msg.content)
+                if content:
+                    # Empty content in the context of OpenAI usually means
+                    # that the model is asking for a tool to be invoked.
+                    # So we only print non-empty content.
+                    yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
+    except GeneratorExit:
+        # Handle GeneratorExit gracefully
+        logger.info("Stream closed by client")
+        return
+    except CancelledError:
+        # Handle CancelledError gracefully
+        logger.info("Stream cancelled")
+        return
+    except Exception as e:
+        logger.error(f"Error in message generator: {e}")
+        yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+    finally:
+        yield "data: [DONE]\n\n"
 
 
 def _sse_response_example() -> dict[int, Any]:
