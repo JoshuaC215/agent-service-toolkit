@@ -61,8 +61,8 @@ Rules for extraction:
 
 
 class BirthdateExtraction(BaseModel):
-    birthdate: datetime | None = Field(
-        description="The extracted birthdate. If no birthdate is found, this should be None."
+    birthdate: str | None = Field(
+        description="The extracted birthdate in YYYY-MM-DD format. If no birthdate is found, this should be None."
     )
     reasoning: str = Field(
         description="Explanation of how the birthdate was extracted or why no birthdate was found"
@@ -74,7 +74,7 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig) -> Agen
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(
         m.with_structured_output(BirthdateExtraction), birthdate_extraction_prompt.format()
-    )
+    ).with_config(tags=["skip_stream"])
     response = await model_runnable.ainvoke(state, config)
     response = cast(BirthdateExtraction, response)
 
@@ -85,9 +85,20 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig) -> Agen
         state["messages"].append(HumanMessage(birthdate_input))
         return await determine_birthdate(state, config)
 
+    # Birthdate found - convert string to datetime
+    try:
+        birthdate = datetime.fromisoformat(response.birthdate)
+    except ValueError:
+        # If parsing fails, ask for clarification
+        birthdate_input = interrupt(
+            "I couldn't understand the date format. Please provide your birthdate in YYYY-MM-DD format."
+        )
+        state["messages"].append(HumanMessage(birthdate_input))
+        return await determine_birthdate(state, config)
+
     # Birthdate found
     return {
-        "birthdate": response.birthdate,
+        "birthdate": birthdate,
     }
 
 
