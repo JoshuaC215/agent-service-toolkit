@@ -187,7 +187,7 @@ class Settings(BaseSettings):
                 case _:
                     raise ValueError(f"Unknown provider: {provider}")
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def BASE_URL(self) -> str:
         return f"http://{self.HOST}:{self.PORT}"

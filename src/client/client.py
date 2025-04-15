@@ -26,7 +26,7 @@ class AgentClient:
     def __init__(
         self,
         base_url: str = "http://0.0.0.0",
-        agent: str = None,
+        agent: str | None = None,
         timeout: float | None = None,
         get_info: bool = True,
     ) -> None:
@@ -68,7 +68,7 @@ class AgentClient:
         except httpx.HTTPError as e:
             raise AgentClientError(f"Error getting service info: {e}")
 
-        self.info: ServiceMetadata = ServiceMetadata.model_validate(response.json())
+        self.info = ServiceMetadata.model_validate(response.json())
         if not self.agent or self.agent not in [a.key for a in self.info.agents]:
             self.agent = self.info.default_agent
 
@@ -76,7 +76,7 @@ class AgentClient:
         if verify:
             if not self.info:
                 self.retrieve_info()
-            agent_keys = [a.key for a in self.info.agents]
+            agent_keys = [a.key for a in self.info.agents]  # type: ignore[union-attr]
             if agent not in agent_keys:
                 raise AgentClientError(
                     f"Agent {agent} not found in available agents: {', '.join(agent_keys)}"
@@ -108,7 +108,7 @@ class AgentClient:
         if thread_id:
             request.thread_id = thread_id
         if model:
-            request.model = model
+            request.model = model  # type: ignore[assignment]
         if agent_config:
             request.agent_config = agent_config
         async with httpx.AsyncClient() as client:
@@ -150,7 +150,7 @@ class AgentClient:
         if thread_id:
             request.thread_id = thread_id
         if model:
-            request.model = model
+            request.model = model  # type: ignore[assignment]
         if agent_config:
             request.agent_config = agent_config
         try:
@@ -223,7 +223,7 @@ class AgentClient:
         if thread_id:
             request.thread_id = thread_id
         if model:
-            request.model = model
+            request.model = model  # type: ignore[assignment]
         if agent_config:
             request.agent_config = agent_config
         try:
@@ -276,7 +276,7 @@ class AgentClient:
         if thread_id:
             request.thread_id = thread_id
         if model:
-            request.model = model
+            request.model = model  # type: ignore[assignment]
         if agent_config:
             request.agent_config = agent_config
         async with httpx.AsyncClient() as client:
