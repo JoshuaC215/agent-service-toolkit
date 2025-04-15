@@ -16,7 +16,7 @@ class Task:
         self.result: Literal["success", "error"] | None = None
         self.writer = writer
 
-    def _generate_and_dispatch_message(self, writer: StreamWriter, data: dict):
+    def _generate_and_dispatch_message(self, writer: StreamWriter | None, data: dict):
         writer = writer or self.writer
         task_data = TaskData(name=self.name, run_id=self.id, state=self.state, data=data)
         if self.result:
