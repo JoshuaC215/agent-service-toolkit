@@ -25,7 +25,8 @@ class Task:
             type=self.name,
             data=task_data.model_dump(),
         )
-        task_custom_data.dispatch(writer)
+        if writer:
+            task_custom_data.dispatch(writer)
         return task_custom_data.to_langchain()
 
     def start(self, writer: StreamWriter | None = None, data: dict = {}) -> BaseMessage:
