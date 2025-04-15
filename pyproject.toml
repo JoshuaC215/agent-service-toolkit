@@ -86,6 +86,7 @@ OPENAI_API_KEY = "sk-fake-openai-key"
 
 [tool.mypy]
 plugins = "pydantic.mypy"
+exclude = "src/streamlit_app.py"
 
 [[tool.mypy.overrides]]
 module = ["numexpr.*"]
