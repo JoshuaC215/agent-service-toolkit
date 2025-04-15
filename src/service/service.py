@@ -148,9 +148,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     agent: Pregel = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent)
     try:
-        response_events: list[tuple[str, Any]] = await agent.ainvoke(
-            **kwargs, stream_mode=["updates", "values"]
-        )  # type: ignore
+        response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
         response_type, response = response_events[-1]
         if response_type == "values":
             # Normal response, the agent completed successfully
