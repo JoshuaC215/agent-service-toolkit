@@ -86,3 +86,7 @@ OPENAI_API_KEY = "sk-fake-openai-key"
 
 [tool.mypy]
 plugins = "pydantic.mypy"
+
+[[tool.mypy.overrides]]
+module = ["numexpr.*"]
+follow_untyped_imports = true
