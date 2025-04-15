@@ -52,13 +52,13 @@ instructions = f"""
     """
 
 
-def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]: 
+def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
     bound_model = model.bind_tools(tools)
     preprocessor = RunnableLambda(
         lambda state: [SystemMessage(content=instructions)] + state["messages"],
         name="StateModifier",
     )
-    return preprocessor | bound_model # type: ignore[return-value]
+    return preprocessor | bound_model  # type: ignore[return-value]
 
 
 def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
