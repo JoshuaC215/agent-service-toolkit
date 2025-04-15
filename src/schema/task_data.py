@@ -71,4 +71,4 @@ class TaskDataStatus:
         # Status is "running" until all tasks have completed
         else:
             state = "running"
-        status.update(state=state)
+        status.update(state=state)  # type: ignore[arg-type]

@@ -23,7 +23,7 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
         lambda state: state["messages"],
         name="StateModifier",
     )
-    return preprocessor | model
+    return preprocessor | model  # type: ignore[return-value]
 
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:

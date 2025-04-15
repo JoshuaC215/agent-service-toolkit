@@ -97,14 +97,14 @@ class LlamaGuard:
             return LlamaGuardOutput(safety_assessment=SafetyAssessment.SAFE)
         compiled_prompt = self._compile_prompt(role, messages)
         result = self.model.invoke([HumanMessage(content=compiled_prompt)])
-        return parse_llama_guard_output(result.content)
+        return parse_llama_guard_output(str(result.content))
 
     async def ainvoke(self, role: str, messages: list[AnyMessage]) -> LlamaGuardOutput:
         if self.model is None:
             return LlamaGuardOutput(safety_assessment=SafetyAssessment.SAFE)
         compiled_prompt = self._compile_prompt(role, messages)
         result = await self.model.ainvoke([HumanMessage(content=compiled_prompt)])
-        return parse_llama_guard_output(result.content)
+        return parse_llama_guard_output(str(result.content))
 
 
 if __name__ == "__main__":

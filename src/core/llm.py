@@ -47,10 +47,6 @@ _MODEL_TABLE = {
     FakeModelName.FAKE: "fake",
 }
 
-ModelT: TypeAlias = (
-    ChatOpenAI | ChatAnthropic | ChatGoogleGenerativeAI | ChatGroq | ChatBedrock | ChatOllama
-)
-
 
 class FakeToolModel(FakeListChatModel):
     def __init__(self, responses: list[str]):
@@ -58,6 +54,18 @@ class FakeToolModel(FakeListChatModel):
 
     def bind_tools(self, tools):
         return self
+
+
+ModelT: TypeAlias = (
+    AzureChatOpenAI
+    | ChatOpenAI
+    | ChatAnthropic
+    | ChatGoogleGenerativeAI
+    | ChatGroq
+    | ChatBedrock
+    | ChatOllama
+    | FakeToolModel
+)
 
 
 @cache
@@ -122,3 +130,5 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         return chat_ollama
     if model_name in FakeModelName:
         return FakeToolModel(responses=["This is a test response from the fake model."])
+
+    raise ValueError(f"Unsupported model: {model_name}")

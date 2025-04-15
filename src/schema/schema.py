@@ -131,7 +131,7 @@ class ChatMessage(BaseModel):
         print(self.pretty_repr())  # noqa: T201
 
 
-class Feedback(BaseModel):
+class Feedback(BaseModel):  # type: ignore[no-redef]
     """Feedback for a run, to record to LangSmith."""
 
     run_id: str = Field(
