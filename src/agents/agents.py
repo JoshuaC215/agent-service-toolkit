@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from langgraph.graph.state import CompiledStateGraph
+from langgraph.pregel import Pregel
 
 from agents.bg_task_agent.bg_task_agent import bg_task_agent
 from agents.chatbot import chatbot
@@ -16,7 +16,7 @@ DEFAULT_AGENT = "research-assistant"
 @dataclass
 class Agent:
     description: str
-    graph: CompiledStateGraph
+    graph: Pregel
 
 
 agents: dict[str, Agent] = {
@@ -33,7 +33,7 @@ agents: dict[str, Agent] = {
 }
 
 
-def get_agent(agent_id: str) -> CompiledStateGraph:
+def get_agent(agent_id: str) -> Pregel:
     return agents[agent_id].graph
 
 
