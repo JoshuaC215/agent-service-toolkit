@@ -7,7 +7,6 @@ from collections.abc import AsyncGenerator
 import streamlit as st
 from dotenv import load_dotenv
 from pydantic import ValidationError
-from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient, AgentClientError
 from schema import ChatHistory, ChatMessage
