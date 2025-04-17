@@ -29,6 +29,7 @@ APP_ICON = "🧰"
 
 AGENT_THREAD_ID = str(uuid.uuid4())
 
+
 async def main() -> None:
     st.set_page_config(
         page_title=APP_TITLE,
