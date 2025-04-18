@@ -159,3 +159,12 @@ async def test_app_init_error(mock_agent_client):
     assert at.chat_message[1].markdown[0].value == PROMPT
     assert at.error[0].value == "Error generating response: Error connecting to agent"
     assert not at.exception
+
+def test_app_new_chat_btn(mock_agent_client):
+    at = AppTest.from_file("../../src/streamlit_app.py").run()
+    thread_id_a = at.session_state.thread_id
+
+    at.sidebar.button[0].click().run()
+
+    assert at.session_state.thread_id != thread_id_a
+    assert not at.exception

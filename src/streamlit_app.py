@@ -88,7 +88,7 @@ async def main() -> None:
         # New Chat button at the top of the sidebar
         if st.button("💬 New Chat", use_container_width=True):
             st.session_state.messages = []
-            st.session_state.thread_id = None
+            st.session_state.thread_id = str(uuid.uuid4())
             st.rerun()
 
         ""
