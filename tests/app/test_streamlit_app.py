@@ -160,6 +160,7 @@ async def test_app_init_error(mock_agent_client):
     assert at.error[0].value == "Error generating response: Error connecting to agent"
     assert not at.exception
 
+
 def test_app_new_chat_btn(mock_agent_client):
     at = AppTest.from_file("../../src/streamlit_app.py").run()
     thread_id_a = at.session_state.thread_id
