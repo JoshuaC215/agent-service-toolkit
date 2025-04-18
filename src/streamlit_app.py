@@ -1,6 +1,5 @@
 import asyncio
 import os
-import sys
 import urllib.parse
 import uuid
 from collections.abc import AsyncGenerator
