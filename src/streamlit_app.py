@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 import urllib.parse
 import uuid
 from collections.abc import AsyncGenerator
@@ -25,8 +26,6 @@ from schema.task_data import TaskData, TaskDataStatus
 
 APP_TITLE = "Agent Service Toolkit"
 APP_ICON = "🧰"
-
-AGENT_THREAD_ID = str(uuid.uuid4())
 
 
 async def main() -> None:
@@ -72,7 +71,7 @@ async def main() -> None:
     if "thread_id" not in st.session_state:
         thread_id = st.query_params.get("thread_id")
         if not thread_id:
-            thread_id = AGENT_THREAD_ID
+            thread_id = str(uuid.uuid4())
             messages = []
         else:
             try:
