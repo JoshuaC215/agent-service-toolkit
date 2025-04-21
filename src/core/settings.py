@@ -94,13 +94,6 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str | None = None
     POSTGRES_PORT: int | None = None
     POSTGRES_DB: str | None = None
-    POSTGRES_POOL_SIZE: int = Field(
-        default=10, description="Maximum number of connections in the pool"
-    )
-    POSTGRES_MIN_SIZE: int = Field(
-        default=3, description="Minimum number of connections in the pool"
-    )
-    POSTGRES_MAX_IDLE: int = Field(default=5, description="Maximum number of idle connections")
 
     # Azure OpenAI Settings
     AZURE_OPENAI_API_KEY: SecretStr | None = None
