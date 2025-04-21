@@ -1,22 +1,26 @@
+from langchain_core.tools import tool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
-from langgraph_supervisor import create_supervisor
+from langgraph_supervisor import create_supervisor  # type: ignore[import-untyped]
 
 from core import get_model, settings
 
 model = get_model(settings.DEFAULT_MODEL)
 
 
+@tool
 def add(a: float, b: float) -> float:
     """Add two numbers."""
     return a + b
 
 
+@tool
 def multiply(a: float, b: float) -> float:
     """Multiply two numbers."""
     return a * b
 
 
+@tool
 def web_search(query: str) -> str:
     """Search the web for information."""
     return (
