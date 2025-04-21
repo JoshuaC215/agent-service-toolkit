@@ -1,8 +1,6 @@
 import json
 import logging
 import warnings
-from asyncio import CancelledError
-from builtins import GeneratorExit
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
@@ -202,6 +200,7 @@ async def message_generator(
                         for interrupt in updates:
                             new_messages.append(AIMessage(content=interrupt.value))
                         continue
+                    updates = updates or {}
                     update_messages = updates.get("messages", [])
                     # special cases for using langgraph-supervisor library
                     if node == "supervisor":
@@ -252,17 +251,9 @@ async def message_generator(
                     # that the model is asking for a tool to be invoked.
                     # So we only print non-empty content.
                     yield f"data: {json.dumps({'type': 'token', 'content': convert_message_content_to_string(content)})}\n\n"
-    except GeneratorExit:
-        # Handle GeneratorExit gracefully
-        logger.info("Stream closed by client")
-        return
-    except CancelledError:
-        # Handle CancelledError gracefully
-        logger.info("Stream cancelled")
-        return
     except Exception as e:
         logger.error(f"Error in message generator: {e}")
-        yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+        yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
     finally:
         yield "data: [DONE]\n\n"
 

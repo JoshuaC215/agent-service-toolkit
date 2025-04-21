@@ -187,7 +187,8 @@ class AgentClient:
                     # Yield the str token directly
                     return parsed["content"]
                 case "error":
-                    raise Exception(parsed["content"])
+                    error_msg = "Error: " + parsed["content"]
+                    return ChatMessage(type="ai", content=error_msg)
         return None
 
     def stream(
