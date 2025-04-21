@@ -37,6 +37,10 @@ jobs:
         uv run ruff format --check
         uv run ruff check --output-format github
 
+    - name: Run mypy
+      run: |
+        uv run mypy src/
+
     - name: Test with pytest
       run: |
         uv run pytest --cov=src/ --cov-report=xml

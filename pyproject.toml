@@ -58,6 +58,7 @@ dev = [
     "pytest-env",
     "pytest-asyncio",
     "ruff",
+    "mypy",
 ]
 
 # Group for the minimal dependencies to run just the client and Streamlit app.
@@ -83,3 +84,11 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-fake-openai-key"
+
+[tool.mypy]
+plugins = "pydantic.mypy"
+exclude = "src/streamlit_app.py"
+
+[[tool.mypy.overrides]]
+module = ["numexpr.*"]
+follow_untyped_imports = true
