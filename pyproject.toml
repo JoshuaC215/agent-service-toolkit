@@ -58,6 +58,7 @@ dev = [
     "pytest-env",
     "pytest-asyncio",
     "ruff",
+    "mypy",
 ]
 
 # Group for the minimal dependencies to run just the client and Streamlit app.
