@@ -39,7 +39,6 @@ jobs:
 
     - name: Run mypy
       run: |
-        uv pip install mypy
         uv run mypy src/
 
     - name: Test with pytest
