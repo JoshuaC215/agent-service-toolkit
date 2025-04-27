@@ -5,6 +5,7 @@ from langchain_aws import AmazonKnowledgeBasesRetriever
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.runnables.base import RunnableSequence
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
@@ -76,15 +77,18 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
         create_system_message,
         name="StateModifier",
     )
-    return preprocessor | model
+    # Explicitly cast the result to ensure correct type
+    return RunnableSequence(preprocessor, model)  # or use proper type annotation
 
 
+# Fix for the "missing key messages" errors
 async def retrieve_documents(state: AgentState, config: RunnableConfig) -> AgentState:
     """Retrieve relevant documents from the knowledge base."""
     # Get the last human message
     human_messages = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)]
     if not human_messages:
-        return {"retrieved_documents": []}
+        # Include messages from original state
+        return {"messages": state["messages"], "retrieved_documents": []}
 
     # Use the last human message as the query
     query = human_messages[-1].content
@@ -111,11 +115,11 @@ async def retrieve_documents(state: AgentState, config: RunnableConfig) -> Agent
         # Log the retrieval for debugging
         print(f"Retrieved {len(document_summaries)} documents for query: {query[:50]}...")
 
-        return {"retrieved_documents": document_summaries}
+        return {"messages": state["messages"], "retrieved_documents": document_summaries}
 
     except Exception as e:
         print(f"Error retrieving documents: {str(e)}")
-        return {"retrieved_documents": []}
+        return {"messages": state["messages"], "retrieved_documents": []}
 
 
 async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) -> AgentState:
@@ -124,8 +128,8 @@ async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) ->
     documents = state.get("retrieved_documents", [])
 
     if not documents:
-        # If no documents were retrieved, return without adding a system message
-        return {}
+        # If no documents were retrieved, return with original messages
+        return {"messages": state["messages"]}
 
     # Format retrieved documents for the model
     formatted_docs = "\n\n".join(
@@ -139,7 +143,7 @@ async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) ->
     )
 
     # Store formatted documents in the state
-    return {"kb_documents": formatted_docs}
+    return {"messages": state["messages"], "kb_documents": formatted_docs}
 
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
