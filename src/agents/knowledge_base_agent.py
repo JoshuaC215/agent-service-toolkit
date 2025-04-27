@@ -130,7 +130,7 @@ async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) ->
     # Format retrieved documents for the model
     formatted_docs = "\n\n".join(
         [
-            f"--- Document {i+1} ---\n"
+            f"--- Document {i + 1} ---\n"
             f"Source: {doc.get('source', 'Unknown')}\n"
             f"Title: {doc.get('title', 'Unknown')}\n\n"
             f"{doc.get('content', '')}"
