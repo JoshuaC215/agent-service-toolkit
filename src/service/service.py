@@ -227,7 +227,7 @@ async def message_generator(
             # We accumulate only supported fields into `parts` and skip unsupported metadata.
             # More info at: https://langchain-ai.github.io/langgraph/cloud/how-tos/stream_messages/
             processed_messages = []
-            current_message = {}
+            current_message: dict[str, Any] = {}
             for message in new_messages:
                 if isinstance(message, tuple):
                     key, value = message
