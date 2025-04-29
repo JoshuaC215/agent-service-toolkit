@@ -226,10 +226,20 @@ async def message_generator(
                 if isinstance(message, tuple):
                     key, value = message
                     if key == "content":
-                        message = AIMessage(content=value)
+                        # Create an AIMessage with the minimum required fields
+                        message = AIMessage(
+                            content=value,
+                            id=str(uuid4()),  # Generate a new ID if missing
+                            response_metadata={},  # Empty metadata by default
+                        )
+                    # Empty content + list of tool calls
                     elif key == "tool_calls":
-                        # Empty content + list of tool calls
-                        message = AIMessage(content="", tool_calls=value)
+                        message = AIMessage(
+                            content="",
+                            tool_calls=value,
+                            id=str(uuid4()),
+                            response_metadata={},
+                        )
                     else:
                         # Service metadata - skip it
                         continue
