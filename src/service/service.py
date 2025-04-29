@@ -1,3 +1,4 @@
+import inspect
 import json
 import logging
 import warnings
@@ -221,7 +222,10 @@ async def message_generator(
             if stream_mode == "custom":
                 new_messages = [event]
 
-            # Process message parts and reassemble tuples
+            # LangGraph streaming may emit tuples: (field_name, field_value)
+            # e.g. ('content', <str>), ('tool_calls', [ToolCall,...]), ('additional_kwargs', {...}), etc.
+            # We accumulate only supported fields into `parts` and skip unsupported metadata.
+            # More info at: https://langchain-ai.github.io/langgraph/cloud/how-tos/stream_messages/
             processed_messages = []
             current_message = {}
             for message in new_messages:
@@ -277,18 +281,10 @@ async def message_generator(
 
 
 def _create_ai_message(parts: dict) -> AIMessage:
-    """Construct AIMessage from collected parts with fallback defaults."""
-    return AIMessage(
-        content=parts.get("content", ""),
-        tool_calls=parts.get("tool_calls", []),
-        id=parts.get("id", str(uuid4())),
-        response_metadata=parts.get("response_metadata", {}),
-        additional_kwargs=parts.get("additional_kwargs", {}),
-        name=parts.get("name"),
-        example=parts.get("example", False),
-        invalid_tool_calls=parts.get("invalid_tool_calls", []),
-        usage_metadata=parts.get("usage_metadata"),
-    )
+    sig = inspect.signature(AIMessage)
+    valid_keys = set(sig.parameters)
+    filtered = {k: v for k, v in parts.items() if k in valid_keys}
+    return AIMessage(**filtered)
 
 
 def _sse_response_example() -> dict[int | str, Any]:
