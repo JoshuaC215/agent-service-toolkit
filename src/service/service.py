@@ -221,28 +221,34 @@ async def message_generator(
             if stream_mode == "custom":
                 new_messages = [event]
 
+            # Process message parts and reassemble tuples
+            processed_messages = []
+            current_message = {}
             for message in new_messages:
-                # Reassemble partial tuples
                 if isinstance(message, tuple):
                     key, value = message
-                    if key == "content":
-                        # Create an AIMessage with the minimum required fields
-                        message = AIMessage(
-                            content=value,
-                            id=str(uuid4()),  # Generate a new ID if missing
-                            response_metadata={},  # Empty metadata by default
-                        )
-                    # Empty content + list of tool calls
-                    elif key == "tool_calls":
-                        message = AIMessage(
-                            content="",
-                            tool_calls=value,
-                            id=str(uuid4()),
-                            response_metadata={},
-                        )
-                    else:
-                        # Service metadata - skip it
-                        continue
+                    # Store parts in temporary dict
+                    current_message[key] = value
+                else:
+                    # Add complete message if we have one in progress
+                    if current_message:
+                        processed_messages.append(_create_ai_message(current_message))
+                        current_message = {}
+                    processed_messages.append(message)
+
+            # Add any remaining message parts
+            if current_message:
+                processed_messages.append(_create_ai_message(current_message))
+
+            for message in processed_messages:
+                logger.info(
+                    "\n====== STREAM EVENT ======\n"
+                    "type: %s\n"
+                    "repr: %r\n"
+                    "==========================",
+                    type(message),
+                    message,
+                )
                 try:
                     chat_message = langchain_to_chat_message(message)
                     chat_message.run_id = str(run_id)
@@ -276,6 +282,21 @@ async def message_generator(
         yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
     finally:
         yield "data: [DONE]\n\n"
+
+
+def _create_ai_message(parts: dict) -> AIMessage:
+    """Construct AIMessage from collected parts with fallback defaults."""
+    return AIMessage(
+        content=parts.get("content", ""),
+        tool_calls=parts.get("tool_calls", []),
+        id=parts.get("id", str(uuid4())),
+        response_metadata=parts.get("response_metadata", {}),
+        additional_kwargs=parts.get("additional_kwargs", {}),
+        name=parts.get("name"),
+        example=parts.get("example", False),
+        invalid_tool_calls=parts.get("invalid_tool_calls", []),
+        usage_metadata=parts.get("usage_metadata"),
+    )
 
 
 def _sse_response_example() -> dict[int | str, Any]:
