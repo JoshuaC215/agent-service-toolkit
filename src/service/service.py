@@ -222,6 +222,17 @@ async def message_generator(
                 new_messages = [event]
 
             for message in new_messages:
+                # Reassemble partial tuples
+                if isinstance(message, tuple):
+                    key, value = message
+                    if key == "content":
+                        message = AIMessage(content=value)
+                    elif key == "tool_calls":
+                        # Empty content + list of tool calls
+                        message = AIMessage(content="", tool_calls=value)
+                    else:
+                        # Service metadata - skip it
+                        continue
                 try:
                     chat_message = langchain_to_chat_message(message)
                     chat_message.run_id = str(run_id)
