@@ -241,14 +241,6 @@ async def message_generator(
                 processed_messages.append(_create_ai_message(current_message))
 
             for message in processed_messages:
-                logger.info(
-                    "\n====== STREAM EVENT ======\n"
-                    "type: %s\n"
-                    "repr: %r\n"
-                    "==========================",
-                    type(message),
-                    message,
-                )
                 try:
                     chat_message = langchain_to_chat_message(message)
                     chat_message.run_id = str(run_id)
