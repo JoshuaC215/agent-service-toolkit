@@ -1,3 +1,4 @@
+import inspect
 import json
 import logging
 import warnings
@@ -221,7 +222,29 @@ async def message_generator(
             if stream_mode == "custom":
                 new_messages = [event]
 
+            # LangGraph streaming may emit tuples: (field_name, field_value)
+            # e.g. ('content', <str>), ('tool_calls', [ToolCall,...]), ('additional_kwargs', {...}), etc.
+            # We accumulate only supported fields into `parts` and skip unsupported metadata.
+            # More info at: https://langchain-ai.github.io/langgraph/cloud/how-tos/stream_messages/
+            processed_messages = []
+            current_message: dict[str, Any] = {}
             for message in new_messages:
+                if isinstance(message, tuple):
+                    key, value = message
+                    # Store parts in temporary dict
+                    current_message[key] = value
+                else:
+                    # Add complete message if we have one in progress
+                    if current_message:
+                        processed_messages.append(_create_ai_message(current_message))
+                        current_message = {}
+                    processed_messages.append(message)
+
+            # Add any remaining message parts
+            if current_message:
+                processed_messages.append(_create_ai_message(current_message))
+
+            for message in processed_messages:
                 try:
                     chat_message = langchain_to_chat_message(message)
                     chat_message.run_id = str(run_id)
@@ -255,6 +278,13 @@ async def message_generator(
         yield f"data: {json.dumps({'type': 'error', 'content': 'Internal server error'})}\n\n"
     finally:
         yield "data: [DONE]\n\n"
+
+
+def _create_ai_message(parts: dict) -> AIMessage:
+    sig = inspect.signature(AIMessage)
+    valid_keys = set(sig.parameters)
+    filtered = {k: v for k, v in parts.items() if k in valid_keys}
+    return AIMessage(**filtered)
 
 
 def _sse_response_example() -> dict[int | str, Any]:
