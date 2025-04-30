@@ -33,6 +33,7 @@ from schema.models import (
 class DatabaseType(StrEnum):
     SQLITE = "sqlite"
     POSTGRES = "postgres"
+    MONGO = "mongo"
 
 
 def check_str_is_http(x: str) -> str:
