@@ -89,7 +89,7 @@ async def retrieve_documents(state: AgentState, config: RunnableConfig) -> Agent
     human_messages = [msg for msg in state["messages"] if isinstance(msg, HumanMessage)]
     if not human_messages:
         # Include messages from original state
-        return {"messages": state["messages"], "retrieved_documents": []}
+        return {"messages": [], "retrieved_documents": []}
 
     # Use the last human message as the query
     query = human_messages[-1].content
@@ -115,11 +115,11 @@ async def retrieve_documents(state: AgentState, config: RunnableConfig) -> Agent
 
         logger.info(f"Retrieved {len(document_summaries)} documents for query: {query[:50]}...")
 
-        return {"retrieved_documents": document_summaries}
+        return {"retrieved_documents": document_summaries, "messages": []}
 
     except Exception as e:
         logger.error(f"Error retrieving documents: {str(e)}")
-        return {"retrieved_documents": []}
+        return {"retrieved_documents": [], "messages": []}
 
 
 async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) -> AgentState:
@@ -128,7 +128,7 @@ async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) ->
     documents = state.get("retrieved_documents", [])
 
     if not documents:
-        return {}
+        return {"messages": []}
 
     # Format retrieved documents for the model
     formatted_docs = "\n\n".join(
@@ -142,7 +142,7 @@ async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) ->
     )
 
     # Store formatted documents in the state
-    return {"kb_documents": formatted_docs}
+    return {"kb_documents": formatted_docs, "messages": []}
 
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
@@ -150,10 +150,8 @@ async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(m)
 
-    # Generate the response
     response = await model_runnable.ainvoke(state, config)
 
-    # Return the response
     return {"messages": [response]}
 
 
