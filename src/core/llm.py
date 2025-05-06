@@ -5,6 +5,7 @@ from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models import FakeListChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai import ChatVertexAI
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
@@ -22,6 +23,7 @@ from schema.models import (
     OllamaModelName,
     OpenAICompatibleName,
     OpenAIModelName,
+    VertexAIModelName,
 )
 
 _MODEL_TABLE = {
@@ -38,6 +40,11 @@ _MODEL_TABLE = {
     AnthropicModelName.SONNET_35: "claude-3-5-sonnet-latest",
     GoogleModelName.GEMINI_15_FLASH: "gemini-1.5-flash",
     GoogleModelName.GEMINI_20_FLASH: "gemini-2.0-flash",
+    VertexAIModelName.GEMINI_15_PRO: "gemini-1.5-pro-002",
+    VertexAIModelName.GEMINI_20_FLASH: "gemini-2.0-flash",
+    VertexAIModelName.GEMINI_25_FLASH_THINKING: "gemini-2.5-flash-preview-04-17",
+    VertexAIModelName.GEMINI_25_PRO: "gemini-2.5-pro-preview-05-06",
+    VertexAIModelName.GEMINI_25_PRO_EXP: "gemini-2.5-pro-exp-03-25",
     GroqModelName.LLAMA_31_8B: "llama-3.1-8b-instant",
     GroqModelName.LLAMA_33_70B: "llama-3.3-70b-versatile",
     GroqModelName.LLAMA_GUARD_3_8B: "llama-guard-3-8b",
@@ -61,6 +68,7 @@ ModelT: TypeAlias = (
     | ChatOpenAI
     | ChatAnthropic
     | ChatGoogleGenerativeAI
+    | ChatVertexAI
     | ChatGroq
     | ChatBedrock
     | ChatOllama
@@ -114,6 +122,8 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         return ChatAnthropic(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GoogleModelName:
         return ChatGoogleGenerativeAI(model=api_model_name, temperature=0.5, streaming=True)
+    if model_name in VertexAIModelName:
+        return ChatVertexAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GroqModelName:
         if model_name == GroqModelName.LLAMA_GUARD_3_8B:
             return ChatGroq(model=api_model_name, temperature=0.0)
