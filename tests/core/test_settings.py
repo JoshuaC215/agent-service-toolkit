@@ -6,7 +6,12 @@ import pytest
 from pydantic import SecretStr, ValidationError
 
 from core.settings import Settings, check_str_is_http
-from schema.models import AnthropicModelName, AzureOpenAIModelName, OpenAIModelName
+from schema.models import (
+    AnthropicModelName,
+    AzureOpenAIModelName,
+    OpenAIModelName,
+    VertexAIModelName,
+)
 
 
 def test_check_str_is_http():
@@ -50,6 +55,14 @@ def test_settings_with_anthropic_key():
         assert settings.ANTHROPIC_API_KEY == SecretStr("test_key")
         assert settings.DEFAULT_MODEL == AnthropicModelName.HAIKU_3
         assert settings.AVAILABLE_MODELS == set(AnthropicModelName)
+
+
+def test_settings_with_vertexai_credentials_file():
+    with patch.dict(os.environ, {"GOOGLE_APPLICATION_CREDENTIALS": "test_key"}, clear=True):
+        settings = Settings(_env_file=None)
+        assert settings.GOOGLE_APPLICATION_CREDENTIALS == SecretStr("test_key")
+        assert settings.DEFAULT_MODEL == VertexAIModelName.GEMINI_20_FLASH
+        assert settings.AVAILABLE_MODELS == set(VertexAIModelName)
 
 
 def test_settings_with_multiple_api_keys():

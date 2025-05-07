@@ -26,6 +26,7 @@ from schema.models import (
     OpenAICompatibleName,
     OpenAIModelName,
     Provider,
+    VertexAIModelName,
 )
 
 
@@ -58,6 +59,7 @@ class Settings(BaseSettings):
     DEEPSEEK_API_KEY: SecretStr | None = None
     ANTHROPIC_API_KEY: SecretStr | None = None
     GOOGLE_API_KEY: SecretStr | None = None
+    GOOGLE_APPLICATION_CREDENTIALS: SecretStr | None = None
     GROQ_API_KEY: SecretStr | None = None
     USE_AWS_BEDROCK: bool = False
     OLLAMA_MODEL: str | None = None
@@ -110,6 +112,7 @@ class Settings(BaseSettings):
             Provider.DEEPSEEK: self.DEEPSEEK_API_KEY,
             Provider.ANTHROPIC: self.ANTHROPIC_API_KEY,
             Provider.GOOGLE: self.GOOGLE_API_KEY,
+            Provider.VERTEXAI: self.GOOGLE_APPLICATION_CREDENTIALS,
             Provider.GROQ: self.GROQ_API_KEY,
             Provider.AWS: self.USE_AWS_BEDROCK,
             Provider.OLLAMA: self.OLLAMA_MODEL,
@@ -142,6 +145,10 @@ class Settings(BaseSettings):
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = GoogleModelName.GEMINI_15_FLASH
                     self.AVAILABLE_MODELS.update(set(GoogleModelName))
+                case Provider.VERTEXAI:
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = VertexAIModelName.GEMINI_20_FLASH
+                    self.AVAILABLE_MODELS.update(set(VertexAIModelName))
                 case Provider.GROQ:
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = GroqModelName.LLAMA_31_8B

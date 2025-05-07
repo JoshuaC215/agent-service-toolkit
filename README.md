@@ -163,6 +163,13 @@ If you are running the service in Docker, you will also need to:
 1. Set the `OLLAMA_BASE_URL` environment variable to the base URL of the Ollama server, e.g. `OLLAMA_BASE_URL=http://host.docker.internal:11434`
 1. Alternatively, you can run `ollama/ollama` image in Docker and use a similar configuration (however it may be slower in some cases).
 
+### Using VertexAI
+
+For detailed setup instructions, see:
+
+[Using VertexAI](./docs/VertexAI.md)
+
+
 ### Local development without Docker
 
 You can also run the agent service and the Streamlit app locally without Docker, just using a Python virtual environment.
