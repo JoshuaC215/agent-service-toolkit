@@ -47,7 +47,7 @@ _MODEL_TABLE = {
     VertexAIModelName.GEMINI_25_PRO_EXP: "gemini-2.5-pro-exp-03-25",
     GroqModelName.LLAMA_31_8B: "llama-3.1-8b-instant",
     GroqModelName.LLAMA_33_70B: "llama-3.3-70b-versatile",
-    GroqModelName.LLAMA_GUARD_3_8B: "llama-guard-3-8b",
+    GroqModelName.LLAMA_GUARD_4_12B: "meta-llama/llama-guard-4-12b",
     AWSModelName.BEDROCK_HAIKU: "anthropic.claude-3-5-haiku-20241022-v1:0",
     AWSModelName.BEDROCK_SONNET: "anthropic.claude-3-5-sonnet-20240620-v1:0",
     OllamaModelName.OLLAMA_GENERIC: "ollama",
@@ -125,7 +125,7 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
     if model_name in VertexAIModelName:
         return ChatVertexAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GroqModelName:
-        if model_name == GroqModelName.LLAMA_GUARD_3_8B:
+        if model_name == GroqModelName.LLAMA_GUARD_4_12B:
             return ChatGroq(model=api_model_name, temperature=0.0)
         return ChatGroq(model=api_model_name, temperature=0.5)
     if model_name in AWSModelName:

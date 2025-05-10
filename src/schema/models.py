@@ -67,7 +67,7 @@ class GroqModelName(StrEnum):
     LLAMA_31_8B = "groq-llama-3.1-8b"
     LLAMA_33_70B = "groq-llama-3.3-70b"
 
-    LLAMA_GUARD_3_8B = "groq-llama-guard-3-8b"
+    LLAMA_GUARD_4_12B = "meta-llama/llama-guard-4-12B"
 
 
 class AWSModelName(StrEnum):
