@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def _has_auth_credentials() -> bool:
-    required_auth = ["MONGO_USER", "MONGO_PASS", "MONGO_AUTH_SOURCE"]
+    required_auth = ["MONGO_USER", "MONGO_PASSWORD", "MONGO_AUTH_SOURCE"]
     set_auth = [var for var in required_auth if getattr(settings, var, None)]
     if len(set_auth) > 0 and len(set_auth) != len(required_auth):
         raise ValueError(
