@@ -18,9 +18,8 @@ def validate_mongo_config() -> None:
     missing_always = [var for var in required_always if not getattr(settings, var, None)]
     if missing_always:
         raise ValueError(
-            f"Missing required MongoDB configuration: {
-                ', '.join(missing_always)}. "
-            'These environment variables must be set to use MongoDB persistence.'
+            f"Missing required MongoDB configuration: {', '.join(missing_always)}. "
+            "These environment variables must be set to use MongoDB persistence."
         )
 
     user = getattr(settings, "MONGO_USER", None)
