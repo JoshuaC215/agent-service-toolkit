@@ -9,6 +9,16 @@ from core.settings import settings
 logger = logging.getLogger(__name__)
 
 
+def _has_auth_credentials() -> bool:
+    required_auth = ["MONGO_USER", "MONGO_PASS", "MONGO_AUTH_SOURCE"]
+    set_auth = [var for var in required_auth if getattr(settings, var, None)]
+    if len(set_auth) > 0 and len(set_auth) != len(required_auth):
+        raise ValueError(
+            f"If any of the following environment variables are set, all must be set: {', '.join(required_auth)}."
+        )
+    return len(set_auth) == len(required_auth)
+
+
 def validate_mongo_config() -> None:
     """
     Validate that all required MongoDB configuration is present.
@@ -22,57 +32,21 @@ def validate_mongo_config() -> None:
             "These environment variables must be set to use MongoDB persistence."
         )
 
-    user = getattr(settings, "MONGO_USER", None)
-    password = getattr(settings, "MONGO_PASS", None)
-
-    has_user = user is not None and user.strip() != ""
-    has_password = False
-    if password is not None:
-        try:
-            password_str = password.get_secret_value()
-            has_password = password_str.strip() != ""
-        except AttributeError:
-            has_password = False
-
-    if has_user or has_password:
-        if not (has_user and has_password):
-            missing = []
-            if not has_user:
-                missing.append("MONGO_USER")
-            if not has_password:
-                missing.append("MONGO_PASS")
-            raise ValueError(
-                f"Both MONGO_USER and MONGO_PASS must be set if one is provided. "
-                f"Missing: {', '.join(missing)}"
-            )
-        auth_source = getattr(settings, "MONGO_AUTH_SOURCE", None)
-        if not auth_source or auth_source.strip() == "":
-            raise ValueError(
-                "MONGO_AUTH_SOURCE is required when MONGO_USER and MONGO_PASS are set."
-            )
+    _has_auth_credentials()
 
 
 def get_mongo_connection_string() -> str:
     """Build and return the MongoDB connection string from settings."""
-    user = getattr(settings, "MONGO_USER", None)
-    password = getattr(settings, "MONGO_PASS", None)
 
-    has_user = user is not None and user.strip() != "" if user else False
-    has_password = False
-    if password is not None:
-        try:
-            password_str = password.get_secret_value()
-            has_password = password_str.strip() != ""
-        except AttributeError:
-            has_password = False
-
-    if has_user and has_password:
-        password_escaped = urllib.parse.quote_plus(password.get_secret_value())
-        auth_source = settings.MONGO_AUTH_SOURCE
+    if _has_auth_credentials():
+        if settings.MONGO_PASSWORD is None:  # for type checking
+            raise ValueError("MONGO_PASSWORD is not set")
+        password = settings.MONGO_PASSWORD.get_secret_value().strip()
+        password_escaped = urllib.parse.quote_plus(password)
         return (
-            f"mongodb://{user}:{password_escaped}@"
+            f"mongodb://{settings.MONGO_USER}:{password_escaped}@"
             f"{settings.MONGO_HOST}:{settings.MONGO_PORT}/"
-            f"?authSource={auth_source}"
+            f"?authSource={settings.MONGO_AUTH_SOURCE}"
         )
     else:
         return f"mongodb://{settings.MONGO_HOST}:{settings.MONGO_PORT}/"
@@ -81,6 +55,8 @@ def get_mongo_connection_string() -> str:
 def get_mongo_saver() -> AbstractAsyncContextManager[AsyncMongoDBSaver]:
     """Initialize and return a MongoDB saver instance."""
     validate_mongo_config()
+    if settings.MONGO_DB is None:  # for type checking
+        raise ValueError("MONGO_DB is not set")
     return AsyncMongoDBSaver.from_conn_string(
         get_mongo_connection_string(), db_name=settings.MONGO_DB
     )
