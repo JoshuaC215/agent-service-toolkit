@@ -60,7 +60,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     try:
         async with initialize_database() as saver:
-            await saver.setup()
+            if hasattr(saver, "setup"):  # ignore: union-attr
+                await saver.setup()
             agents = get_all_agent_info()
             for a in agents:
                 agent = get_agent(a.key)

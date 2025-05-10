@@ -33,6 +33,7 @@ from schema.models import (
 class DatabaseType(StrEnum):
     SQLITE = "sqlite"
     POSTGRES = "postgres"
+    MONGO = "mongo"
 
 
 def check_str_is_http(x: str) -> str:
@@ -96,6 +97,14 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str | None = None
     POSTGRES_PORT: int | None = None
     POSTGRES_DB: str | None = None
+
+    # MongoDB Configuration
+    MONGO_HOST: str | None = None
+    MONGO_PORT: int | None = None
+    MONGO_DB: str | None = None
+    MONGO_USER: str | None = None
+    MONGO_PASSWORD: SecretStr | None = None
+    MONGO_AUTH_SOURCE: str | None = None
 
     # Azure OpenAI Settings
     AZURE_OPENAI_API_KEY: SecretStr | None = None
