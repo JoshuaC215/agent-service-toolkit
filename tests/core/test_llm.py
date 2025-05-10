@@ -31,7 +31,7 @@ def test_get_model_anthropic():
     with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test_key"}):
         model = get_model(AnthropicModelName.HAIKU_3)
         assert isinstance(model, ChatAnthropic)
-        assert model.model == "claude-3-haiku-20240307"
+        assert model.model == "claude-3-haiku"
         assert model.temperature == 0.5
         assert model.streaming is True
 
@@ -40,7 +40,7 @@ def test_get_model_groq():
     with patch.dict(os.environ, {"GROQ_API_KEY": "test_key"}):
         model = get_model(GroqModelName.LLAMA_31_8B)
         assert isinstance(model, ChatGroq)
-        assert model.model_name == "llama-3.1-8b-instant"
+        assert model.model_name == "llama-3.1-8b"
         assert model.temperature == 0.5
 
 
