@@ -57,6 +57,7 @@ docker compose watch
 1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path. Available agents and models are described in `/info`
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
 1. **Content Moderation**: Implements LlamaGuard for content moderation (requires Groq API key).
+1. **RAG Agent**: A basic RAG agent implementation using ChromaDB - see [docs](docs/RAG_Assistant.md).
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
 1. **Testing**: Includes robust unit and integration tests for the full repo.
@@ -87,6 +88,12 @@ The repository is structured as follows:
 
 3. You can now run the agent service and the Streamlit app locally, either with Docker or just using Python. The Docker setup is recommended for simpler environment setup and immediate reloading of the services when you make changes to your code.
 
+### Additional setup for specific AI providers
+
+- [Setting up Ollama](docs/Ollama.md)
+- [Setting up VertexAI](docs/VertexAI.md)
+- [Setting up RAG with ChromaDB](docs/RAG_Assistant.md)
+
 ### Building or customizing your own agent
 
 To customize the agent for your own use case:
@@ -94,49 +101,6 @@ To customize the agent for your own use case:
 1. Add your new agent to the `src/agents` directory. You can copy `research_assistant.py` or `chatbot.py` and modify it to change the agent's behavior and tools.
 1. Import and add your new agent to the `agents` dictionary in `src/agents/agents.py`. Your agent can be called by `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`.
 1. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
-
-### Creating a RAG assistant
-
-To create a Chroma database:
-
-1. Add the data you want to use to a folder, i.e. `./data`, Word and PDF files are currently supported.
-2. Open [`create_chroma_db.py` file](./scripts/create_chroma_db.py) and set the folder_path variable to the path to your data i.e. `./data`.
-3. You can change the database name, chunk size and overlap size.
-4. Assuming you have already followed the [Quickstart](#quickstart) and activated the virtual environtment, to create the database run:
-
-```sh
-python scripts/create_chroma_db.py
-```
-
-5. If successful, a chroma db will be created in the repository root directory.
-
-To create a RAG assistant:
-1. Open [`tools.py` file](./src/agents/tools.py) and make sure the persist_directory is pointing to the database you created previously.
-2. Modify the amount of documents returned, currently set to 5.
-3. Update the `database_search_func` function description to accurately describe what the purpose and contents of your database is.
-4. Open [`rag_assistant.py` file](./src/agents/rag_assistant.py) and update the agent's instuctions to describe what the assistant's speciality is and what knowledge it has access to:
-
-```python
-instructions = f"""
-    You are a helpful HR assistant with the ability to search a database containing information on our company's policies, benefits and handbook.
-    Today's date is {current_date}.
-
-    NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.
-
-    A few things to remember:
-    - If you have access to multiple databases, gather information from a diverse range of sources before crafting your response.
-    - Please include the source of the information used in your response.
-    - Use a friendly but professional tone when replying.
-    - Only use information from the database. Do not use information from outside sources.
-    """
-```
-
-5. Open [`streamlit_app.py` file](./src/streamlit_app.py) and update the agent's welcome message:
-
-```python
-WELCOME = """Hello! I'm your AI-powered HR assistant, here to help you navigate company policies, the employee handbook, and benefits. Ask me anything!""
-```
-6. Run the applicatio and test your RAG asssitant.
 
 ### Docker Setup
 
@@ -188,30 +152,6 @@ response.pretty_print()
 The agent supports [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio), a new IDE for developing agents in LangGraph.
 
 You can simply install LangGraph Studio, add your `.env` file to the root directory as described above, and then launch LangGraph studio pointed at the root directory. Customize `langgraph.json` as needed.
-
-### Using Ollama
-
-⚠️ _**Note:** Ollama support in agent-service-toolkit is experimental and may not work as expected. The instructions below have been tested using Docker Desktop on a MacBook Pro. Please file an issue for any challenges you encounter._
-
-You can also use [Ollama](https://ollama.com) to run the LLM powering the agent service.
-
-1. Install Ollama using instructions from https://github.com/ollama/ollama
-1. Install any model you want to use, e.g. `ollama pull llama3.2` and set the `OLLAMA_MODEL` environment variable to the model you want to use, e.g. `OLLAMA_MODEL=llama3.2`
-
-If you are running the service locally (e.g. `python src/run_service.py`), you should be all set!
-
-If you are running the service in Docker, you will also need to:
-
-1. [Configure the Ollama server as described here](https://github.com/ollama/ollama/blob/main/docs/faq.md#how-do-i-configure-ollama-server), e.g. by running `launchctl setenv OLLAMA_HOST "0.0.0.0"` on MacOS and restart Ollama.
-1. Set the `OLLAMA_BASE_URL` environment variable to the base URL of the Ollama server, e.g. `OLLAMA_BASE_URL=http://host.docker.internal:11434`
-1. Alternatively, you can run `ollama/ollama` image in Docker and use a similar configuration (however it may be slower in some cases).
-
-### Using VertexAI
-
-For detailed setup instructions, see:
-
-[Using VertexAI](./docs/VertexAI.md)
-
 
 ### Local development without Docker
 
