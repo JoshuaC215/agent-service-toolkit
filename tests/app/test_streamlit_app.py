@@ -36,7 +36,9 @@ def test_app_simple_non_streaming(mock_agent_client):
 
 def test_app_settings(mock_agent_client):
     """Test the full app - happy path"""
-    at = AppTest.from_file("../../src/streamlit_app.py").run()
+    at = AppTest.from_file("../../src/streamlit_app.py")
+    at.query_params["user_id"] = "1234"
+    at.run()
 
     PROMPT = "Know any jokes?"
     RESPONSE = "Sure! Here's a joke:"
@@ -65,6 +67,7 @@ def test_app_settings(mock_agent_client):
         message=PROMPT,
         model=OpenAIModelName.GPT_4O_MINI,
         thread_id=at.session_state.thread_id,
+        user_id="1234",
     )
     assert not at.exception
 
