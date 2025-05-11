@@ -26,6 +26,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/info"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     develop:
       watch:
         - path: src/agents/
@@ -52,6 +57,11 @@ services:
       - "8501:8501"
     depends_on:
       - agent_service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     environment:
       - AGENT_URL=http://agent_service:8080
     develop:

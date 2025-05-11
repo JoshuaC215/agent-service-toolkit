@@ -32,6 +32,7 @@ def initialize_store():
     """
     if settings.DATABASE_TYPE == DatabaseType.POSTGRES:
         return get_postgres_store()
+    # TODO: Add Mongo store - https://pypi.org/project/langgraph-store-mongodb/
     else:  # Default to SQLite
         return get_sqlite_store()
 
