@@ -338,10 +338,7 @@ class AgentClient:
             except httpx.HTTPError as e:
                 raise AgentClientError(f"Error: {e}")
 
-    def get_history(
-        self,
-        thread_id: str
-    ) -> ChatHistory:
+    def get_history(self, thread_id: str) -> ChatHistory:
         """
         Get chat history.
 

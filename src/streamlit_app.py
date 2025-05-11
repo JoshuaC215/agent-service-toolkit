@@ -33,22 +33,22 @@ def get_or_create_user_id() -> str:
     # Check if user_id exists in session state
     if USER_ID_COOKIE in st.session_state:
         return st.session_state[USER_ID_COOKIE]
-        
+
     # Try to get from URL parameters using the new st.query_params
     if USER_ID_COOKIE in st.query_params:
         user_id = st.query_params[USER_ID_COOKIE]
         st.session_state[USER_ID_COOKIE] = user_id
         return user_id
-    
+
     # Generate a new user_id if not found
     user_id = str(uuid.uuid4())
-    
+
     # Store in session state for this session
     st.session_state[USER_ID_COOKIE] = user_id
-    
+
     # Also add to URL parameters so it can be bookmarked/shared
     st.query_params[USER_ID_COOKIE] = user_id
-    
+
     return user_id
 
 
@@ -75,10 +75,10 @@ async def main() -> None:
         st.set_option("client.toolbarMode", "minimal")
         await asyncio.sleep(0.1)
         st.rerun()
-    
+
     # Get or create user ID
     user_id = get_or_create_user_id()
-    
+
     if "agent_client" not in st.session_state:
         load_dotenv()
         agent_url = os.getenv("AGENT_URL")
@@ -102,7 +102,9 @@ async def main() -> None:
             messages = []
         else:
             try:
-                messages: ChatHistory = agent_client.get_history(thread_id=thread_id, user_id=user_id).messages
+                messages: ChatHistory = agent_client.get_history(
+                    thread_id=thread_id, user_id=user_id
+                ).messages
             except AgentClientError:
                 st.error("No message history found for this Thread ID.")
                 messages = []
@@ -133,7 +135,7 @@ async def main() -> None:
                 index=agent_idx,
             )
             use_streaming = st.toggle("Stream results", value=True)
-            
+
             # Display user ID (for debugging or user information)
             st.text_input("User ID (read-only)", value=user_id, disabled=True)
 
@@ -165,7 +167,9 @@ async def main() -> None:
             if not st_base_url.startswith("https") and "localhost" not in st_base_url:
                 st_base_url = st_base_url.replace("http", "https")
             # Include both thread_id and user_id in the URL for sharing to maintain user identity
-            chat_url = f"{st_base_url}?thread_id={st.session_state.thread_id}&{USER_ID_COOKIE}={user_id}"
+            chat_url = (
+                f"{st_base_url}?thread_id={st.session_state.thread_id}&{USER_ID_COOKIE}={user_id}"
+            )
             st.markdown(f"**Chat URL:**\n```text\n{chat_url}\n```")
             st.info("Copy the above URL to share or revisit this chat")
 

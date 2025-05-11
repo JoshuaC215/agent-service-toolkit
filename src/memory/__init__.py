@@ -35,4 +35,5 @@ def initialize_store():
     else:  # Default to SQLite
         return get_sqlite_store()
 
+
 __all__ = ["initialize_database", "initialize_store"]

@@ -6,6 +6,7 @@ from langgraph.store.memory import InMemoryStore
 
 from core import get_model, settings
 
+
 @entrypoint(checkpointer=MemorySaver(), store=InMemoryStore())
 async def chatbot(
     inputs: dict[str, list[BaseMessage]],

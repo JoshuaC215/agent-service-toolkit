@@ -63,12 +63,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
         async with initialize_database() as saver, initialize_store() as store:
             # Set up both components
-            if hasattr(saver, "setup"): # ignore: union-attr
+            if hasattr(saver, "setup"):  # ignore: union-attr
                 await saver.setup()
             # Only setup store for Postgres as InMemoryStore doesn't need setup
-            if hasattr(store, "setup"): # ignore: union-attr
+            if hasattr(store, "setup"):  # ignore: union-attr
                 await store.setup()
-            
+
             # Configure agents with both memory components
             agents = get_all_agent_info()
             for a in agents:
@@ -367,11 +367,7 @@ def history(input: ChatHistoryInput) -> ChatHistory:
     agent: Pregel = get_agent(DEFAULT_AGENT)
     try:
         state_snapshot = agent.get_state(
-            config=RunnableConfig(
-                configurable={
-                    "thread_id": input.thread_id
-                }
-            )
+            config=RunnableConfig(configurable={"thread_id": input.thread_id})
         )
         messages: list[AnyMessage] = state_snapshot.values["messages"]
         chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]

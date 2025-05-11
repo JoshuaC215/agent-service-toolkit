@@ -51,10 +51,10 @@ def get_postgres_saver() -> AbstractAsyncContextManager[AsyncPostgresSaver]:
 def get_postgres_store():
     """
     Get a PostgreSQL store instance.
-    
+
     Returns an AsyncPostgresStore instance that needs to be used with async context manager
     pattern according to the documentation:
-    
+
     async with AsyncPostgresStore.from_conn_string(conn_string) as store:
         await store.setup()  # Run migrations
         # Use store...

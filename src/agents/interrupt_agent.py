@@ -1,6 +1,6 @@
+import logging
 from datetime import datetime
 from typing import Any, cast
-import logging
 
 from langchain.prompts import SystemMessagePromptTemplate
 from langchain_core.language_models.base import LanguageModelInput
@@ -75,38 +75,43 @@ class BirthdateExtraction(BaseModel):
         description="Explanation of how the birthdate was extracted or why no birthdate was found"
     )
 
-async def determine_birthdate(state: AgentState, config: RunnableConfig, store: BaseStore) -> AgentState:
+
+async def determine_birthdate(
+    state: AgentState, config: RunnableConfig, store: BaseStore
+) -> AgentState:
     """This node examines the conversation history to determine user's birthdate, checking store first."""
-    
+
     # Attempt to get user_id for unique storage per user
     user_id = config["configurable"].get("user_id")
     logger.info(f"[determine_birthdate] Extracted user_id: {user_id}")
     namespace = None
     key = "birthdate"
-    birthdate = None # Initialize birthdate
+    birthdate = None  # Initialize birthdate
 
     if user_id:
         # Use user_id in the namespace to ensure uniqueness per user
         namespace = (user_id,)
-        
+
         # Check if we already have the birthdate in the store for this user
         try:
             result = await store.aget(namespace, key=key)
             # Handle cases where store.aget might return Item directly or a list
             user_data = None
-            if result: # Check if anything was returned
+            if result:  # Check if anything was returned
                 if isinstance(result, list):
-                    if result: # Check if list is not empty
+                    if result:  # Check if list is not empty
                         user_data = result[0]
-                else: # Assume it's the Item object directly
+                else:  # Assume it's the Item object directly
                     user_data = result
-                    
+
             if user_data and user_data.value.get("birthdate"):
                 # Convert ISO format string back to datetime object
                 birthdate_str = user_data.value["birthdate"]
                 birthdate = datetime.fromisoformat(birthdate_str) if birthdate_str else None
                 # We already have the birthdate, return it
-                logger.info(f"[determine_birthdate] Found birthdate in store for user {user_id}: {birthdate}")
+                logger.info(
+                    f"[determine_birthdate] Found birthdate in store for user {user_id}: {birthdate}"
+                )
                 return {
                     "birthdate": birthdate,
                 }
@@ -118,7 +123,9 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig, store: 
     else:
         # If no user_id, we cannot reliably store/retrieve user-specific data.
         # Consider logging this situation.
-        logger.warning("Warning: user_id not found in config. Skipping persistent birthdate storage/retrieval for this run.")
+        logger.warning(
+            "Warning: user_id not found in config. Skipping persistent birthdate storage/retrieval for this run."
+        )
 
     # If birthdate wasn't retrieved from store, proceed with extraction
     # Also extract if the birthdate was retrieved but is None (shouldn't happen with current logic but good practice)
@@ -132,7 +139,7 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig, store: 
 
         # If no birthdate found after extraction attempt, interrupt
         if response.birthdate is None:
-            birthdate_input = interrupt(f"{response.reasoning}\n" "Please tell me your birthdate?")
+            birthdate_input = interrupt(f"{response.reasoning}\nPlease tell me your birthdate?")
             # Re-run extraction with the new input
             state["messages"].append(HumanMessage(birthdate_input))
             # Note: Recursive call might need careful handling of depth or state updates
@@ -157,33 +164,41 @@ async def determine_birthdate(state: AgentState, config: RunnableConfig, store: 
         "birthdate": birthdate,
     }
 
+
 response_prompt = SystemMessagePromptTemplate.from_template("""
-You are a helpful assistant. 
+You are a helpful assistant.
 
 Known information:
 - The user's birthdate is {birthdate_str}
 
 User's latest message: "{last_user_message}"
 
-Based on the known information and the user's message, provide a helpful and relevant response. 
-If the user asked for their birthdate, confirm it. 
-If the user asked for their zodiac sign, calculate it and tell them. 
+Based on the known information and the user's message, provide a helpful and relevant response.
+If the user asked for their birthdate, confirm it.
+If the user asked for their zodiac sign, calculate it and tell them.
 Otherwise, respond conversationally based on their message.
 """)
+
 
 async def generate_response(state: AgentState, config: RunnableConfig) -> AgentState:
     """Generates the final response based on the user's query and the available birthdate."""
     birthdate = state.get("birthdate")
-    last_user_message = "" 
+    last_user_message = ""
     if state.get("messages") and isinstance(state["messages"][-1], HumanMessage):
         last_user_message = state["messages"][-1].content
 
     if not birthdate:
         # This should ideally not be reached if determine_birthdate worked correctly and possibly interrupted.
         # Handle cases where birthdate might still be missing.
-        return {"messages": [AIMessage(content="I couldn't determine your birthdate. Could you please provide it?")]}
+        return {
+            "messages": [
+                AIMessage(
+                    content="I couldn't determine your birthdate. Could you please provide it?"
+                )
+            ]
+        }
 
-    birthdate_str = birthdate.strftime("%B %d, %Y") # Format for display
+    birthdate_str = birthdate.strftime("%B %d, %Y")  # Format for display
 
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
     model_runnable = wrap_model(
