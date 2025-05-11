@@ -5,6 +5,7 @@ from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
+from langgraph.store.memory import InMemoryStore
 from langgraph.types import StreamWriter
 
 from agents.bg_task_agent.task import Task
@@ -62,4 +63,5 @@ agent.add_edge("model", END)
 
 bg_task_agent = agent.compile(
     checkpointer=MemorySaver(),
+    store=InMemoryStore(),
 )
