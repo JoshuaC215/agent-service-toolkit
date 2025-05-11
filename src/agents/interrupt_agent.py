@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
 
 from langchain.prompts import SystemMessagePromptTemplate
 from langchain_core.language_models.base import LanguageModelInput
@@ -133,8 +133,7 @@ async def determine_birthdate(
     model_runnable = wrap_model(
         m.with_structured_output(BirthdateExtraction), birthdate_extraction_prompt.format()
     ).with_config(tags=["skip_stream"])
-    response = await model_runnable.ainvoke(state, config)
-    response: BirthdateExtraction = cast(BirthdateExtraction, response)
+    response: BirthdateExtraction = await model_runnable.ainvoke(state, config)
 
     # If no birthdate found after extraction attempt, interrupt
     if response.birthdate is None:
