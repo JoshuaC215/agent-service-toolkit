@@ -344,7 +344,6 @@ class AgentClient:
 
         Args:
             thread_id (str, optional): Thread ID for identifying a conversation
-            user_id (str, optional): User ID for continuing a conversation across multiple threads
         """
         request = ChatHistoryInput(thread_id=thread_id)
         try:

@@ -102,9 +102,7 @@ async def main() -> None:
             messages = []
         else:
             try:
-                messages: ChatHistory = agent_client.get_history(
-                    thread_id=thread_id, user_id=user_id
-                ).messages
+                messages: ChatHistory = agent_client.get_history(thread_id=thread_id).messages
             except AgentClientError:
                 st.error("No message history found for this Thread ID.")
                 messages = []
