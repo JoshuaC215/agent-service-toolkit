@@ -129,35 +129,43 @@ async def determine_birthdate(
         )
 
     # If birthdate wasn't retrieved from store, proceed with extraction
-    # Also extract if the birthdate was retrieved but is None (shouldn't happen with current logic but good practice)
-    if birthdate is None:
-        m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
-        model_runnable = wrap_model(
-            m.with_structured_output(BirthdateExtraction), birthdate_extraction_prompt.format()
+    m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
+    model_runnable = wrap_model(
+        m.with_structured_output(BirthdateExtraction), birthdate_extraction_prompt.format()
+    ).with_config(tags=["skip_stream"])
+    response = await model_runnable.ainvoke(state, config)
+    response: BirthdateExtraction = cast(BirthdateExtraction, response)
+
+    # If no birthdate found after extraction attempt, interrupt
+    if response.birthdate is None:
+        birthdate_input = interrupt(f"{response.reasoning}\nPlease tell me your birthdate?")
+        # Re-run extraction with the new input
+        state["messages"].append(HumanMessage(birthdate_input))
+        # Note: Recursive call might need careful handling of depth or state updates
+        return await determine_birthdate(state, config, store)
+
+    # Birthdate found - convert string to datetime
+    try:
+        birthdate = datetime.fromisoformat(response.birthdate)
+    except ValueError:
+        # If parsing fails, ask for clarification
+        birthdate_input = interrupt(
+            "I couldn't understand the date format. Please provide your birthdate in YYYY-MM-DD format."
         )
-        response = await model_runnable.ainvoke(state, config)
-        response = cast(BirthdateExtraction, response)
+        # Re-run extraction with the new input
+        state["messages"].append(HumanMessage(birthdate_input))
+        # Note: Recursive call might need careful handling of depth or state updates
+        return await determine_birthdate(state, config, store)
 
-        # If no birthdate found after extraction attempt, interrupt
-        if response.birthdate is None:
-            birthdate_input = interrupt(f"{response.reasoning}\nPlease tell me your birthdate?")
-            # Re-run extraction with the new input
-            state["messages"].append(HumanMessage(birthdate_input))
-            # Note: Recursive call might need careful handling of depth or state updates
-            return await determine_birthdate(state, config, store)
-
-        # Birthdate extracted, assign it to the variable
-        birthdate = response.birthdate
-
-        # Store the newly extracted birthdate only if we have a user_id
-        if user_id and namespace:
-            # Convert datetime to ISO format string for JSON serialization
-            birthdate_str = birthdate.isoformat() if birthdate else None
-            try:
-                await store.aput(namespace, key, {"birthdate": birthdate_str})
-            except Exception as e:
-                # Log the error or handle cases where the store write might fail
-                logger.error(f"Error writing to store for namespace {namespace}, key {key}: {e}")
+    # Store the newly extracted birthdate only if we have a user_id
+    if user_id and namespace:
+        # Convert datetime to ISO format string for JSON serialization
+        birthdate_str = birthdate.isoformat() if birthdate else None
+        try:
+            await store.aput(namespace, key, {"birthdate": birthdate_str})
+        except Exception as e:
+            # Log the error or handle cases where the store write might fail
+            logger.error(f"Error writing to store for namespace {namespace}, key {key}: {e}")
 
     # Return the determined birthdate (either from store or extracted)
     logger.info(f"[determine_birthdate] Returning birthdate {birthdate} for user {user_id}")
