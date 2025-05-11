@@ -114,6 +114,7 @@ async def determine_birthdate(
                 )
                 return {
                     "birthdate": birthdate,
+                    "messages": [],
                 }
         except Exception as e:
             # Log the error or handle cases where the store might be unavailable
@@ -162,6 +163,7 @@ async def determine_birthdate(
     logger.info(f"[determine_birthdate] Returning birthdate {birthdate} for user {user_id}")
     return {
         "birthdate": birthdate,
+        "messages": [],
     }
 
 
@@ -183,9 +185,10 @@ Otherwise, respond conversationally based on their message.
 async def generate_response(state: AgentState, config: RunnableConfig) -> AgentState:
     """Generates the final response based on the user's query and the available birthdate."""
     birthdate = state.get("birthdate")
-    last_user_message = ""
     if state.get("messages") and isinstance(state["messages"][-1], HumanMessage):
         last_user_message = state["messages"][-1].content
+    else:
+        last_user_message = ""
 
     if not birthdate:
         # This should ideally not be reached if determine_birthdate worked correctly and possibly interrupted.
