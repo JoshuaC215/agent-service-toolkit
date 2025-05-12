@@ -40,6 +40,7 @@ dependencies = [
     "numexpr ~=2.10.1",
     "numpy ~=1.26.4; python_version <= '3.12'",
     "numpy ~=2.2.3; python_version >= '3.13'",
+    "onnxruntime ~= 1.21.1",
     "pandas ~=2.2.3",
     "psycopg[binary,pool] ~=3.2.4",
     "pyarrow >=18.1.0",
