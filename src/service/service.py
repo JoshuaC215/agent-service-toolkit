@@ -16,6 +16,7 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.pregel import Pregel
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
+from langfuse.decorators import langfuse_context
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
 from core import settings
@@ -83,8 +84,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise
 
 
+
 app = FastAPI(lifespan=lifespan)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
+
 
 
 @router.get("/info")
@@ -110,6 +113,20 @@ async def _handle_input(user_input: UserInput, agent: Pregel) -> tuple[dict[str,
 
     configurable = {"thread_id": thread_id, "model": user_input.model, "user_id": user_id}
 
+    callbacks = []
+    if settings.LANGFUSE_TRACING:
+        logger.info("Langfuse tracing is enabled")
+        from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
+ 
+        # Initialize Langfuse CallbackHandler for Langchain (tracing)
+        langfuse_handler = CallbackHandler()
+
+        callbacks.append(langfuse_handler)
+        
+
+    else:
+        logger.info("Langfuse tracing is disabled")
+
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
             raise HTTPException(
@@ -121,6 +138,7 @@ async def _handle_input(user_input: UserInput, agent: Pregel) -> tuple[dict[str,
     config = RunnableConfig(
         configurable=configurable,
         run_id=run_id,
+        callbacks=callbacks,
     )
 
     # Check for interrupts that need to be resumed
@@ -162,6 +180,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     # in that case.
     agent: Pregel = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent)
+
     try:
         response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
         response_type, response = response_events[-1]
@@ -380,7 +399,19 @@ def history(input: ChatHistoryInput) -> ChatHistory:
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok"}
+
+    health_status = {"status": "healthy"}
+    
+    if settings.LANGFUSE_TRACING:
+        try:
+            from langfuse import Langfuse # noqa: I001 
+            langfuse = Langfuse()
+            health_status["langfuse"] = "connected" if langfuse.auth_check() else "disconnected"
+        except Exception as e:
+            logger.error(f"Langfuse connection error: {e}")
+            health_status["langfuse"] = "disconnected"
+    
+    return health_status
 
 
 app.include_router(router)
