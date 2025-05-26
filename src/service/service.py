@@ -16,7 +16,6 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.pregel import Pregel
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
-from langfuse.decorators import langfuse_context
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
 from core import settings
@@ -115,17 +114,14 @@ async def _handle_input(user_input: UserInput, agent: Pregel) -> tuple[dict[str,
 
     callbacks = []
     if settings.LANGFUSE_TRACING:
-        logger.info("Langfuse tracing is enabled")
-        from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
+        
+        from langfuse.callback import CallbackHandler  # pylint: disable=import-outside-toplevel
  
         # Initialize Langfuse CallbackHandler for Langchain (tracing)
         langfuse_handler = CallbackHandler()
 
         callbacks.append(langfuse_handler)
         
-
-    else:
-        logger.info("Langfuse tracing is disabled")
 
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
