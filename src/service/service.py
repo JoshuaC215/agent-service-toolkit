@@ -13,8 +13,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
-from langfuse import Langfuse
-from langfuse.callback import CallbackHandler
+from langfuse import Langfuse  # type: ignore[import-untyped]
+from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
 from langgraph.pregel import Pregel
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
