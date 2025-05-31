@@ -13,6 +13,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
+from langfuse import Langfuse
+from langfuse.callback import CallbackHandler
 from langgraph.pregel import Pregel
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
@@ -83,10 +85,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise
 
 
-
 app = FastAPI(lifespan=lifespan)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
-
 
 
 @router.get("/info")
@@ -114,14 +114,10 @@ async def _handle_input(user_input: UserInput, agent: Pregel) -> tuple[dict[str,
 
     callbacks = []
     if settings.LANGFUSE_TRACING:
-        
-        from langfuse.callback import CallbackHandler  # pylint: disable=import-outside-toplevel
- 
         # Initialize Langfuse CallbackHandler for Langchain (tracing)
         langfuse_handler = CallbackHandler()
 
         callbacks.append(langfuse_handler)
-        
 
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
@@ -396,17 +392,16 @@ def history(input: ChatHistoryInput) -> ChatHistory:
 async def health_check():
     """Health check endpoint."""
 
-    health_status = {"status": "healthy"}
-    
+    health_status = {"status": "ok"}
+
     if settings.LANGFUSE_TRACING:
         try:
-            from langfuse import Langfuse # noqa: I001 
             langfuse = Langfuse()
             health_status["langfuse"] = "connected" if langfuse.auth_check() else "disconnected"
         except Exception as e:
             logger.error(f"Langfuse connection error: {e}")
             health_status["langfuse"] = "disconnected"
-    
+
     return health_status
 
 
