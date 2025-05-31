@@ -13,6 +13,8 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
+from langfuse import Langfuse  # type: ignore[import-untyped]
+from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
 from langgraph.pregel import Pregel
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
@@ -110,6 +112,13 @@ async def _handle_input(user_input: UserInput, agent: Pregel) -> tuple[dict[str,
 
     configurable = {"thread_id": thread_id, "model": user_input.model, "user_id": user_id}
 
+    callbacks = []
+    if settings.LANGFUSE_TRACING:
+        # Initialize Langfuse CallbackHandler for Langchain (tracing)
+        langfuse_handler = CallbackHandler()
+
+        callbacks.append(langfuse_handler)
+
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
             raise HTTPException(
@@ -121,6 +130,7 @@ async def _handle_input(user_input: UserInput, agent: Pregel) -> tuple[dict[str,
     config = RunnableConfig(
         configurable=configurable,
         run_id=run_id,
+        callbacks=callbacks,
     )
 
     # Check for interrupts that need to be resumed
@@ -162,6 +172,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     # in that case.
     agent: Pregel = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent)
+
     try:
         response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
         response_type, response = response_events[-1]
@@ -380,7 +391,18 @@ def history(input: ChatHistoryInput) -> ChatHistory:
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok"}
+
+    health_status = {"status": "ok"}
+
+    if settings.LANGFUSE_TRACING:
+        try:
+            langfuse = Langfuse()
+            health_status["langfuse"] = "connected" if langfuse.auth_check() else "disconnected"
+        except Exception as e:
+            logger.error(f"Langfuse connection error: {e}")
+            health_status["langfuse"] = "disconnected"
+
+    return health_status
 
 
 app.include_router(router)
