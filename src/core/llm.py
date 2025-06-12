@@ -32,6 +32,7 @@ _MODEL_TABLE = (
     | {m: m.value for m in OpenAICompatibleName}
     | {m: m.value for m in AzureOpenAIModelName}
     | {m: m.value for m in DeepseekModelName}
+    | {m: m.value for m in AlibabaQWenModelName}
     | {m: m.value for m in AnthropicModelName}
     | {m: m.value for m in GoogleModelName}
     | {m: m.value for m in VertexAIModelName}
