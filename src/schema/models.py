@@ -7,6 +7,7 @@ class Provider(StrEnum):
     OPENAI_COMPATIBLE = auto()
     AZURE_OPENAI = auto()
     DEEPSEEK = auto()
+    ALIBABA_QWEN = auto()
     ANTHROPIC = auto()
     GOOGLE = auto()
     VERTEXAI = auto()
@@ -34,6 +35,14 @@ class DeepseekModelName(StrEnum):
     """https://api-docs.deepseek.com/quick_start/pricing"""
 
     DEEPSEEK_CHAT = "deepseek-chat"
+
+
+class AlibabaQWenModelName(StrEnum):
+    """https://help.aliyun.com/zh/model-studio/user-guide/text-generation/"""
+
+    QWEN_MAX = "qwen-max"
+    QWEN_PLUS = "qwen-plus"
+    QWEN_TURBO = "qwen-turbo"
 
 
 class AnthropicModelName(StrEnum):
@@ -100,6 +109,7 @@ AllModelEnum: TypeAlias = (
     | OpenAICompatibleName
     | AzureOpenAIModelName
     | DeepseekModelName
+    | AlibabaQWenModelName
     | AnthropicModelName
     | GoogleModelName
     | VertexAIModelName

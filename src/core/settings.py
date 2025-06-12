@@ -19,6 +19,7 @@ from schema.models import (
     AWSModelName,
     AzureOpenAIModelName,
     DeepseekModelName,
+    AlibabaQWenModelName,
     FakeModelName,
     GoogleModelName,
     GroqModelName,
@@ -57,6 +58,7 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: SecretStr | None = None
     DEEPSEEK_API_KEY: SecretStr | None = None
+    ALIBABA_QWEN_API_KEY: SecretStr | None = None
     ANTHROPIC_API_KEY: SecretStr | None = None
     GOOGLE_API_KEY: SecretStr | None = None
     GOOGLE_APPLICATION_CREDENTIALS: SecretStr | None = None
@@ -110,6 +112,7 @@ class Settings(BaseSettings):
             Provider.OPENAI: self.OPENAI_API_KEY,
             Provider.OPENAI_COMPATIBLE: self.COMPATIBLE_BASE_URL and self.COMPATIBLE_MODEL,
             Provider.DEEPSEEK: self.DEEPSEEK_API_KEY,
+            Provider.ALIBABA_QWEN: self.ALIBABA_QWEN_API_KEY,
             Provider.ANTHROPIC: self.ANTHROPIC_API_KEY,
             Provider.GOOGLE: self.GOOGLE_API_KEY,
             Provider.VERTEXAI: self.GOOGLE_APPLICATION_CREDENTIALS,
@@ -137,6 +140,10 @@ class Settings(BaseSettings):
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = DeepseekModelName.DEEPSEEK_CHAT
                     self.AVAILABLE_MODELS.update(set(DeepseekModelName))
+                case Provider.ALIBABA_QWEN:
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = AlibabaQWenModelName.QWEN_PLUS
+                    self.AVAILABLE_MODELS.update(set(AlibabaQWenModelName))
                 case Provider.ANTHROPIC:
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = AnthropicModelName.HAIKU_3
