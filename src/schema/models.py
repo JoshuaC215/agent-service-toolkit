@@ -56,8 +56,10 @@ class AnthropicModelName(StrEnum):
 class GoogleModelName(StrEnum):
     """https://ai.google.dev/gemini-api/docs/models/gemini"""
 
-    GEMINI_15_FLASH = "gemini-1.5-flash"
+    GEMINI_15_PRO = "gemini-1.5-pro"
     GEMINI_20_FLASH = "gemini-2.0-flash"
+    # GEMINI_20_PRO_EXP = "gemini-2.0-pro-exp-02-05"
+    # GEMINI_20_FLASH_THINK = "gemini-2.0-flash-thinking-exp-01-21"
 
 
 class VertexAIModelName(StrEnum):
@@ -65,7 +67,7 @@ class VertexAIModelName(StrEnum):
 
     GEMINI_15_PRO = "gemini-1.5-pro-002"
     GEMINI_20_FLASH = "gemini-2.0-flash"
-    GEMINI_25_FLASH_THINKING = "gemini-2.5-flash-preview-04-17"
+    GEMINI_25_FLASH_THINKING = "models/gemini-2.5-flash-preview-04-17"
     GEMINI_25_PRO = "gemini-2.5-pro-preview-05-06"
     GEMINI_25_PRO_EXP = "gemini-2.5-pro-exp-03-25"
 
@@ -73,10 +75,10 @@ class VertexAIModelName(StrEnum):
 class GroqModelName(StrEnum):
     """https://console.groq.com/docs/models"""
 
-    LLAMA_31_8B = "groq-llama-3.1-8b"
-    LLAMA_33_70B = "groq-llama-3.3-70b"
+    LLAMA_31_8B = "llama-3.1-8b"
+    LLAMA_33_70B = "llama-3.3-70b"
 
-    LLAMA_GUARD_3_8B = "groq-llama-guard-3-8b"
+    LLAMA_GUARD_4_12B = "meta-llama/llama-guard-4-12b"
 
 
 class AWSModelName(StrEnum):

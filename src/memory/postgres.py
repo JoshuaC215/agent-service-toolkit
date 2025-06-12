@@ -2,6 +2,7 @@ import logging
 from contextlib import AbstractAsyncContextManager
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.store.postgres import AsyncPostgresStore
 
 from core.settings import settings
 
@@ -45,3 +46,19 @@ def get_postgres_saver() -> AbstractAsyncContextManager[AsyncPostgresSaver]:
     """Initialize and return a PostgreSQL saver instance."""
     validate_postgres_config()
     return AsyncPostgresSaver.from_conn_string(get_postgres_connection_string())
+
+
+def get_postgres_store():
+    """
+    Get a PostgreSQL store instance.
+
+    Returns an AsyncPostgresStore instance that needs to be used with async context manager
+    pattern according to the documentation:
+
+    async with AsyncPostgresStore.from_conn_string(conn_string) as store:
+        await store.setup()  # Run migrations
+        # Use store...
+    """
+    validate_postgres_config()
+    connection_string = get_postgres_connection_string()
+    return AsyncPostgresStore.from_conn_string(connection_string)

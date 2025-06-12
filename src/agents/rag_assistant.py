@@ -1,11 +1,13 @@
 from datetime import datetime
 from typing import Literal
 
-from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
-from langchain_community.utilities import OpenWeatherMapAPIWrapper
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage
-from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.runnables import (
+    RunnableConfig,
+    RunnableLambda,
+    RunnableSerializable,
+)
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
@@ -13,7 +15,7 @@ from langgraph.prebuilt import ToolNode
 from langgraph.store.memory import InMemoryStore
 
 from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
-from agents.tools import calculator
+from agents.tools import database_search
 from core import get_model, settings
 
 
@@ -27,29 +29,23 @@ class AgentState(MessagesState, total=False):
     remaining_steps: RemainingSteps
 
 
-web_search = DuckDuckGoSearchResults(name="WebSearch")
-tools = [web_search, calculator]
+tools = [database_search]
 
-# Add weather tool if API key is set
-# Register for an API key at https://openweathermap.org/api/
-if settings.OPENWEATHERMAP_API_KEY:
-    wrapper = OpenWeatherMapAPIWrapper(
-        openweathermap_api_key=settings.OPENWEATHERMAP_API_KEY.get_secret_value()
-    )
-    tools.append(OpenWeatherMapQueryRun(name="Weather", api_wrapper=wrapper))
 
 current_date = datetime.now().strftime("%B %d, %Y")
 instructions = f"""
-    You are a helpful research assistant with the ability to search the web and use other tools.
+    You are AcmeBot, a helpful and knowledgeable virtual assistant designed to support employees by retrieving
+    and answering questions based on AcmeTech's official Employee Handbook. Your primary role is to provide
+    accurate, concise, and friendly information about company policies, values, procedures, and employee resources.
     Today's date is {current_date}.
 
     NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.
 
     A few things to remember:
+    - If you have access to multiple databases, gather information from a diverse range of sources before crafting your response.
     - Please include markdown-formatted links to any citations used in your response. Only include one
     or two citations per response unless more are needed. ONLY USE LINKS RETURNED BY THE TOOLS.
-    - Use calculator tool with numexpr to answer math questions. The user does not understand numexpr,
-      so for the final response, use human readable format - e.g. "300 * 200", not "(300 \\times 200)".
+    - Only use information from the database. Do not use information from outside sources.
     """
 
 
@@ -78,7 +74,10 @@ async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     llama_guard = LlamaGuard()
     safety_output = await llama_guard.ainvoke("Agent", state["messages"] + [response])
     if safety_output.safety_assessment == SafetyAssessment.UNSAFE:
-        return {"messages": [format_safety_message(safety_output)], "safety": safety_output}
+        return {
+            "messages": [format_safety_message(safety_output)],
+            "safety": safety_output,
+        }
 
     if state["remaining_steps"] < 2 and response.tool_calls:
         return {
@@ -146,5 +145,4 @@ def pending_tool_calls(state: AgentState) -> Literal["tools", "done"]:
 
 agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", "done": END})
 
-
-research_assistant = agent.compile(checkpointer=MemorySaver(), store=InMemoryStore())
+rag_assistant = agent.compile(checkpointer=MemorySaver(), store=InMemoryStore())

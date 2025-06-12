@@ -27,36 +27,19 @@ from schema.models import (
     VertexAIModelName,
 )
 
-_MODEL_TABLE = {
-    OpenAIModelName.GPT_4O_MINI: "gpt-4o-mini",
-    OpenAIModelName.GPT_4O: "gpt-4o",
-    OpenAICompatibleName.OPENAI_COMPATIBLE: settings.COMPATIBLE_MODEL,
-    AzureOpenAIModelName.AZURE_GPT_4O_MINI: settings.AZURE_OPENAI_DEPLOYMENT_MAP.get(
-        "gpt-4o-mini", ""
-    ),
-    AzureOpenAIModelName.AZURE_GPT_4O: settings.AZURE_OPENAI_DEPLOYMENT_MAP.get("gpt-4o", ""),
-    DeepseekModelName.DEEPSEEK_CHAT: "deepseek-chat",
-    AlibabaQWenModelName.QWEN_MAX: "qwen-max",
-    AlibabaQWenModelName.QWEN_PLUS: "qwen-plus",
-    AlibabaQWenModelName.QWEN_TURBO: "qwen-turbo",
-    AnthropicModelName.HAIKU_3: "claude-3-haiku-20240307",
-    AnthropicModelName.HAIKU_35: "claude-3-5-haiku-latest",
-    AnthropicModelName.SONNET_35: "claude-3-5-sonnet-latest",
-    GoogleModelName.GEMINI_15_FLASH: "gemini-1.5-flash",
-    GoogleModelName.GEMINI_20_FLASH: "gemini-2.0-flash",
-    VertexAIModelName.GEMINI_15_PRO: "gemini-1.5-pro-002",
-    VertexAIModelName.GEMINI_20_FLASH: "gemini-2.0-flash",
-    VertexAIModelName.GEMINI_25_FLASH_THINKING: "gemini-2.5-flash-preview-04-17",
-    VertexAIModelName.GEMINI_25_PRO: "gemini-2.5-pro-preview-05-06",
-    VertexAIModelName.GEMINI_25_PRO_EXP: "gemini-2.5-pro-exp-03-25",
-    GroqModelName.LLAMA_31_8B: "llama-3.1-8b-instant",
-    GroqModelName.LLAMA_33_70B: "llama-3.3-70b-versatile",
-    GroqModelName.LLAMA_GUARD_3_8B: "llama-guard-3-8b",
-    AWSModelName.BEDROCK_HAIKU: "anthropic.claude-3-5-haiku-20241022-v1:0",
-    AWSModelName.BEDROCK_SONNET: "anthropic.claude-3-5-sonnet-20240620-v1:0",
-    OllamaModelName.OLLAMA_GENERIC: "ollama",
-    FakeModelName.FAKE: "fake",
-}
+_MODEL_TABLE = (
+    {m: m.value for m in OpenAIModelName}
+    | {m: m.value for m in OpenAICompatibleName}
+    | {m: m.value for m in AzureOpenAIModelName}
+    | {m: m.value for m in DeepseekModelName}
+    | {m: m.value for m in AnthropicModelName}
+    | {m: m.value for m in GoogleModelName}
+    | {m: m.value for m in VertexAIModelName}
+    | {m: m.value for m in GroqModelName}
+    | {m: m.value for m in AWSModelName}
+    | {m: m.value for m in OllamaModelName}
+    | {m: m.value for m in FakeModelName}
+)
 
 
 class FakeToolModel(FakeListChatModel):
@@ -138,7 +121,7 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
     if model_name in VertexAIModelName:
         return ChatVertexAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GroqModelName:
-        if model_name == GroqModelName.LLAMA_GUARD_3_8B:
+        if model_name == GroqModelName.LLAMA_GUARD_4_12B:
             return ChatGroq(model=api_model_name, temperature=0.0)
         return ChatGroq(model=api_model_name, temperature=0.5)
     if model_name in AWSModelName:

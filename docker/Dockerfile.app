@@ -8,7 +8,10 @@ ENV UV_COMPILE_BYTECODE=1
 COPY pyproject.toml .
 COPY uv.lock .
 RUN pip install --no-cache-dir uv
-# Only install the client dependencies
+
+# Install only the dependencies needed for the client application
+# --frozen: Use exact versions from the lock file
+# --only-group client: Only install dependencies marked as part of the "client" group in pyproject.toml
 RUN uv sync --frozen --only-group client
 
 COPY src/client/ ./client/

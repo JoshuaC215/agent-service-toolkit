@@ -34,6 +34,7 @@ from schema.models import (
 class DatabaseType(StrEnum):
     SQLITE = "sqlite"
     POSTGRES = "postgres"
+    MONGO = "mongo"
 
 
 def check_str_is_http(x: str) -> str:
@@ -86,6 +87,11 @@ class Settings(BaseSettings):
     )
     LANGCHAIN_API_KEY: SecretStr | None = None
 
+    LANGFUSE_TRACING: bool = False
+    LANGFUSE_HOST: Annotated[str, BeforeValidator(check_str_is_http)] = "https://cloud.langfuse.com"
+    LANGFUSE_PUBLIC_KEY: SecretStr | None = None
+    LANGFUSE_SECRET_KEY: SecretStr | None = None
+
     # Database Configuration
     DATABASE_TYPE: DatabaseType = (
         DatabaseType.SQLITE
@@ -98,6 +104,14 @@ class Settings(BaseSettings):
     POSTGRES_HOST: str | None = None
     POSTGRES_PORT: int | None = None
     POSTGRES_DB: str | None = None
+
+    # MongoDB Configuration
+    MONGO_HOST: str | None = None
+    MONGO_PORT: int | None = None
+    MONGO_DB: str | None = None
+    MONGO_USER: str | None = None
+    MONGO_PASSWORD: SecretStr | None = None
+    MONGO_AUTH_SOURCE: str | None = None
 
     # Azure OpenAI Settings
     AZURE_OPENAI_API_KEY: SecretStr | None = None
@@ -150,7 +164,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(AnthropicModelName))
                 case Provider.GOOGLE:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_15_FLASH
+                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_20_FLASH
                     self.AVAILABLE_MODELS.update(set(GoogleModelName))
                 case Provider.VERTEXAI:
                     if self.DEFAULT_MODEL is None:

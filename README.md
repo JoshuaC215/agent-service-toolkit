@@ -50,13 +50,14 @@ docker compose watch
 
 ### Key Features
 
-1. **LangGraph Agent and latest features**: A customizable agent built using the LangGraph framework. Implements the latest LangGraph v0.3 features including human in the loop with `interrupt()`, and flow control with `Command`, and `langgraph-supervisor`.
+1. **LangGraph Agent and latest features**: A customizable agent built using the LangGraph framework. Implements the latest LangGraph v0.3 features including human in the loop with `interrupt()`, flow control with `Command`, long-term memory with `Store`, and `langgraph-supervisor`.
 1. **FastAPI Service**: Serves the agent with both streaming and non-streaming endpoints.
 1. **Advanced Streaming**: A novel approach to support both token-based and message-based streaming.
 1. **Streamlit Interface**: Provides a user-friendly chat interface for interacting with the agent.
 1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path. Available agents and models are described in `/info`
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
 1. **Content Moderation**: Implements LlamaGuard for content moderation (requires Groq API key).
+1. **RAG Agent**: A basic RAG agent implementation using ChromaDB - see [docs](docs/RAG_Assistant.md).
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
 1. **Testing**: Includes robust unit and integration tests for the full repo.
@@ -87,6 +88,12 @@ The repository is structured as follows:
 
 3. You can now run the agent service and the Streamlit app locally, either with Docker or just using Python. The Docker setup is recommended for simpler environment setup and immediate reloading of the services when you make changes to your code.
 
+### Additional setup for specific AI providers
+
+- [Setting up Ollama](docs/Ollama.md)
+- [Setting up VertexAI](docs/VertexAI.md)
+- [Setting up RAG with ChromaDB](docs/RAG_Assistant.md)
+
 ### Building or customizing your own agent
 
 To customize the agent for your own use case:
@@ -97,27 +104,38 @@ To customize the agent for your own use case:
 
 ### Docker Setup
 
-This project includes a Docker setup for easy development and deployment. The `compose.yaml` file defines two services: `agent_service` and `streamlit_app`. The `Dockerfile` for each is in their respective directories.
+This project includes a Docker setup for easy development and deployment. The `compose.yaml` file defines three services: `postgres`, `agent_service` and `streamlit_app`. The `Dockerfile` for each service is in their respective directories.
 
 For local development, we recommend using [docker compose watch](https://docs.docker.com/compose/file-watch/). This feature allows for a smoother development experience by automatically updating your containers when changes are detected in your source code.
 
 1. Make sure you have Docker and Docker Compose (>=[2.23.0](https://docs.docker.com/compose/release-notes/#2230)) installed on your system.
 
-2. Build and launch the services in watch mode:
+2. Create a `.env` file from the `.env.example`. At minimum, you need to provide an LLM API key (e.g., OPENAI_API_KEY).
+   ```sh
+   cp .env.example .env
+   # Edit .env to add your API keys
+   ```
+
+3. Build and launch the services in watch mode:
 
    ```sh
    docker compose watch
    ```
 
-3. The services will now automatically update when you make changes to your code:
-   - Changes in the relevant python files and directories will trigger updates for the relevantservices.
+   This will automatically:
+   - Start a PostgreSQL database service that the agent service connects to
+   - Start the agent service with FastAPI
+   - Start the Streamlit app for the user interface
+
+4. The services will now automatically update when you make changes to your code:
+   - Changes in the relevant python files and directories will trigger updates for the relevant services.
    - NOTE: If you make changes to the `pyproject.toml` or `uv.lock` files, you will need to rebuild the services by running `docker compose up --build`.
 
-4. Access the Streamlit app by navigating to `http://localhost:8501` in your web browser.
+5. Access the Streamlit app by navigating to `http://localhost:8501` in your web browser.
 
-5. The agent service API will be available at `http://0.0.0.0:8080`. You can also use the OpenAPI docs at `http://0.0.0.0:8080/redoc`.
+6. The agent service API will be available at `http://0.0.0.0:8080`. You can also use the OpenAPI docs at `http://0.0.0.0:8080/redoc`.
 
-6. Use `docker compose down` to stop the services.
+7. Use `docker compose down` to stop the services.
 
 This setup allows you to develop and test your changes in real-time without manually restarting the services.
 
@@ -145,30 +163,6 @@ response.pretty_print()
 The agent supports [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio), a new IDE for developing agents in LangGraph.
 
 You can simply install LangGraph Studio, add your `.env` file to the root directory as described above, and then launch LangGraph studio pointed at the root directory. Customize `langgraph.json` as needed.
-
-### Using Ollama
-
-⚠️ _**Note:** Ollama support in agent-service-toolkit is experimental and may not work as expected. The instructions below have been tested using Docker Desktop on a MacBook Pro. Please file an issue for any challenges you encounter._
-
-You can also use [Ollama](https://ollama.com) to run the LLM powering the agent service.
-
-1. Install Ollama using instructions from https://github.com/ollama/ollama
-1. Install any model you want to use, e.g. `ollama pull llama3.2` and set the `OLLAMA_MODEL` environment variable to the model you want to use, e.g. `OLLAMA_MODEL=llama3.2`
-
-If you are running the service locally (e.g. `python src/run_service.py`), you should be all set!
-
-If you are running the service in Docker, you will also need to:
-
-1. [Configure the Ollama server as described here](https://github.com/ollama/ollama/blob/main/docs/faq.md#how-do-i-configure-ollama-server), e.g. by running `launchctl setenv OLLAMA_HOST "0.0.0.0"` on MacOS and restart Ollama.
-1. Set the `OLLAMA_BASE_URL` environment variable to the base URL of the Ollama server, e.g. `OLLAMA_BASE_URL=http://host.docker.internal:11434`
-1. Alternatively, you can run `ollama/ollama` image in Docker and use a similar configuration (however it may be slower in some cases).
-
-### Using VertexAI
-
-For detailed setup instructions, see:
-
-[Using VertexAI](./docs/VertexAI.md)
-
 
 ### Local development without Docker
 
