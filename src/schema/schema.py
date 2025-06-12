@@ -70,6 +70,11 @@ class StreamInput(UserInput):
         default=True,
     )
 
+    stream_protocol: Literal["sse", "agui"] = Field(
+        description="The protocol to use for streaming the agent's response.",
+        default="sse",
+    )
+
 
 class ToolCall(TypedDict):
     """Represents a request to call a tool."""

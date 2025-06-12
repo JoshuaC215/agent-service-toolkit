@@ -1,11 +1,28 @@
+from typing import AsyncGenerator, Any
+from uuid import uuid4
+
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
     HumanMessage,
     ToolMessage,
+    AnyMessage,
 )
 from langchain_core.messages import (
     ChatMessage as LangchainChatMessage,
+)
+
+from ag_ui.core.events import EventEncoder
+from ag_ui.core.events import (
+    EventType,
+    ToolCallStartEvent,
+    ToolCallArgsEvent,
+    ToolCallEndEvent,
+    TextMessageStartEvent,
+    TextMessageContentEvent,
+    TextMessageEndEvent,
+    CustomEvent,
+    RawEvent,
 )
 
 from schema import ChatMessage
@@ -74,3 +91,77 @@ def remove_tool_calls(content: str | list[str | dict]) -> str | list[str | dict]
         for content_item in content
         if isinstance(content_item, str) or content_item["type"] != "tool_use"
     ]
+
+
+async def convert_message_to_agui_events(
+    message: AnyMessage, encoder: EventEncoder
+) -> AsyncGenerator[str, None]:
+    """Convert a single LangChain message to AG-UI events."""
+    message_id = str(uuid4())
+
+    if isinstance(message, AIMessage):
+        # Handle tool calls first
+        if hasattr(message, "tool_calls") and message.tool_calls:
+            for tool_call in message.tool_calls:
+                tool_call_id = tool_call.get("id", str(uuid4()))
+                yield encoder.encode(
+                    ToolCallStartEvent(
+                        type=EventType.TOOL_CALL_START,
+                        tool_call_id=tool_call_id,
+                        tool_call_name=tool_call.get("name", "unknown"),
+                    )
+                )
+                yield encoder.encode(
+                    ToolCallArgsEvent(
+                        type=EventType.TOOL_CALL_ARGS,
+                        tool_call_id=tool_call_id,
+                        delta=str(tool_call.get("args", {})),
+                    )
+                )
+                yield encoder.encode(
+                    ToolCallEndEvent(type=EventType.TOOL_CALL_END, tool_call_id=tool_call_id)
+                )
+
+        # Handle text content
+        content = remove_tool_calls(message.content)
+        if content:
+            yield encoder.encode(
+                TextMessageStartEvent(
+                    type=EventType.TEXT_MESSAGE_START, message_id=message_id, role="assistant"
+                )
+            )
+            yield encoder.encode(
+                TextMessageContentEvent(
+                    type=EventType.TEXT_MESSAGE_CONTENT,
+                    message_id=message_id,
+                    delta=convert_message_content_to_string(content),
+                )
+            )
+            yield encoder.encode(
+                TextMessageEndEvent(type=EventType.TEXT_MESSAGE_END, message_id=message_id)
+            )
+
+    elif isinstance(message, ToolMessage):
+        """
+        AG-UI protocol does not support tool messages.
+        """
+        pass
+
+    elif message.role == "custom":
+        # Handle custom messages as raw events
+        yield encoder.encode(
+            CustomEvent(
+                type=EventType.CUSTOM,
+                name=message.content[0].get("type", "unknown"),
+                value=message.content[0].get("data", {}),
+            )
+        )
+
+    else:
+        # Handle other message types as raw events
+        yield encoder.encode(
+            RawEvent(
+                type=EventType.RAW,
+                event=str(message.content) if hasattr(message, "content") else str(message),
+            )
+        )
