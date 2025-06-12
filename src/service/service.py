@@ -7,6 +7,15 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
+# AG-UI Protocol imports
+from ag_ui.core import (
+    EventType,
+    RunErrorEvent,
+    RunFinishedEvent,
+    RunStartedEvent,
+)
+from ag_ui.core.events import TextMessageChunkEvent
+from ag_ui.encoder import EventEncoder
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -18,16 +27,6 @@ from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
 from langgraph.pregel import Pregel
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
-
-# AG-UI Protocol imports
-from ag_ui.core import (
-    EventType,
-    RunStartedEvent,
-    RunFinishedEvent,
-    RunErrorEvent,
-)
-from ag_ui.core.events import TextMessageChunkEvent
-from ag_ui.encoder import EventEncoder
 
 from agents import DEFAULT_AGENT, get_agent, get_all_agent_info
 from core import settings
@@ -44,9 +43,9 @@ from schema import (
 )
 from service.utils import (
     convert_message_content_to_string,
+    convert_message_to_agui_events,
     langchain_to_chat_message,
     remove_tool_calls,
-    convert_message_to_agui_events,
 )
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)

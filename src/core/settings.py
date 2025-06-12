@@ -14,12 +14,12 @@ from pydantic import (
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from schema.models import (
+    AlibabaQWenModelName,
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
     AzureOpenAIModelName,
     DeepseekModelName,
-    AlibabaQWenModelName,
     FakeModelName,
     GoogleModelName,
     GroqModelName,

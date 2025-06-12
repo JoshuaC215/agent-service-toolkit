@@ -12,12 +12,12 @@ from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 from core.settings import settings
 from schema.models import (
+    AlibabaQWenModelName,
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
     AzureOpenAIModelName,
     DeepseekModelName,
-    AlibabaQWenModelName,
     FakeModelName,
     GoogleModelName,
     GroqModelName,
