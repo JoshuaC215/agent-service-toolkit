@@ -1,4 +1,5 @@
 from collections.abc import AsyncGenerator
+from typing import Any, cast
 from uuid import uuid4
 
 from ag_ui.core.events import (
@@ -146,13 +147,16 @@ async def convert_message_to_agui_events(
         """
         pass
 
-    elif message.role == "custom":
+    elif isinstance(message, LangchainChatMessage) and message.role == "custom":
+        # m is TaskData in the form of a dict
+        m = cast(dict[str, Any], message.content[0])
+
         # Handle custom messages as raw events
         yield encoder.encode(
             CustomEvent(
                 type=EventType.CUSTOM,
-                name=message.content[0].get("type", "unknown"),
-                value=message.content[0].get("data", {}),
+                name=m.get("name", "custom"),
+                value=m,
             )
         )
 
