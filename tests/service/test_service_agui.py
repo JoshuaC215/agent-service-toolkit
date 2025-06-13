@@ -17,24 +17,30 @@ from service.utils import convert_message_to_agui_events
 def encoder():
     return EventEncoder()
 
+
 def run_async_gen(gen):
     loop = asyncio.new_event_loop()
     return loop.run_until_complete(_collect_async_gen(gen))
 
+
 def _collect_async_gen(gen):
     result = []
+
     async def collect():
         async for item in gen:
             result.append(item)
         return result
+
     return collect()
 
+
 # ============ Unit Tests ============
+
 
 def test_ai_message_with_tool_and_text(encoder):
     msg = AIMessage(
         content="hello",
-        tool_calls=[{"name": "Calculator", "args": {"x": 1, "y": 2}, "id": str(uuid4())}]
+        tool_calls=[{"name": "Calculator", "args": {"x": 1, "y": 2}, "id": str(uuid4())}],
     )
     events = run_async_gen(convert_message_to_agui_events(msg, encoder))
     assert any(EventType.TOOL_CALL_START.value in e for e in events)
@@ -44,6 +50,7 @@ def test_ai_message_with_tool_and_text(encoder):
     assert any(EventType.TEXT_MESSAGE_CONTENT.value in e for e in events)
     assert any(EventType.TEXT_MESSAGE_END.value in e for e in events)
 
+
 def test_ai_message_only_text(encoder):
     msg = AIMessage(content="just text", tool_calls=[])
     events = run_async_gen(convert_message_to_agui_events(msg, encoder))
@@ -52,18 +59,23 @@ def test_ai_message_only_text(encoder):
     assert any(EventType.TEXT_MESSAGE_END.value in e for e in events)
     assert not any(EventType.TOOL_CALL_START.value in e for e in events)
 
+
 def test_ai_message_only_tool(encoder):
-    msg = AIMessage(content="", tool_calls=[{"name": "Search", "args": {"q": "foo"}, "id": str(uuid4())}])
+    msg = AIMessage(
+        content="", tool_calls=[{"name": "Search", "args": {"q": "foo"}, "id": str(uuid4())}]
+    )
     events = run_async_gen(convert_message_to_agui_events(msg, encoder))
     assert any(EventType.TOOL_CALL_START.value in e for e in events)
     assert any(EventType.TOOL_CALL_ARGS.value in e for e in events)
     assert any(EventType.TOOL_CALL_END.value in e for e in events)
     assert not any(EventType.TEXT_MESSAGE_START.value in e for e in events)
 
+
 def test_tool_message_no_event(encoder):
     msg = ToolMessage(content="result", name="Calculator", tool_call_id=str(uuid4()))
     events = run_async_gen(convert_message_to_agui_events(msg, encoder))
     assert len(events) == 0
+
 
 def test_custom_langchain_message(encoder):
     custom_data = {"name": "my_custom", "foo": 123}
@@ -72,20 +84,25 @@ def test_custom_langchain_message(encoder):
     assert any(EventType.CUSTOM.value in e for e in events)
     assert any("my_custom" in e for e in events)
 
+
 def test_human_message_to_raw_event(encoder):
     msg = HumanMessage(content="user input")
     events = run_async_gen(convert_message_to_agui_events(msg, encoder))
     assert any(EventType.RAW.value in e for e in events)
     assert any("user input" in e for e in events)
 
-class Dummy: 
+
+class Dummy:
     pass
+
 
 def test_invalid_message_to_raw_event(encoder):
     events = run_async_gen(convert_message_to_agui_events(Dummy(), encoder))
     assert any(EventType.RAW.value in e for e in events)
 
+
 # ============ API Tests ============
+
 
 def test_stream_agui_basic(test_client, mock_agent) -> None:
     """Test basic streaming interface with AG-UI protocol"""
@@ -158,11 +175,9 @@ def test_stream_agui_with_tokens(test_client, mock_agent) -> None:
     mock_agent.astream = mock_astream
 
     with test_client.stream(
-        "POST", "/stream", json={
-            "message": QUESTION, 
-            "stream_protocol": "agui", 
-            "stream_tokens": True
-        }
+        "POST",
+        "/stream",
+        json={"message": QUESTION, "stream_protocol": "agui", "stream_tokens": True},
     ) as response:
         assert response.status_code == 200
 
@@ -213,11 +228,9 @@ def test_stream_agui_no_tokens(test_client, mock_agent) -> None:
     mock_agent.astream = mock_astream
 
     with test_client.stream(
-        "POST", "/stream", json={
-            "message": QUESTION, 
-            "stream_protocol": "agui", 
-            "stream_tokens": False
-        }
+        "POST",
+        "/stream",
+        json={"message": QUESTION, "stream_protocol": "agui", "stream_tokens": False},
     ) as response:
         assert response.status_code == 200
 
@@ -241,15 +254,11 @@ def test_stream_agui_no_tokens(test_client, mock_agent) -> None:
 def test_stream_agui_with_tools(test_client, mock_agent) -> None:
     """Test AG-UI protocol tool calls"""
     QUESTION = "Calculate 2 + 3"
-    
+
     # Create AI message with tool calls
     tool_message = AIMessage(
         content="I'll calculate that for you.",
-        tool_calls=[{
-            "name": "Calculator", 
-            "args": {"expression": "2 + 3"}, 
-            "id": str(uuid4())
-        }]
+        tool_calls=[{"name": "Calculator", "args": {"expression": "2 + 3"}, "id": str(uuid4())}],
     )
 
     events = [
@@ -315,8 +324,7 @@ def test_stream_agui_custom_agent(test_client, mock_agent) -> None:
 
     with patch("service.service.get_agent", side_effect=agent_lookup):
         with test_client.stream(
-            "POST", f"/{CUSTOM_AGENT}/stream", 
-            json={"message": QUESTION, "stream_protocol": "agui"}
+            "POST", f"/{CUSTOM_AGENT}/stream", json={"message": QUESTION, "stream_protocol": "agui"}
         ) as response:
             assert response.status_code == 200
 
@@ -380,7 +388,7 @@ def test_stream_agui_interrupt(test_client, mock_agent) -> None:
 def test_stream_agui_custom_message(test_client, mock_agent) -> None:
     """Test AG-UI protocol custom messages"""
     QUESTION = "Custom request"
-    
+
     # Create custom message
     custom_data = {"action": "special_operation", "data": {"key": "value"}}
 
@@ -424,10 +432,7 @@ def test_stream_invalid_protocol(test_client, mock_agent) -> None:
     """Test invalid stream protocol"""
     QUESTION = "What is the weather?"
 
-    response = test_client.post(
-        "/stream", 
-        json={"message": QUESTION, "stream_protocol": "invalid"}
-    )
+    response = test_client.post("/stream", json={"message": QUESTION, "stream_protocol": "invalid"})
     assert response.status_code == 422  # Validation error
 
 
@@ -449,19 +454,16 @@ def test_stream_agui_model_param(test_client, mock_agent) -> None:
         config = kwargs.get("config", {})
         configurable = config.get("configurable", {})
         assert configurable.get("model") == CUSTOM_MODEL
-        
+
         for event in events:
             yield event
 
     mock_agent.astream = mock_astream
 
     with test_client.stream(
-        "POST", "/stream", 
-        json={
-            "message": QUESTION, 
-            "stream_protocol": "agui",
-            "model": CUSTOM_MODEL
-        }
+        "POST",
+        "/stream",
+        json={"message": QUESTION, "stream_protocol": "agui", "model": CUSTOM_MODEL},
     ) as response:
         assert response.status_code == 200
 
@@ -477,4 +479,4 @@ def test_stream_agui_model_param(test_client, mock_agent) -> None:
 
         event_content = "".join(messages)
         assert EventType.RUN_STARTED.value in event_content
-        assert EventType.RUN_FINISHED.value in event_content 
+        assert EventType.RUN_FINISHED.value in event_content
