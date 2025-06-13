@@ -1,15 +1,17 @@
-import pytest
-from uuid import uuid4
-from ag_ui.core import EventType
-from ag_ui.encoder import EventEncoder
-from langchain_core.messages import AIMessage, ToolMessage, HumanMessage, ChatMessage as LangchainChatMessage
-from service.utils import convert_message_to_agui_events
 import asyncio
 import json
 from unittest.mock import AsyncMock, patch
-from langchain_core.messages import AIMessageChunk
-from langgraph.pregel.types import StateSnapshot
+from uuid import uuid4
+
+import pytest
+from ag_ui.core import EventType
+from ag_ui.encoder import EventEncoder
+from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
+from langchain_core.messages import ChatMessage as LangchainChatMessage
 from langgraph.types import Interrupt
+
+from service.utils import convert_message_to_agui_events
+
 
 @pytest.fixture
 def encoder():
@@ -76,8 +78,10 @@ def test_human_message_to_raw_event(encoder):
     assert any(EventType.RAW.value in e for e in events)
     assert any("user input" in e for e in events)
 
+class Dummy: 
+    pass
+
 def test_invalid_message_to_raw_event(encoder):
-    class Dummy: pass
     events = run_async_gen(convert_message_to_agui_events(Dummy(), encoder))
     assert any(EventType.RAW.value in e for e in events)
 
