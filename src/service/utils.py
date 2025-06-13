@@ -2,7 +2,6 @@ from collections.abc import AsyncGenerator
 from typing import Any, cast
 from uuid import uuid4
 
-from ag_ui.encoder.encoder import EventEncoder
 from ag_ui.core.events import (
     CustomEvent,
     EventType,
@@ -14,6 +13,7 @@ from ag_ui.core.events import (
     ToolCallEndEvent,
     ToolCallStartEvent,
 )
+from ag_ui.encoder.encoder import EventEncoder
 from langchain_core.messages import (
     AIMessage,
     AnyMessage,
