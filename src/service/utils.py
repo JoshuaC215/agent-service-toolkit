@@ -2,9 +2,9 @@ from collections.abc import AsyncGenerator
 from typing import Any, cast
 from uuid import uuid4
 
+from ag_ui.encoder.encoder import EventEncoder
 from ag_ui.core.events import (
     CustomEvent,
-    EventEncoder,
     EventType,
     RawEvent,
     TextMessageContentEvent,
