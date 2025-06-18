@@ -12,6 +12,7 @@ from langchain_openai import AzureChatOpenAI, ChatOpenAI
 
 from core.settings import settings
 from schema.models import (
+    AlibabaQWenModelName,
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
@@ -31,6 +32,7 @@ _MODEL_TABLE = (
     | {m: m.value for m in OpenAICompatibleName}
     | {m: m.value for m in AzureOpenAIModelName}
     | {m: m.value for m in DeepseekModelName}
+    | {m: m.value for m in AlibabaQWenModelName}
     | {m: m.value for m in AnthropicModelName}
     | {m: m.value for m in GoogleModelName}
     | {m: m.value for m in VertexAIModelName}
@@ -103,6 +105,15 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             streaming=True,
             openai_api_base="https://api.deepseek.com",
             openai_api_key=settings.DEEPSEEK_API_KEY,
+        )
+    if model_name in AlibabaQWenModelName:
+        return ChatOpenAI(
+            model=api_model_name,
+            temperature=0.5,
+            streaming=True,
+            openai_api_base="https://dashscope.aliyuncs.com/compatible-mode/v1/",
+            openai_api_key=settings.ALIBABA_QWEN_API_KEY,
+            # extra_body={"top_k": 5},
         )
     if model_name in AnthropicModelName:
         return ChatAnthropic(model=api_model_name, temperature=0.5, streaming=True)
