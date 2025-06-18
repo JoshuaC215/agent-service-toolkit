@@ -29,9 +29,10 @@ To use Vertex AI programmatically, you’ll create a **service account** and use
 #### 3. Add the JSON Key File to Your Project
 - Place the downloaded JSON file in the **root directory** of your project (e.g., `/my-project/service-account-key.json`).
 
-** If using Docker, also update `Dockerfile.service` to include:**
-```dockerfile
-COPY service-account-key.json service-account-key.json
+** If using Docker, also update `compose.yaml` app-service section to include:**
+```
+volumes:
+    - ./service-account-key.json:/app/service-account-key.json
 ```
 This ensures the credentials are available inside the container at runtime.
 
