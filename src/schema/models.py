@@ -56,11 +56,11 @@ class GoogleModelName(StrEnum):
 class VertexAIModelName(StrEnum):
     """https://ai.google.dev/gemini-api/docs/models/gemini"""
 
-    GEMINI_15_PRO = "gemini-1.5-pro-002"
+    GEMINI_15_PRO = "gemini-1.5-pro"
     GEMINI_20_FLASH = "gemini-2.0-flash"
-    GEMINI_25_FLASH_THINKING = "models/gemini-2.5-flash-preview-04-17"
-    GEMINI_25_PRO = "gemini-2.5-pro-preview-05-06"
-    GEMINI_25_PRO_EXP = "gemini-2.5-pro-exp-03-25"
+    GEMINI_25_FLASH = "models/gemini-2.5-flash"
+    GEMINI_25_FLASH_LITE = "models/gemini-2.0-flash-lite"
+    GEMINI_25_PRO = "gemini-2.5-pro"
 
 
 class GroqModelName(StrEnum):
