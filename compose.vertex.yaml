@@ -1,0 +1,10 @@
+services:
+  agent_service:
+    secrets:
+      - google-credentials.json
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/run/secrets/google-credentials.json
+
+secrets:
+  google-credentials.json:
+    file: ./google-credentials.json

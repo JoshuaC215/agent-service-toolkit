@@ -69,3 +69,6 @@ This ensures the credentials are available inside the container at runtime.
 
 #### Production Note
 This setup is ideal for development. In production, consider secure alternatives like Google Cloud Secret Manager.
+
+
+docker compose -f compose.yaml -f compose.vertex.yaml up
