@@ -29,7 +29,7 @@ To use Vertex AI programmatically, you’ll create a **service account** and use
 ### 3. Add the JSON Key File to the [File-based Credentials](docs/File_Based_Crendtials.md) Path
 Place the downloaded JSON file in the `privatecredentials/` of your project (e.g., `privatecredentials/service-account-key.json`).
 
-Contents of the [File-based Credentials](docs/File_Based_Crendtials.md) path are made available to your container at runtime in `/privatecredentials/` , but are excluded from git commits and docker builds.
+Contents of the [File-based Credentials](docs/File_Based_Credentials.md) path are made available to your container at runtime in `/privatecredentials/` , but are excluded from git commits and docker builds.
 
 ### 4. Set the `GOOGLE_APPLICATION_CREDENTIALS` Environment Variable
 Set the `GOOGLE_APPLICATION_CREDENTIALS` environment variable to the **full path** of your JSON file:
@@ -63,4 +63,4 @@ Test your credentials with:
   Your service account should appear as active.
 
 ## Production Note
-This setup is ideal for development. In production, consider more secure alternatives. Some options are listed on the [File-based Credentials](docs/File_Based_Crendtials.md) page.
+This setup is ideal for development. In production, consider more secure alternatives. Some options are listed on the [File-based Credentials](docs/File_Based_Credentials.md) page.
