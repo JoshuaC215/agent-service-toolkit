@@ -3,8 +3,6 @@ services:
     image: postgres:16
     ports:
       - "5432:5432"
-    env_file:
-      - .env
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
