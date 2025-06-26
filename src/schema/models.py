@@ -58,8 +58,8 @@ class VertexAIModelName(StrEnum):
 
     GEMINI_15_PRO = "gemini-1.5-pro"
     GEMINI_20_FLASH = "gemini-2.0-flash"
+    GEMINI_20_FLASH_LITE = "models/gemini-2.0-flash-lite"
     GEMINI_25_FLASH = "models/gemini-2.5-flash"
-    GEMINI_25_FLASH_LITE = "models/gemini-2.0-flash-lite"
     GEMINI_25_PRO = "gemini-2.5-pro"
 
 
