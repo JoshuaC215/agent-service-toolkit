@@ -33,6 +33,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    # Volume mount of development-only credentials since compose watch doesn't sync ignored files and doesn't do initial sync when the service starts
+    volumes:
+      - ./privatecredentials:/privatecredentials
     develop:
       watch:
         - path: src/agents/
@@ -50,7 +53,6 @@ services:
         - path: src/memory/
           action: sync+restart
           target: /app/memory/
-
   streamlit_app:
     build:
       context: .
