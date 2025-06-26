@@ -185,6 +185,6 @@ cython_debug/
 *.sqlite3
 *.bin
 
-# Private Credentials, ignore everything in the folder but the README.md file
+# Private Credentials, ignore everything in the folder but the .gitkeep file
 privatecredentials/*
 !privatecredentials/.gitkeep
