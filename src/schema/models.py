@@ -49,12 +49,11 @@ class GoogleModelName(StrEnum):
 
     GEMINI_15_PRO = "gemini-1.5-pro"
     GEMINI_20_FLASH = "gemini-2.0-flash"
-    # GEMINI_20_PRO_EXP = "gemini-2.0-pro-exp-02-05"
-    # GEMINI_20_FLASH_THINK = "gemini-2.0-flash-thinking-exp-01-21"
-
-
+    GEMINI_20_FLASH_LITE = "gemini-2.0-flash-lite"
+    GEMINI_25_FLASH = "gemini-2.5-flash"
+    GEMINI_25_PRO = "gemini-2.5-pro"
 class VertexAIModelName(StrEnum):
-    """https://ai.google.dev/gemini-api/docs/models/gemini"""
+    """https://cloud.google.com/vertex-ai/generative-ai/docs/models"""
 
     GEMINI_15_PRO = "gemini-1.5-pro"
     GEMINI_20_FLASH = "gemini-2.0-flash"
