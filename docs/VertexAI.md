@@ -12,7 +12,7 @@ The options are:
 
 ## Using Gemini Developer API
 
-[Get a Gemini API Key from Google](https://ai.google.dev/gemini-api/docs) and you should be able to quickly be using it within the Agent Service Toolkit.
+[Get a Gemini API Key from Google](https://ai.google.dev/gemini-api/docs) and start using it quickly within the Agent Service Toolkit.
 
 1. Put your API Key into the  `GOOGLE_API_KEY` environment variable in your `.env` file
 2. Agent Service Toolkit should see the credentials and you should be good to go
@@ -30,7 +30,7 @@ To use Vertex AI programmatically, you’ll create a **service account** and use
 Vertex uses a JSON based credential file and read the `GOOGLE_APPLICATION_CREDENTIALS` Environment Variable to get the path to this credentials file at runtime.
 
 
-### Models 
+### Models
 
 Vertex AI includes both **stable** and **experimental/preview** models. Experimental and preview models may change or be discontinued without notice, so for **production applications**, it’s strongly recommended to use stable models. Check the [Vertex AI documentation](https://cloud.google.com/vertex-ai/docs) for the latest information on model status.
 
@@ -51,7 +51,7 @@ Vertex AI includes both **stable** and **experimental/preview** models. Experime
 - Click **Add Key** > **Create New Key**, select **JSON**, and click **Create**.
 - The JSON key file will download. **Store it securely**—you won’t be able to download it again.
 
-#### 3. Add the JSON Key File to the [File-based Credentials](docs/File_Based_Crendtials.md) Path
+#### 3. Add the JSON Key File to the [File-based Credentials](docs/File_Based_Credentials.md) Path
 Place the downloaded JSON file in the `privatecredentials/` of your project (e.g., `privatecredentials/service-account-key.json`).
 
 Contents of the [File-based Credentials](docs/File_Based_Credentials.md) path are made available to your container at runtime in `/privatecredentials/` , but are excluded from git commits and docker builds.
