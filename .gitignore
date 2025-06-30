@@ -3,12 +3,15 @@
 checkpoints.db
 checkpoints.db-*
 
+# Langgraph
+.langgraph_api/
+
 # VSCode
 .vscode
 .DS_Store
 *.code-workspace
 
-# cursor 
+# cursor
 .cursorindexingignore
 .specstory/
 
