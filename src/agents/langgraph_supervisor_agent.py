@@ -1,6 +1,4 @@
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
-from langgraph.store.memory import InMemoryStore
 from langgraph_supervisor import create_supervisor
 
 from core import get_model, settings
@@ -56,4 +54,4 @@ workflow = create_supervisor(
     add_handoff_back_messages=False,
 )
 
-langgraph_supervisor_agent = workflow.compile(checkpointer=MemorySaver(), store=InMemoryStore())
+langgraph_supervisor_agent = workflow.compile()
