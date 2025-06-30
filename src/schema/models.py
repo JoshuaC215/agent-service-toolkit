@@ -52,6 +52,8 @@ class GoogleModelName(StrEnum):
     GEMINI_20_FLASH_LITE = "gemini-2.0-flash-lite"
     GEMINI_25_FLASH = "gemini-2.5-flash"
     GEMINI_25_PRO = "gemini-2.5-pro"
+
+
 class VertexAIModelName(StrEnum):
     """https://cloud.google.com/vertex-ai/generative-ai/docs/models"""
 
