@@ -10,3 +10,4 @@ env
 venv
 .venv
 *.db
+privatecredentials/*

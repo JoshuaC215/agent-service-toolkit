@@ -6,6 +6,11 @@ checkpoints.db-*
 # VSCode
 .vscode
 .DS_Store
+*.code-workspace
+
+# cursor 
+.cursorindexingignore
+.specstory/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -179,3 +184,7 @@ cython_debug/
 *.db
 *.sqlite3
 *.bin
+
+# Private Credentials, ignore everything in the folder but the .gitkeep file
+privatecredentials/*
+!privatecredentials/.gitkeep
