@@ -23,6 +23,7 @@ from schema.models import (
     OllamaModelName,
     OpenAICompatibleName,
     OpenAIModelName,
+    OpenRouterModelName,
     VertexAIModelName,
 )
 
@@ -37,6 +38,7 @@ _MODEL_TABLE = (
     | {m: m.value for m in GroqModelName}
     | {m: m.value for m in AWSModelName}
     | {m: m.value for m in OllamaModelName}
+    | {m: m.value for m in OpenRouterModelName}
     | {m: m.value for m in FakeModelName}
 )
 
@@ -124,6 +126,14 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         else:
             chat_ollama = ChatOllama(model=settings.OLLAMA_MODEL, temperature=0.5)
         return chat_ollama
+    if model_name in OpenRouterModelName:
+        return ChatOpenAI(
+            model=api_model_name,
+            temperature=0.5,
+            streaming=True,
+            base_url="https://openrouter.ai/api/v1/",
+            api_key=settings.OPENROUTER_API_KEY,
+        )
     if model_name in FakeModelName:
         return FakeToolModel(responses=["This is a test response from the fake model."])
 
