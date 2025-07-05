@@ -13,6 +13,7 @@ class Provider(StrEnum):
     GROQ = auto()
     AWS = auto()
     OLLAMA = auto()
+    OPENROUTER = auto()
     FAKE = auto()
 
 
@@ -86,6 +87,12 @@ class OllamaModelName(StrEnum):
     OLLAMA_GENERIC = "ollama"
 
 
+class OpenRouterModelName(StrEnum):
+    """https://openrouter.ai/models"""
+
+    GEMINI_25_FLASH = "google/gemini-2.5-flash"
+
+
 class OpenAICompatibleName(StrEnum):
     """https://platform.openai.com/docs/guides/text-generation"""
 
@@ -109,5 +116,6 @@ AllModelEnum: TypeAlias = (
     | GroqModelName
     | AWSModelName
     | OllamaModelName
+    | OpenRouterModelName
     | FakeModelName
 )
