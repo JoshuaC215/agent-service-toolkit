@@ -1,0 +1,6 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "docker/Dockerfile.service"
+
+[deploy]
+startCommand = "python run_service.py" 

@@ -140,6 +140,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.backup
 .python-version
 .venv
 env/
