@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from langgraph.graph.state import CompiledStateGraph
 from langgraph.pregel import Pregel
 
 from agents.bg_task_agent.bg_task_agent import bg_task_agent
@@ -14,11 +15,16 @@ from schema import AgentInfo
 
 DEFAULT_AGENT = "research-assistant"
 
+# Type alias to handle LangGraph's different agent patterns
+# - @entrypoint functions return Pregel
+# - StateGraph().compile() returns CompiledStateGraph
+AgentGraph = CompiledStateGraph | Pregel
+
 
 @dataclass
 class Agent:
     description: str
-    graph: Pregel
+    graph: AgentGraph
 
 
 agents: dict[str, Agent] = {
@@ -42,7 +48,7 @@ agents: dict[str, Agent] = {
 }
 
 
-def get_agent(agent_id: str) -> Pregel:
+def get_agent(agent_id: str) -> AgentGraph:
     return agents[agent_id].graph
 
 

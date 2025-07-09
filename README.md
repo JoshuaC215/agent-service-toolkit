@@ -25,10 +25,12 @@ Run directly in python
 # At least one LLM API key is required
 echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 
-# uv is recommended but "pip install ." also works
-pip install uv
+# uv is the recommended way to install agent-service toolkit, but "pip install ." also works
+# uv install options: https://docs.astral.sh/uv/getting-started/installation/
+curl -LsSf https://astral.sh/uv/0.7.19/install.sh | sh
+
+# Install dependencies. "uv sync" creates .venv automatically
 uv sync --frozen
-# "uv sync" creates .venv automatically
 source .venv/bin/activate
 python src/run_service.py
 
@@ -177,7 +179,6 @@ You can also run the agent service and the Streamlit app locally without Docker,
 1. Create a virtual environment and install dependencies:
 
    ```sh
-   pip install uv
    uv sync --frozen
    source .venv/bin/activate
    ```
@@ -215,7 +216,6 @@ Contributions are welcome! Please feel free to submit a Pull Request. Currently 
 2. Install the development dependencies and pre-commit hooks:
 
    ```sh
-   pip install uv
    uv sync --frozen
    pre-commit install
    ```

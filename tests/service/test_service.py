@@ -178,6 +178,7 @@ def test_history(test_client, mock_agent) -> None:
         created_at=None,
         parent_config=None,
         tasks=(),
+        interrupts=(),
     )
 
     response = test_client.post(

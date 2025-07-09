@@ -19,6 +19,7 @@ class AgentState(MessagesState, total=False):
 def node_a(state: AgentState) -> Command[Literal["node_b", "node_c"]]:
     print("Called A")
     value = random.choice(["a", "b"])
+    goto: Literal["node_b", "node_c"]
     # this is a replacement for a conditional edge function
     if value == "a":
         goto = "node_b"
