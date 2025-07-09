@@ -18,7 +18,7 @@ async def main() -> None:
         "messages": [HumanMessage("Find me a recipe for chocolate chip cookies")]
     }
     result = await agent.ainvoke(
-        inputs,
+        input=inputs,
         config=RunnableConfig(configurable={"thread_id": uuid4()}),
     )
     result["messages"][-1].pretty_print()
