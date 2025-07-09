@@ -29,8 +29,7 @@ echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 # uv install options: https://docs.astral.sh/uv/getting-started/installation/
 curl -LsSf https://astral.sh/uv/0.7.19/install.sh | sh
 
-# Install dependencies
-# "uv sync" creates .venv automatically
+# Install dependencies. "uv sync" creates .venv automatically
 uv sync --frozen
 source .venv/bin/activate
 python src/run_service.py
