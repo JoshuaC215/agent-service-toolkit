@@ -107,6 +107,7 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             openai_api_key=settings.DEEPSEEK_API_KEY,
         )
     if model_name in AlibabaQWenModelName:
+        # https://help.aliyun.com/zh/model-studio/text-generation#9d84551784a6l
         return ChatOpenAI(
             model=api_model_name,
             temperature=0.5,

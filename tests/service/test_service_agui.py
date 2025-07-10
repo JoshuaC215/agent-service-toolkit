@@ -125,7 +125,9 @@ def test_stream_agui_basic(test_client, mock_agent) -> None:
 
     # Make streaming request with AG-UI protocol
     with test_client.stream(
-        "POST", "/stream", json={"message": QUESTION, "stream_protocol": "agui"}
+        "POST",
+        "/stream",
+        json={"message": QUESTION, "stream_protocol": "agui", "stream_tokens": False},
     ) as response:
         assert response.status_code == 200
 
@@ -275,7 +277,9 @@ def test_stream_agui_with_tools(test_client, mock_agent) -> None:
     mock_agent.astream = mock_astream
 
     with test_client.stream(
-        "POST", "/stream", json={"message": QUESTION, "stream_protocol": "agui"}
+        "POST",
+        "/stream",
+        json={"message": QUESTION, "stream_protocol": "agui", "stream_tokens": False},
     ) as response:
         assert response.status_code == 200
 
@@ -324,7 +328,9 @@ def test_stream_agui_custom_agent(test_client, mock_agent) -> None:
 
     with patch("service.service.get_agent", side_effect=agent_lookup):
         with test_client.stream(
-            "POST", f"/{CUSTOM_AGENT}/stream", json={"message": QUESTION, "stream_protocol": "agui"}
+            "POST",
+            f"/{CUSTOM_AGENT}/stream",
+            json={"message": QUESTION, "stream_protocol": "agui", "stream_tokens": False},
         ) as response:
             assert response.status_code == 200
 
@@ -363,7 +369,9 @@ def test_stream_agui_interrupt(test_client, mock_agent) -> None:
     mock_agent.astream = mock_astream
 
     with test_client.stream(
-        "POST", "/stream", json={"message": QUESTION, "stream_protocol": "agui"}
+        "POST",
+        "/stream",
+        json={"message": QUESTION, "stream_protocol": "agui", "stream_tokens": False},
     ) as response:
         assert response.status_code == 200
 
@@ -406,7 +414,9 @@ def test_stream_agui_custom_message(test_client, mock_agent) -> None:
     mock_agent.astream = mock_astream
 
     with test_client.stream(
-        "POST", "/stream", json={"message": QUESTION, "stream_protocol": "agui"}
+        "POST",
+        "/stream",
+        json={"message": QUESTION, "stream_protocol": "agui", "stream_tokens": False},
     ) as response:
         assert response.status_code == 200
 
@@ -463,7 +473,12 @@ def test_stream_agui_model_param(test_client, mock_agent) -> None:
     with test_client.stream(
         "POST",
         "/stream",
-        json={"message": QUESTION, "stream_protocol": "agui", "model": CUSTOM_MODEL},
+        json={
+            "message": QUESTION,
+            "stream_protocol": "agui",
+            "model": CUSTOM_MODEL,
+            "stream_tokens": False,
+        },
     ) as response:
         assert response.status_code == 200
 

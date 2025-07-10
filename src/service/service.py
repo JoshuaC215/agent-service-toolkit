@@ -14,10 +14,10 @@ from ag_ui.core import (
     RunFinishedEvent,
     RunStartedEvent,
 )
-from ag_ui.core.events import TextMessageChunkEvent
+from ag_ui.core.events import TextMessageChunkEvent, TextMessageEndEvent, TextMessageStartEvent
 from ag_ui.encoder import EventEncoder
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
@@ -330,6 +330,9 @@ async def message_generator_agui(
     # Create event encoder for AG-UI protocol
     encoder = EventEncoder()
 
+    # Track current streaming message ID to ensure consistency
+    current_streaming_message_id = None
+
     try:
         # Send run started event
         yield encoder.encode(
@@ -393,20 +396,8 @@ async def message_generator_agui(
             if current_message:
                 processed_messages.append(_create_ai_message(current_message))
 
-            # Convert messages to AG-UI events - this is the main difference
-            for message in processed_messages:
-                # Skip re-sent input messages
-                if isinstance(message, HumanMessage) and message.content == user_input.message:
-                    continue
-
-                # Convert each message to appropriate AG-UI events
-                async for agui_event in convert_message_to_agui_events(message, encoder):
-                    yield agui_event
-
-            # Handle token streaming - similar to original
-            if stream_mode == "messages":
-                if not user_input.stream_tokens:
-                    continue
+            # Handle token streaming - for real-time token chunks
+            if stream_mode == "messages" and user_input.stream_tokens:
                 msg, metadata = event
                 if "skip_stream" in metadata.get("tags", []):
                     continue
@@ -414,15 +405,49 @@ async def message_generator_agui(
                     continue
                 content = remove_tool_calls(msg.content)
                 if content:
-                    # Convert to AG-UI text content event
-                    message_id = str(uuid4())
+                    # Use consistent message_id for all tokens in the same message
+                    if current_streaming_message_id is None:
+                        current_streaming_message_id = str(uuid4())
+                        # Send message start event for token streaming
+                        yield encoder.encode(
+                            TextMessageStartEvent(
+                                type=EventType.TEXT_MESSAGE_START,
+                                message_id=current_streaming_message_id,
+                                role="assistant",
+                            )
+                        )
+
                     yield encoder.encode(
                         TextMessageChunkEvent(
                             type=EventType.TEXT_MESSAGE_CHUNK,
-                            message_id=message_id,
+                            message_id=current_streaming_message_id,
                             delta=convert_message_content_to_string(content),
                         )
                     )
+
+            # Convert complete messages to AG-UI events - handle updates and custom events
+            # Skip AI messages when token streaming is enabled to avoid duplication
+            elif stream_mode in ["updates", "custom"]:
+                for message in processed_messages:
+                    # Skip re-sent input messages
+                    if isinstance(message, HumanMessage) and message.content == user_input.message:
+                        continue
+
+                    # Skip AI messages when token streaming is enabled to avoid duplication
+                    if isinstance(message, AIMessage) and user_input.stream_tokens:
+                        continue
+
+                    # Convert each message to appropriate AG-UI events
+                    async for agui_event in convert_message_to_agui_events(message, encoder):
+                        yield agui_event
+
+        # Send message end event if we were streaming
+        if current_streaming_message_id is not None:
+            yield encoder.encode(
+                TextMessageEndEvent(
+                    type=EventType.TEXT_MESSAGE_END, message_id=current_streaming_message_id
+                )
+            )
 
         # Send run finished event
         yield encoder.encode(
@@ -544,6 +569,14 @@ async def health_check():
             health_status["langfuse"] = "disconnected"
 
     return health_status
+
+
+@app.get("/agui/")
+async def agui_root():
+    with open("web-agui/index.html", encoding="utf-8") as file:
+        response = Response(content=file.read(), media_type="text/html")
+
+    return response
 
 
 app.include_router(router)

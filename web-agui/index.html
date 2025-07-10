@@ -1,0 +1,1641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">AG-UI 智能助手</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/i18next@22.4.15/i18next.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-i18next@12.2.2/react-i18next.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/i18next-browser-languagedetector@7.0.2/i18nextBrowserLanguageDetector.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it@13.0.1/dist/markdown-it.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+    <script src="https://unpkg.com/markdown-it-highlightjs@4.0.1/dist/markdown-it-highlightjs.min.js"></script>
+    <script src="https://unpkg.com/markdown-it-task-lists@2.1.1/dist/markdown-it-task-lists.min.js"></script>
+    <script src="https://unpkg.com/markdown-it-emoji@2.0.2/dist/markdown-it-emoji.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .chat-container {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .message-user {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            margin-left: auto;
+            max-width: 80%;
+            position: relative;
+        }
+
+        .message-ai {
+            background: linear-gradient(135deg, #6f7a93 0%, #26477b 100%);
+            color: white;
+            margin-right: auto;
+            max-width: 80%;
+            position: relative;
+        }
+
+        .message-system {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            margin: 0 auto;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .message-error {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            color: white;
+            margin: 0 auto;
+            max-width: 90%;
+        }
+
+        /* Markdown 样式 */
+        .markdown-content {
+            line-height: 1.6;
+        }
+
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4,
+        .markdown-content h5,
+        .markdown-content h6 {
+            margin: 1em 0 0.5em 0;
+            font-weight: 600;
+        }
+
+        .markdown-content h1 {
+            font-size: 1.5em;
+        }
+
+        .markdown-content h2 {
+            font-size: 1.3em;
+        }
+
+        .markdown-content h3 {
+            font-size: 1.1em;
+        }
+
+        .markdown-content p {
+            margin: 0.5em 0;
+        }
+
+        .markdown-content ul,
+        .markdown-content ol {
+            margin: 0.5em 0;
+            padding-left: 1.5em;
+        }
+
+        .markdown-content li {
+            margin: 0.25em 0;
+        }
+
+        .markdown-content blockquote {
+            border-left: 3px solid rgba(255, 255, 255, 0.3);
+            margin: 1em 0;
+            padding-left: 1em;
+            font-style: italic;
+            opacity: 0.9;
+        }
+
+        .markdown-content code {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }
+
+        .markdown-content pre {
+            background: rgba(0, 0, 0, 0.8) !important;
+            border-radius: 8px;
+            padding: 1.2em;
+            margin: 1em 0;
+            overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .markdown-content pre code {
+            background: none !important;
+            padding: 0;
+            border-radius: 0;
+            color: inherit;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        /* Highlight.js 样式覆盖 */
+        .markdown-content .hljs {
+            background: rgba(0, 0, 0, 0.8) !important;
+            color: #f8f8f2 !important;
+            padding: 0;
+        }
+
+        .markdown-content .hljs-keyword,
+        .markdown-content .hljs-selector-tag,
+        .markdown-content .hljs-literal,
+        .markdown-content .hljs-section,
+        .markdown-content .hljs-link {
+            color: #66d9ef !important;
+        }
+
+        .markdown-content .hljs-string,
+        .markdown-content .hljs-title,
+        .markdown-content .hljs-name,
+        .markdown-content .hljs-type,
+        .markdown-content .hljs-attribute,
+        .markdown-content .hljs-symbol,
+        .markdown-content .hljs-bullet,
+        .markdown-content .hljs-addition,
+        .markdown-content .hljs-variable,
+        .markdown-content .hljs-template-tag,
+        .markdown-content .hljs-template-variable {
+            color: #a6e22e !important;
+        }
+
+        .markdown-content .hljs-comment,
+        .markdown-content .hljs-quote,
+        .markdown-content .hljs-deletion,
+        .markdown-content .hljs-meta {
+            color: #75715e !important;
+        }
+
+        .markdown-content .hljs-number,
+        .markdown-content .hljs-regexp,
+        .markdown-content .hljs-literal {
+            color: #ae81ff !important;
+        }
+
+        .markdown-content .hljs-built_in,
+        .markdown-content .hljs-builtin-name,
+        .markdown-content .hljs-class .hljs-title {
+            color: #f92672 !important;
+        }
+
+        .markdown-content table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }
+
+        .markdown-content th,
+        .markdown-content td {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 0.5em;
+            text-align: left;
+        }
+
+        .markdown-content th {
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: 600;
+        }
+
+        .markdown-content a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: underline;
+        }
+
+        .markdown-content a:hover {
+            color: white;
+        }
+
+        .markdown-content strong {
+            font-weight: 600;
+        }
+
+        .markdown-content em {
+            font-style: italic;
+        }
+
+        .typing-indicator {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            transition: all 0.3s ease;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.4);
+        }
+
+        .input-field {
+            transition: all 0.3s ease;
+        }
+
+        .input-field:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .ag-ui-badge {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.375rem;
+            font-weight: 500;
+        }
+
+        .status-running {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .status-finished {
+            background: #059669;
+            color: white;
+        }
+
+        .status-error {
+            background: #dc2626;
+            color: white;
+        }
+
+        .status-idle {
+            background: #6b7280;
+            color: white;
+        }
+
+        .event-log {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.75rem;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 0.5rem;
+            padding: 0.5rem;
+            overflow-y: auto;
+        }
+
+        .message-metadata {
+            font-size: 0.7rem;
+            opacity: 0.7;
+            margin-top: 0.25rem;
+        }
+
+        .scroll-to-bottom {
+            position: fixed;
+            bottom: 120px;
+            right: 30px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .scroll-to-bottom:hover {
+            transform: scale(1.1);
+            background: linear-gradient(135deg, #3730a3 0%, #6b21a8 100%);
+        }
+
+        /* 任务列表样式 */
+        .markdown-content .task-list-item {
+            list-style: none;
+            margin: 0.25em 0;
+        }
+
+        .markdown-content .task-list-item-checkbox {
+            margin-right: 0.5em;
+            transform: scale(1.2);
+        }
+
+        .markdown-content .task-list-item-checkbox:checked+* {
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        /* 自定义容器样式 */
+        .markdown-content .markdown-tip,
+        .markdown-content .markdown-warning,
+        .markdown-content .markdown-danger,
+        .markdown-content .markdown-info {
+            margin: 1em 0;
+            padding: 1em;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .markdown-content .markdown-tip {
+            background: rgba(5, 150, 105, 0.1);
+            border-left-color: #059669;
+        }
+
+        .markdown-content .markdown-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border-left-color: #f59e0b;
+        }
+
+        .markdown-content .markdown-danger {
+            background: rgba(220, 38, 38, 0.1);
+            border-left-color: #dc2626;
+        }
+
+        .markdown-content .markdown-info {
+            background: rgba(79, 70, 229, 0.1);
+            border-left-color: #4f46e5;
+        }
+
+        .markdown-content .container-title {
+            font-weight: 600;
+            margin-bottom: 0.5em;
+            font-size: 0.9em;
+        }
+
+        /* KaTeX数学公式样式 */
+        .markdown-content .katex {
+            font-size: 1.1em;
+        }
+
+        .markdown-content .katex-display {
+            margin: 1em 0;
+            text-align: center;
+        }
+
+        .markdown-content .katex-display>.katex {
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .markdown-content .katex-block {
+            margin: 1em 0;
+            text-align: center;
+        }
+
+        .markdown-content .katex-error {
+            color: #cc0000;
+            background: rgba(204, 0, 0, 0.1);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        // 配置 i18next
+        const initI18n = () => {
+            // 翻译资源
+            const resources = {
+                zh: {
+                    translation: {
+                        title: "AG-UI 智能助手",
+                        subtitle: "基于AG-UI协议的智能对话系统",
+                        startChat: "开始AG-UI对话",
+                        startChatDesc: "体验基于AG-UI协议的智能对话系统",
+                        features: {
+                            streaming: "支持流式响应",
+                            tracking: "完整事件追踪",
+                            monitoring: "实时状态监控",
+                            markdown: "Markdown格式渲染"
+                        },
+                        status: {
+                            idle: "空闲",
+                            starting: "启动中",
+                            running: "运行中",
+                            finished: "已完成",
+                            error: "错误",
+                            connected: "已连接",
+                            connecting: "连接中",
+                            disconnected: "未连接"
+                        },
+                        buttons: {
+                            showEvents: "显示事件",
+                            hideEvents: "隐藏事件",
+                            clear: "清空",
+                            reset: "重置",
+                            scrollToBottom: "滚动到底部",
+                            switchLanguage: "切换语言"
+                        },
+                        shortcuts: {
+                            enter: "回车键发送",
+                            languageToggle: "Ctrl+Shift+L 切换语言"
+                        },
+                        form: {
+                            selectModel: "🤖 选择大模型",
+                            defaultModel: "默认",
+                            placeholder: "输入您的问题...",
+                            generating: "正在生成响应...",
+                            streaming: "流式传输中...",
+                            mathFormula: "数学公式正在输入中..."
+                        },
+                        eventLog: {
+                            title: "AG-UI 事件日志",
+                            subtitle: "实时事件流监控",
+                            noEvents: "暂无事件"
+                        },
+                        stats: {
+                            messages: "条消息",
+                            events: "个事件",
+                            moreThan: "大于",
+                            model: "模型"
+                        },
+                        errors: {
+                            connection: "连接错误",
+                            request: "请求错误",
+                            fetchModels: "获取模型列表失败"
+                        },
+                        loading: "正在加载..."
+                    }
+                },
+                en: {
+                    translation: {
+                        title: "AG-UI Smart Assistant",
+                        subtitle: "Smart dialog system based on AG-UI protocol",
+                        startChat: "Start AG-UI Chat",
+                        startChatDesc: "Experience smart dialog system based on AG-UI protocol",
+                        features: {
+                            streaming: "✨ Streaming response support",
+                            tracking: "🔄 Complete event tracking",
+                            monitoring: "📊 Real-time status monitoring",
+                            markdown: "📝 Markdown format rendering"
+                        },
+                        status: {
+                            idle: "Idle",
+                            starting: "Starting",
+                            running: "Running",
+                            finished: "Finished",
+                            error: "Error",
+                            connected: "Connected",
+                            connecting: "Connecting",
+                            disconnected: "Disconnected"
+                        },
+                        buttons: {
+                            showEvents: "Show Events",
+                            hideEvents: "Hide Events",
+                            clear: "Clear",
+                            reset: "Reset",
+                            scrollToBottom: "Scroll to Bottom",
+                            switchLanguage: "Switch Language"
+                        },
+                        shortcuts: {
+                            enter: "Press Enter to send",
+                            languageToggle: "Ctrl+Shift+L to toggle language"
+                        },
+                        form: {
+                            selectModel: "🤖 Select Model",
+                            defaultModel: "Default",
+                            placeholder: "Enter your question...",
+                            generating: "Generating response...",
+                            streaming: "Streaming...",
+                            mathFormula: "Math formula is being entered..."
+                        },
+                        eventLog: {
+                            title: "AG-UI Event Log",
+                            subtitle: "Real-time event stream monitoring",
+                            noEvents: "No events"
+                        },
+                        stats: {
+                            messages: "messages",
+                            events: "events",
+                            moreThan: "more than",
+                            model: "Model"
+                        },
+                        errors: {
+                            connection: "Connection error",
+                            request: "Request error",
+                            fetchModels: "Failed to fetch model list"
+                        },
+                        loading: "Loading..."
+                    }
+                }
+            };
+
+            // 初始化 i18next
+            return i18next
+                .use(i18nextBrowserLanguageDetector)
+                .init({
+                    resources,
+                    fallbackLng: 'en',
+                    debug: false,
+                    interpolation: {
+                        escapeValue: false // React 已经处理了 XSS
+                    },
+                    detection: {
+                        order: ['localStorage', 'navigator', 'htmlTag'],
+                        caches: ['localStorage'],
+                        lookupLocalStorage: 'i18nextLng',
+                        checkWhitelist: true
+                    },
+                    whitelist: ['zh', 'en'],
+                    nonExplicitWhitelist: true
+                });
+        };
+
+        function App() {
+            // 使用 react-i18next hooks
+            const { t, i18n } = ReactI18next.useTranslation();
+
+            // 状态管理
+            const [messages, setMessages] = React.useState([]);
+            const [input, setInput] = React.useState("");
+            const [isLoading, setIsLoading] = React.useState(false);
+            const [threadId, setThreadId] = React.useState(null);
+            const [runId, setRunId] = React.useState(null);
+            const [runStatus, setRunStatus] = React.useState('idle');
+            const [currentMessageId, setCurrentMessageId] = React.useState(null);
+            const [eventLog, setEventLog] = React.useState([]);
+            const [showEventLog, setShowEventLog] = React.useState(false);
+            const [connectionStatus, setConnectionStatus] = React.useState('disconnected');
+            const [showScrollButton, setShowScrollButton] = React.useState(false);
+            const [availableModels, setAvailableModels] = React.useState([]);
+            const [selectedModel, setSelectedModel] = React.useState('gpt-4o-mini');
+            const [defaultModel, setDefaultModel] = React.useState('gpt-4o-mini');
+
+            // 语言切换函数
+            const toggleLanguage = () => {
+                const newLang = i18n.language === 'zh' ? 'en' : 'zh';
+                i18n.changeLanguage(newLang);
+            };
+
+            // 监听键盘快捷键
+            React.useEffect(() => {
+                const handleKeyDown = (event) => {
+                    // Ctrl+Shift+L 或 Cmd+Shift+L 切换语言
+                    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'L') {
+                        event.preventDefault();
+                        toggleLanguage();
+                    }
+                };
+
+                document.addEventListener('keydown', handleKeyDown);
+                return () => {
+                    document.removeEventListener('keydown', handleKeyDown);
+                };
+            }, [toggleLanguage]);
+
+            // Refs
+            const messagesEndRef = React.useRef(null);
+            const messagesContainerRef = React.useRef(null);
+
+            // 初始化 markdown-it
+            const md = React.useMemo(() => {
+                const markdownIt = window.markdownit({
+                    html: true,
+                    linkify: true,
+                    typographer: true
+                });
+
+                // 添加 highlight.js 插件
+                if (window.markdownItHighlightjs) {
+                    markdownIt.use(window.markdownItHighlightjs);
+                    console.log('Highlight.js plugin loaded');
+                }
+
+                // 添加任务列表插件
+                if (window.markdownitTaskLists) {
+                    markdownIt.use(window.markdownitTaskLists, {
+                        enabled: true,
+                        label: true,
+                        labelAfter: true
+                    });
+                    console.log('Task lists plugin loaded');
+                }
+
+                // 添加表情符号插件
+                if (window.markdownitEmoji) {
+                    markdownIt.use(window.markdownitEmoji);
+                    console.log('Emoji plugin loaded');
+                }
+
+                // 创建 KaTeX 插件（基于标准markdown-it-katex，但优化流式传输）
+                const createKatexPlugin = () => {
+                    return function (md, options) {
+                        options = options || {};
+
+                        // Test if potential opening or closing delimiter (来自标准实现)
+                        function isValidDelim(state, pos) {
+                            var prevChar, nextChar,
+                                max = state.posMax,
+                                can_open = true,
+                                can_close = true;
+
+                            prevChar = pos > 0 ? state.src.charCodeAt(pos - 1) : -1;
+                            nextChar = pos + 1 <= max ? state.src.charCodeAt(pos + 1) : -1;
+
+                            // 为流式传输放宽一些限制
+                            if (prevChar === 0x20/* " " */ || prevChar === 0x09/* \t */ ||
+                                (nextChar >= 0x30/* "0" */ && nextChar <= 0x39/* "9" */)) {
+                                can_close = false;
+                            }
+                            if (nextChar === 0x20/* " " */ || nextChar === 0x09/* \t */) {
+                                can_open = false;
+                            }
+
+                            return {
+                                can_open: can_open,
+                                can_close: can_close
+                            };
+                        }
+
+                        // 行内数学公式解析器（基于标准实现）
+                        function mathInline(state, silent) {
+                            var start, match, token, res, pos;
+
+                            if (state.src[state.pos] !== "$") { return false; }
+
+                            res = isValidDelim(state, state.pos);
+                            if (!res.can_open) {
+                                if (!silent) { state.pending += "$"; }
+                                state.pos += 1;
+                                return true;
+                            }
+
+                            // 转义字符处理（来自标准实现）
+                            start = state.pos + 1;
+                            match = start;
+                            while ((match = state.src.indexOf("$", match)) !== -1) {
+                                pos = match - 1;
+                                while (state.src[pos] === "\\") { pos -= 1; }
+
+                                if (((match - pos) % 2) == 1) { break; }
+                                match += 1;
+                            }
+
+                            if (match === -1) {
+                                if (!silent) { state.pending += "$"; }
+                                state.pos = start;
+                                return true;
+                            }
+
+                            if (match - start === 0) {
+                                if (!silent) { state.pending += "$$"; }
+                                state.pos = start + 1;
+                                return true;
+                            }
+
+                            res = isValidDelim(state, match);
+                            if (!res.can_close) {
+                                if (!silent) { state.pending += "$"; }
+                                state.pos = start;
+                                return true;
+                            }
+
+                            if (!silent) {
+                                token = state.push('math_inline', 'math', 0);
+                                token.markup = "$";
+                                token.content = state.src.slice(start, match);
+                            }
+
+                            state.pos = match + 1;
+                            return true;
+                        }
+
+                        // 块级数学公式解析器（基于标准实现）
+                        function mathBlock(state, start, end, silent) {
+                            // 新增：如果在代码块内，则不处理
+                            if (state.parentType === 'fence') {
+                                return false;
+                            }
+
+                            var firstLine, lastLine, next, lastPos, found = false, token,
+                                pos = state.bMarks[start] + state.tShift[start],
+                                max = state.eMarks[start];
+
+                            if (pos + 2 > max) { return false; }
+                            if (state.src.slice(pos, pos + 2) !== '$$') { return false; }
+
+                            pos += 2;
+                            firstLine = state.src.slice(pos, max);
+
+                            if (silent) { return true; }
+                            if (firstLine.trim().slice(-2) === '$$') {
+                                firstLine = firstLine.trim().slice(0, -2);
+                                found = true;
+                            }
+
+                            for (next = start; !found;) {
+                                next++;
+                                if (next >= end) { break; }
+
+                                pos = state.bMarks[next] + state.tShift[next];
+                                max = state.eMarks[next];
+
+                                if (pos < max && state.tShift[next] < state.blkIndent) {
+                                    break;
+                                }
+
+                                if (state.src.slice(pos, max).trim().slice(-2) === '$$') {
+                                    lastPos = state.src.slice(0, max).lastIndexOf('$$');
+                                    lastLine = state.src.slice(pos, lastPos);
+                                    found = true;
+                                }
+                            }
+
+                            if (!found) { return false; }
+
+                            state.line = next + 1;
+
+                            token = state.push('math_block', 'math', 0);
+                            token.block = true;
+                            token.content = (firstLine && firstLine.trim() ? firstLine + '\n' : '') +
+                                state.getLines(start + 1, next, state.tShift[start], true) +
+                                (lastLine && lastLine.trim() ? lastLine : '');
+                            token.map = [start, state.line];
+                            token.markup = '$$';
+                            return true;
+                        }
+
+                        function escapeHtml(unsafe) {
+                            return unsafe
+                                .replace(/&/g, "&amp;")
+                                .replace(/</g, "&lt;")
+                                .replace(/>/g, "&gt;")
+                                .replace(/"/g, "&quot;")
+                                .replace(/'/g, "&#039;");
+                        }
+
+                        // 渲染器（使用标准实现的样式）
+                        function renderMathInline(tokens, idx) {
+                            var latex = tokens[idx].content;
+                            try {
+                                return window.katex.renderToString(latex, {
+                                    displayMode: false,
+                                    throwOnError: false
+                                });
+                            } catch (error) {
+                                console.error('KaTeX inline error:', error);
+                                return `<span class='katex-error' title='${escapeHtml(error.toString())}'>${escapeHtml(latex)}</span>`;
+                            }
+                        }
+
+                        function renderMathBlock(tokens, idx) {
+                            var latex = tokens[idx].content;
+                            try {
+                                return "<p class='katex-block'>" + window.katex.renderToString(latex, {
+                                    displayMode: true,
+                                    throwOnError: false
+                                }) + "</p>\n";
+                            } catch (error) {
+                                console.error('KaTeX block error:', error);
+                                return `<p class='katex-block katex-error' title='${escapeHtml(error.toString())}'>${escapeHtml(latex)}</p>\n`;
+                            }
+                        }
+
+                        // 注册解析器和渲染器
+                        md.inline.ruler.after('escape', 'math_inline', mathInline);
+                        md.block.ruler.after('blockquote', 'math_block', mathBlock, {
+                            alt: ['paragraph', 'reference', 'blockquote', 'list']
+                        });
+                        md.renderer.rules.math_inline = renderMathInline;
+                        md.renderer.rules.math_block = renderMathBlock;
+                    };
+                };
+
+                // 添加 KaTeX 插件
+                if (window.katex) {
+                    const katexPlugin = createKatexPlugin();
+                    markdownIt.use(katexPlugin);
+                    console.log('KaTeX plugin loaded');
+                }
+
+                // 自定义容器渲染器
+                markdownIt.use(function (md) {
+                    // 添加提示框容器
+                    const container = function (name, className, title) {
+                        md.block.ruler.before('fence', name, function (state, start, end, silent) {
+                            const marker = ':';
+                            const len = marker.length;
+                            let pos = state.bMarks[start] + state.tShift[start];
+                            let max = state.eMarks[start];
+
+                            if (pos + len > max) return false;
+                            if (state.src.slice(pos, pos + len) !== marker.repeat(3)) return false;
+
+                            const markup = state.src.slice(pos, pos + len);
+                            const params = state.src.slice(pos + len, max).trim();
+
+                            if (!params.startsWith(name)) return false;
+
+                            if (silent) return true;
+
+                            let nextLine = start;
+                            let autoClosed = false;
+
+                            while (nextLine < end) {
+                                nextLine++;
+                                pos = state.bMarks[nextLine] + state.tShift[nextLine];
+                                max = state.eMarks[nextLine];
+
+                                if (pos < max && state.tShift[nextLine] < state.blkIndent) break;
+
+                                if (state.src.slice(pos, pos + len) === marker.repeat(3)) {
+                                    autoClosed = true;
+                                    break;
+                                }
+                            }
+
+                            const oldParent = state.parentType;
+                            const oldLineMax = state.lineMax;
+                            state.parentType = 'container';
+
+                            const token_o = state.push(name + '_open', 'div', 1);
+                            token_o.markup = markup;
+                            token_o.block = true;
+                            token_o.info = params;
+                            token_o.map = [start, nextLine];
+
+                            state.lineMax = nextLine;
+                            state.md.block.tokenize(state, start + 1, nextLine);
+                            state.lineMax = oldLineMax;
+                            state.parentType = oldParent;
+
+                            const token_c = state.push(name + '_close', 'div', -1);
+                            token_c.markup = state.src.slice(pos, pos + len);
+                            token_c.block = true;
+
+                            state.line = nextLine + (autoClosed ? 1 : 0);
+                            return true;
+                        });
+
+                        md.renderer.rules[name + '_open'] = function (tokens, idx) {
+                            return `<div class="${className}"><div class="container-title">${title}</div>\n`;
+                        };
+
+                        md.renderer.rules[name + '_close'] = function () {
+                            return '</div>\n';
+                        };
+                    };
+
+                    // 添加不同类型的容器
+                    container('tip', 'markdown-tip', '💡 提示');
+                    container('warning', 'markdown-warning', '⚠️ 警告');
+                    container('danger', 'markdown-danger', '🚨 危险');
+                    container('info', 'markdown-info', 'ℹ️ 信息');
+                });
+
+                // 添加调试信息
+                console.log('Markdown-it initialized with plugins');
+                console.log('hljs available:', !!window.hljs);
+                console.log('markdown-it-highlightjs available:', !!window.markdownItHighlightjs);
+                console.log('Task lists plugin available:', !!window.markdownitTaskLists);
+                console.log('Emoji plugin available:', !!window.markdownitEmoji);
+                console.log('KaTeX available:', !!window.katex);
+                console.log('KaTeX version:', window.katex ? window.katex.version || 'unknown' : 'N/A');
+                if (window.hljs?.getLanguage) {
+                    console.log('JavaScript language available:', !!window.hljs.getLanguage('javascript'));
+                    console.log('Python language available:', !!window.hljs.getLanguage('python'));
+                }
+
+                return markdownIt;
+            }, []);
+
+            // 渲染 Markdown 内容的组件
+            const MarkdownContent = ({ content, isStreaming }) => {
+                const { t } = ReactI18next.useTranslation();
+                const htmlContent = React.useMemo(() => {
+                    if (!content) return '';
+
+                    let processedContent = content;
+
+                    // 如果正在流式传输，需要处理不完整的数学公式
+                    if (isStreaming) {
+                        // 辅助函数：检查索引是否可能在代码围栏块内
+                        const isLikelyInFencedCodeBlock = (text, symbolStartIndex) => {
+                            const textBeforeSymbol = text.slice(0, symbolStartIndex);
+                            // 计算 ``` 出现的次数
+                            const backtickFences = (textBeforeSymbol.match(/```/g) || []).length;
+                            // 计算 ~~~ 出现的次数
+                            const tildeFences = (textBeforeSymbol.match(/~~~/g) || []).length;
+                            // 如果围栏符号总数为奇数，则认为在代码块内
+                            return (backtickFences + tildeFences) % 2 === 1;
+                        };
+
+                        const incompleteBlockMathRegex = /\\$\\$[^$]*$/; // 以$$开始但没有结束的块级公式
+                        const incompleteMathRegex = /\\$[^$]*$/;    // 以$开始但没有结束的行内公式
+                        let placeholderAdded = false;
+
+                        // 如果有不完整的块级数学公式
+                        if (incompleteBlockMathRegex.test(processedContent)) {
+                            const lastDoubleDollarIndex = processedContent.lastIndexOf('$$');
+                            if (lastDoubleDollarIndex !== -1) {
+                                // 检查这个$$是否在代码块内
+                                if (!isLikelyInFencedCodeBlock(processedContent, lastDoubleDollarIndex)) {
+                                    const segmentAfter = processedContent.slice(lastDoubleDollarIndex + 2);
+                                    // 确认是真的未闭合
+                                    if (!segmentAfter.includes('$$')) {
+                                        processedContent = processedContent.slice(0, lastDoubleDollarIndex) + `\\n\\n*[${t('form.mathFormula')}]*`;
+                                        placeholderAdded = true;
+                                    }
+                                }
+                            }
+                        }
+                        // 如果有不完整的行内数学公式 (并且不是块级公式的一部分)
+                        else if (incompleteMathRegex.test(processedContent)) {
+                            const lastDollarIndex = processedContent.lastIndexOf('$');
+                            if (lastDollarIndex !== -1) {
+                                // 确保这个 $ 不是未闭合 $$ 的第一个 $
+                                if (processedContent.charAt(lastDollarIndex - 1) !== '$') {
+                                    // 检查这个 $ 是否在代码块内
+                                    if (!isLikelyInFencedCodeBlock(processedContent, lastDollarIndex)) {
+                                        const segmentAfter = processedContent.slice(lastDollarIndex + 1);
+                                        // 确认是真的未闭合
+                                        if (!segmentAfter.includes('$')) {
+                                            processedContent = processedContent.slice(0, lastDollarIndex) + `*[${t('form.mathFormula')}]*`;
+                                            placeholderAdded = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 添加光标指示，但如果已添加占位符则不添加
+                        if (!placeholderAdded && !processedContent.endsWith('\\n')) {
+                            processedContent += '▊';
+                        }
+                    }
+
+                    try {
+                        return md.render(processedContent);
+                    } catch (error) {
+                        console.error('Markdown render error:', error);
+                        // 如果渲染失败，返回原始内容
+                        return `<p>${processedContent.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>`;
+                    }
+                }, [content, isStreaming, md, t]);
+
+                return (
+                    <div
+                        className="markdown-content"
+                        dangerouslySetInnerHTML={{ __html: htmlContent }}
+                    />
+                );
+            };
+
+            // 初始化 highlight.js
+            React.useEffect(() => {
+                if (window.hljs) {
+                    window.hljs.configure({
+                        ignoreUnescapedHTML: true,
+                        languages: ['javascript', 'python', 'java', 'cpp', 'html', 'css', 'json', 'xml', 'bash', 'go', 'rust', 'typescript', 'jsx', 'tsx']
+                    });
+                    console.log('Highlight.js initialized');
+                }
+            }, []);
+
+            // 工具函数
+            const generateUUID = () => {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                    const r = Math.random() * 16 | 0;
+                    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            };
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            };
+
+            const addEventLog = (event) => {
+                const timestamp = new Date().toLocaleTimeString();
+                setEventLog(prev => [...prev.slice(-49), { // 保持最近50条
+                    timestamp,
+                    type: event.type,
+                    data: event
+                }]);
+            };
+
+            // 获取模型列表
+            React.useEffect(() => {
+                const fetchModels = async () => {
+                    try {
+                        const response = await fetch('/info', {
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            setAvailableModels(data.models);
+                            setDefaultModel(data.default_model);
+                            setSelectedModel(data.default_model);
+                        }
+                    } catch (error) {
+                        console.error(t('errors.fetchModels'), error);
+                    }
+                };
+                fetchModels();
+            }, []);
+
+            // 监听滚动
+            React.useEffect(() => {
+                const container = messagesContainerRef.current;
+                if (!container) return;
+
+                const handleScroll = () => {
+                    const { scrollTop, scrollHeight, clientHeight } = container;
+                    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+                    setShowScrollButton(!isNearBottom);
+                };
+
+                container.addEventListener('scroll', handleScroll);
+                return () => container.removeEventListener('scroll', handleScroll);
+            }, []);
+
+            React.useEffect(() => {
+                scrollToBottom();
+            }, [messages]);
+
+            // 监听语言变化，更新页面标题
+            React.useEffect(() => {
+                const updatePageTitle = () => {
+                    const titleElement = document.getElementById('page-title');
+                    if (titleElement) {
+                        titleElement.textContent = t('title');
+                    }
+                };
+
+                updatePageTitle();
+                // 监听语言变化事件
+                i18n.on('languageChanged', updatePageTitle);
+
+                return () => {
+                    i18n.off('languageChanged', updatePageTitle);
+                };
+            }, [t, i18n]);
+
+            // AG-UI 事件处理器
+            const handleAgUiEvent = (event) => {
+                console.log('AG-UI Event:', event);
+                addEventLog(event);
+
+                switch (event.type) {
+                    case 'RUN_STARTED':
+                        setRunStatus('running');
+                        setThreadId(event.threadId || event.thread_id);
+                        setRunId(event.runId || event.run_id);
+                        setConnectionStatus('connected');
+                        break;
+
+                    case 'STATE_SNAPSHOT':
+                        // 处理状态快照
+                        console.log('State snapshot:', event.snapshot);
+                        break;
+
+                    case 'MESSAGES_SNAPSHOT':
+                        // 处理消息快照
+                        console.log('Messages snapshot:', event.messages);
+                        break;
+
+                    case 'TEXT_MESSAGE_START':
+                        setCurrentMessageId(event.messageId || event.message_id);
+                        setMessages(prev => [...prev, {
+                            id: event.messageId || event.message_id,
+                            type: 'ai',
+                            content: '',
+                            role: event.role,
+                            timestamp: event.timestamp,
+                            isStreaming: true
+                        }]);
+                        break;
+
+                    case 'TEXT_MESSAGE_CONTENT':
+                        setMessages(prev => {
+                            const newMessages = [...prev];
+                            const messageIndex = newMessages.findIndex(msg =>
+                                msg.id === (event.messageId || event.message_id)
+                            );
+                            if (messageIndex !== -1) {
+                                newMessages[messageIndex].content += event.delta;
+                                newMessages[messageIndex].lastUpdate = Date.now();
+                            }
+                            return newMessages;
+                        });
+                        break;
+
+                    case 'TEXT_MESSAGE_CHUNK':
+                        // 处理流式token
+                        setMessages(prev => {
+                            const newMessages = [...prev];
+                            const messageIndex = newMessages.findIndex(msg =>
+                                msg.id === (event.messageId || event.message_id)
+                            );
+                            if (messageIndex !== -1) {
+                                newMessages[messageIndex].content += event.delta;
+                                newMessages[messageIndex].lastUpdate = Date.now();
+                            } else {
+                                // 如果没有找到对应的消息，创建一个新的
+                                newMessages.push({
+                                    id: event.messageId || event.message_id,
+                                    type: 'ai',
+                                    content: event.delta,
+                                    role: 'assistant',
+                                    timestamp: Date.now(),
+                                    isStreaming: true
+                                });
+                            }
+                            return newMessages;
+                        });
+                        break;
+
+                    case 'TEXT_MESSAGE_END':
+                        setCurrentMessageId(null);
+                        setMessages(prev => {
+                            const newMessages = [...prev];
+                            const messageIndex = newMessages.findIndex(msg =>
+                                msg.id === (event.messageId || event.message_id)
+                            );
+                            if (messageIndex !== -1) {
+                                newMessages[messageIndex].isStreaming = false;
+                                newMessages[messageIndex].completedAt = event.timestamp;
+                            }
+                            return newMessages;
+                        });
+                        break;
+
+                    case 'RUN_FINISHED':
+                        setRunStatus('finished');
+                        setIsLoading(false);
+                        setConnectionStatus('disconnected');
+                        break;
+
+                    case 'RUN_ERROR':
+                        setRunStatus('error');
+                        setIsLoading(false);
+                        setConnectionStatus('disconnected');
+                        setMessages(prev => [...prev, {
+                            id: generateUUID(),
+                            type: 'error',
+                            content: `${t('status.error')} [${event.code || 'UNKNOWN'}]: ${event.message}`,
+                            role: 'system',
+                            timestamp: event.timestamp,
+                            isError: true
+                        }]);
+                        break;
+
+                    case 'CUSTOM':
+                        // 处理自定义事件
+                        console.log('Custom event:', event.name, event.value);
+                        break;
+
+                    default:
+                        console.log('未处理的AG-UI事件类型:', event.type);
+                }
+            };
+
+            // 发送消息
+            const handleSubmit = async () => {
+                if (!input.trim() || isLoading) return;
+
+                const userMessage = input.trim();
+                const userMsgId = generateUUID();
+
+                // 添加用户消息
+                const newUserMessage = {
+                    id: userMsgId,
+                    type: 'user',
+                    content: userMessage,
+                    role: 'user',
+                    timestamp: Date.now()
+                };
+
+                setMessages(prev => [...prev, newUserMessage]);
+                setInput("");
+                setIsLoading(true);
+                setRunStatus('starting');
+                setConnectionStatus('connecting');
+
+                try {
+                    // 准备历史消息
+                    const historyMessages = messages.map(msg => ({
+                        id: msg.id,
+                        role: msg.role,
+                        content: msg.content
+                    }));
+
+                    // 发送请求
+                    const response = await fetch('/chatbot/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'text/event-stream',
+                        },
+                        body: JSON.stringify({
+                            message: userMessage,
+                            stream_protocol: 'agui',
+                            thread_id: threadId,
+                            user_id: generateUUID(),
+                            model: selectedModel,
+                            stream_tokens: true
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    setConnectionStatus('connected');
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const eventData = JSON.parse(line.slice(6));
+                                    handleAgUiEvent(eventData);
+                                } catch (e) {
+                                    console.error('解析AG-UI事件错误:', e, line);
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('请求错误:', error);
+                    setRunStatus('error');
+                    setIsLoading(false);
+                    setConnectionStatus('error');
+                    setMessages(prev => [...prev, {
+                        id: generateUUID(),
+                        type: 'error',
+                        content: `${t('errors.connection')}: ${error.message}`,
+                        role: 'system',
+                        timestamp: Date.now(),
+                        isError: true
+                    }]);
+                }
+            };
+
+            // 清空对话
+            const clearChat = () => {
+                setMessages([]);
+                setThreadId(null);
+                setRunId(null);
+                setRunStatus('idle');
+                setCurrentMessageId(null);
+                setEventLog([]);
+                setConnectionStatus('disconnected');
+                setSelectedModel(defaultModel);
+                setIsLoading(false);
+            };
+
+            // 格式化时间戳
+            const formatTimestamp = (timestamp) => {
+                if (!timestamp) return '';
+                const date = new Date(timestamp);
+                return date.toLocaleTimeString();
+            };
+
+            // 获取状态显示文本
+            const getStatusText = (status) => {
+                return t(`status.${status}`) || status;
+            };
+
+            return (
+                <div className="min-h-screen p-4 flex items-center justify-center">
+                    <div className="chat-container w-full max-w-6xl h-[90vh] rounded-2xl overflow-hidden flex flex-col">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-slate-800 to-indigo-900 p-6 text-white">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full flex items-center justify-center">
+                                        <svg className="w-7 h-7" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h1 className="text-xl font-semibold">{t('title')}</h1>
+                                        <p className="text-slate-300 text-sm">{t('subtitle')}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <span className="ag-ui-badge">AG-UI</span>
+                                    <span className={`status-badge status-${connectionStatus}`}>
+                                        {connectionStatus === 'connected' ? '🟢' :
+                                            connectionStatus === 'connecting' ? '🟡' :
+                                                connectionStatus === 'error' ? '🔴' : '⚪'}
+                                        {t(`status.${connectionStatus}`)}
+                                    </span>
+                                    <span className={`status-badge status-${runStatus}`}>
+                                        {getStatusText(runStatus)}
+                                    </span>
+                                    {threadId && (
+                                        <span className="text-xs text-slate-300 bg-white bg-opacity-10 px-2 py-1 rounded">
+                                            Thread: {threadId.slice(0, 8)}...
+                                        </span>
+                                    )}
+                                    <span className="text-xs text-slate-300 bg-white bg-opacity-10 px-2 py-1 rounded">
+                                        {t('stats.model')}: {selectedModel}
+                                    </span>
+                                    <button
+                                        onClick={() => setShowEventLog(!showEventLog)}
+                                        className="text-xs bg-white bg-opacity-20 px-2 py-1 rounded hover:bg-opacity-30 transition-all"
+                                    >
+                                        {showEventLog ? t('buttons.hideEvents') : t('buttons.showEvents')}
+                                    </button>
+                                    <button
+                                        onClick={clearChat}
+                                        className="text-xs bg-white bg-opacity-20 px-2 py-1 rounded hover:bg-opacity-30 transition-all"
+                                    >
+                                        {t('buttons.clear')}
+                                    </button>
+                                    <button
+                                        onClick={toggleLanguage}
+                                        className="text-xs bg-white bg-opacity-20 px-3 py-1 rounded hover:bg-opacity-30 transition-all transform hover:scale-105 font-medium"
+                                        title={`${t('buttons.switchLanguage')} (Ctrl+Shift+L)`}
+                                    >
+                                        {i18n.language === 'zh' ? '🇺🇸 EN' : '🇨🇳 中文'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 flex overflow-hidden">
+                            {/* Messages */}
+                            <div className="flex-1 flex flex-col">
+                                <div
+                                    ref={messagesContainerRef}
+                                    className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50"
+                                >
+                                    {messages.length === 0 && !isLoading && (
+                                        <div className="text-center py-12">
+                                            <div className="w-20 h-20 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+                                                <svg className="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                                                </svg>
+                                            </div>
+                                            <h3 className="text-lg font-medium text-gray-700 mb-2">{t('startChat')}</h3>
+                                            <p className="text-gray-500">{t('startChatDesc')}</p>
+                                            <div className="mt-4 text-sm text-gray-400">
+                                                <p>{t('features.streaming')}</p>
+                                                <p>{t('features.tracking')}</p>
+                                                <p>{t('features.monitoring')}</p>
+                                                <p>{t('features.markdown')}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {messages.map((msg, index) => (
+                                        <div key={msg.id || index} className={`flex fade-in ${msg.type === 'user' ? 'justify-end' :
+                                            msg.type === 'error' ? 'justify-center' : 'justify-start'
+                                            }`}>
+                                            <div className={`px-4 py-3 rounded-2xl shadow-lg ${msg.type === 'user' ? 'message-user' :
+                                                msg.type === 'error' ? 'message-error' :
+                                                    msg.role === 'system' ? 'message-system' : 'message-ai'
+                                                }`}>
+                                                <MarkdownContent content={msg.content} isStreaming={msg.isStreaming} />
+                                                <div className="message-metadata">
+                                                    {msg.id && <span>ID: {msg.id.slice(0, 8)}...</span>}
+                                                    {msg.timestamp && <span> • {formatTimestamp(msg.timestamp)}</span>}
+                                                    {msg.isStreaming && <span> • {t('form.streaming')}</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {isLoading && currentMessageId && (
+                                        <div className="flex justify-start">
+                                            <div className="message-ai px-4 py-3 rounded-2xl shadow-lg">
+                                                <div className="typing-indicator flex space-x-1">
+                                                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                </div>
+                                                <div className="message-metadata">
+                                                    {t('form.generating')}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={messagesEndRef} />
+                                </div>
+
+                                {/* Input */}
+                                <div className="p-6 bg-white border-t border-gray-200">
+                                    {/* 模型选择器 */}
+                                    <div className="mb-4">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-sm font-medium text-gray-700">
+                                                {t('form.selectModel')}
+                                            </label>
+                                            <div className="flex items-center space-x-2">
+                                                <span className="text-xs text-gray-500">
+                                                    {t('form.defaultModel')}: {defaultModel}
+                                                </span>
+                                                {selectedModel !== defaultModel && (
+                                                    <button
+                                                        onClick={() => setSelectedModel(defaultModel)}
+                                                        className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                                    >
+                                                        {t('buttons.reset')}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <select
+                                            value={selectedModel}
+                                            onChange={(e) => setSelectedModel(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white text-sm"
+                                            disabled={isLoading}
+                                        >
+                                            {availableModels.map((model) => (
+                                                <option key={model} value={model}>
+                                                    {model}
+                                                    {model === defaultModel && ` (${t('form.defaultModel')})`}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="flex space-x-4">
+                                        <input
+                                            type="text"
+                                            value={input}
+                                            onChange={(e) => setInput(e.target.value)}
+                                            onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmit()}
+                                            className="input-field flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                            placeholder={t('form.placeholder')}
+                                            disabled={isLoading}
+                                        />
+                                        <button
+                                            onClick={handleSubmit}
+                                            disabled={isLoading || !input.trim()}
+                                            className="send-button px-6 py-3 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                                        >
+                                            {isLoading ? (
+                                                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            ) : (
+                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </div>
+                                    <div className="mt-2 text-xs text-gray-500 flex justify-between">
+                                        <span>AG-UI • {t('features.streaming').replace('✨ ', '')} • {t('features.tracking').replace('🔄 ', '')} • {t('features.markdown').replace('📝 ', '')} • {t('stats.model')}: {selectedModel}</span>
+                                        <span>{messages.length} {t('stats.messages')} • {eventLog.length >= 50 ? `${t('stats.moreThan')} 50 ${t('stats.events')}` : `${eventLog.length} ${t('stats.events')}`}</span>
+                                    </div>
+                                    <div className="mt-1 text-xs text-gray-400 text-center">
+                                        <span>{t('shortcuts.enter')} • {t('shortcuts.languageToggle')}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Event Log Sidebar */}
+                            {showEventLog && (
+                                <div className="w-80 bg-gray-100 border-l border-gray-200 flex flex-col">
+                                    <div className="p-4 bg-gray-200 border-b">
+                                        <h3 className="font-medium text-gray-700">{t('eventLog.title')}</h3>
+                                        <p className="text-xs text-gray-500">{t('eventLog.subtitle')}</p>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-4">
+                                        <div className="event-log">
+                                            {eventLog.length === 0 ? (
+                                                <p className="text-gray-500 text-center py-4">{t('eventLog.noEvents')}</p>
+                                            ) : (
+                                                eventLog.map((log, index) => (
+                                                    <div key={index} className="mb-2 p-2 bg-white rounded border-l-2 border-blue-400">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="font-mono text-xs font-semibold text-blue-600">
+                                                                {log.type}
+                                                            </span>
+                                                            <span className="text-xs text-gray-500">
+                                                                {log.timestamp}
+                                                            </span>
+                                                        </div>
+                                                        <pre className="text-xs text-gray-600 whitespace-pre-wrap">
+                                                            {JSON.stringify(log.data, null, 2)}
+                                                        </pre>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Scroll to bottom button */}
+                    {showScrollButton && (
+                        <button
+                            onClick={scrollToBottom}
+                            className="scroll-to-bottom"
+                            title={t('buttons.scrollToBottom')}
+                        >
+                            ↓
+                        </button>
+                    )}
+                </div>
+            );
+        }
+
+        // 包装App组件，提供国际化支持
+        const AppWithI18n = () => {
+            const [isReady, setIsReady] = React.useState(false);
+            const [loadingText, setLoadingText] = React.useState('Loading...');
+
+            React.useEffect(() => {
+                initI18n().then((i18nInstance) => {
+                    // 设置加载文本
+                    const browserLang = navigator.language || navigator.userLanguage;
+                    const lang = browserLang.startsWith('zh') ? 'zh' : 'en';
+                    setLoadingText(lang === 'zh' ? '正在加载...' : 'Loading...');
+
+                    setIsReady(true);
+                });
+            }, []);
+
+            if (!isReady) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-100">
+                        <div className="text-center">
+                            <div className="w-12 h-12 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center animate-pulse">
+                                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <p className="text-gray-600 text-sm">{loadingText}</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <ReactI18next.I18nextProvider i18n={i18next}>
+                    <App />
+                </ReactI18next.I18nextProvider>
+            );
+        };
+
+        ReactDOM.render(<AppWithI18n />, document.getElementById("root"));
+    </script>
+</body>
+
+</html>
