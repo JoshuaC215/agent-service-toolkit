@@ -7,10 +7,8 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
 from langchain_core.runnables.base import RunnableSequence
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
-from langgraph.store.memory import InMemoryStore
 
 from core import get_model, settings
 
@@ -173,7 +171,4 @@ agent.add_edge("prepare_augmented_prompt", "model")
 agent.add_edge("model", END)
 
 # Compile the agent
-kb_agent = agent.compile(
-    checkpointer=MemorySaver(),
-    store=InMemoryStore(),
-)
+kb_agent = agent.compile()

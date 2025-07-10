@@ -1,20 +1,27 @@
 import asyncio
+from typing import cast
 from uuid import uuid4
 
 from dotenv import load_dotenv
+from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.graph import MessagesState
+from langgraph.graph.state import CompiledStateGraph
 
 load_dotenv()
 
 from agents import DEFAULT_AGENT, get_agent  # noqa: E402
 
-agent = get_agent(DEFAULT_AGENT)
+# The default agent uses StateGraph.compile() which returns CompiledStateGraph
+agent = cast(CompiledStateGraph, get_agent(DEFAULT_AGENT))
 
 
 async def main() -> None:
-    inputs = {"messages": [("user", "Find me a recipe for chocolate chip cookies")]}
+    inputs: MessagesState = {
+        "messages": [HumanMessage("Find me a recipe for chocolate chip cookies")]
+    }
     result = await agent.ainvoke(
-        inputs,
+        input=inputs,
         config=RunnableConfig(configurable={"thread_id": uuid4()}),
     )
     result["messages"][-1].pretty_print()

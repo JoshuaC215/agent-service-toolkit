@@ -7,10 +7,8 @@ from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda, RunnableSerializable
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
-from langgraph.store.memory import InMemoryStore
 from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
@@ -230,8 +228,5 @@ agent.add_edge("background", "determine_birthdate")
 agent.add_edge("determine_birthdate", "generate_response")
 agent.add_edge("generate_response", END)
 
-interrupt_agent = agent.compile(
-    checkpointer=MemorySaver(),
-    store=InMemoryStore(),
-)
+interrupt_agent = agent.compile()
 interrupt_agent.name = "interrupt-agent"

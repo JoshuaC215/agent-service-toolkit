@@ -3,9 +3,7 @@ import asyncio
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
-from langgraph.store.memory import InMemoryStore
 from langgraph.types import StreamWriter
 
 from agents.bg_task_agent.task import Task
@@ -61,7 +59,4 @@ agent.set_entry_point("bg_task")
 agent.add_edge("bg_task", "model")
 agent.add_edge("model", END)
 
-bg_task_agent = agent.compile(
-    checkpointer=MemorySaver(),
-    store=InMemoryStore(),
-)
+bg_task_agent = agent.compile()

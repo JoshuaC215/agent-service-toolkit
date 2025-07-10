@@ -26,7 +26,7 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v4
       with:
-        version: "0.6.3"
+        version: "0.7.19"
     - name: Install dependencies with uv
       run: |
         uv sync --frozen
@@ -124,7 +124,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v4
         with:
-          version: "0.6.3"
+          version: "0.7.19"
       - name: Install ONLY CLIENT dependencies with uv
         run: |
           uv sync --frozen --only-group client --only-group dev

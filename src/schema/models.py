@@ -14,6 +14,7 @@ class Provider(StrEnum):
     GROQ = auto()
     AWS = auto()
     OLLAMA = auto()
+    OPENROUTER = auto()
     FAKE = auto()
 
 
@@ -58,18 +59,19 @@ class GoogleModelName(StrEnum):
 
     GEMINI_15_PRO = "gemini-1.5-pro"
     GEMINI_20_FLASH = "gemini-2.0-flash"
-    # GEMINI_20_PRO_EXP = "gemini-2.0-pro-exp-02-05"
-    # GEMINI_20_FLASH_THINK = "gemini-2.0-flash-thinking-exp-01-21"
+    GEMINI_20_FLASH_LITE = "gemini-2.0-flash-lite"
+    GEMINI_25_FLASH = "gemini-2.5-flash"
+    GEMINI_25_PRO = "gemini-2.5-pro"
 
 
 class VertexAIModelName(StrEnum):
-    """https://ai.google.dev/gemini-api/docs/models/gemini"""
+    """https://cloud.google.com/vertex-ai/generative-ai/docs/models"""
 
-    GEMINI_15_PRO = "gemini-1.5-pro-002"
+    GEMINI_15_PRO = "gemini-1.5-pro"
     GEMINI_20_FLASH = "gemini-2.0-flash"
-    GEMINI_25_FLASH_THINKING = "models/gemini-2.5-flash-preview-04-17"
-    GEMINI_25_PRO = "gemini-2.5-pro-preview-05-06"
-    GEMINI_25_PRO_EXP = "gemini-2.5-pro-exp-03-25"
+    GEMINI_20_FLASH_LITE = "models/gemini-2.0-flash-lite"
+    GEMINI_25_FLASH = "models/gemini-2.5-flash"
+    GEMINI_25_PRO = "gemini-2.5-pro"
 
 
 class GroqModelName(StrEnum):
@@ -92,6 +94,12 @@ class OllamaModelName(StrEnum):
     """https://ollama.com/search"""
 
     OLLAMA_GENERIC = "ollama"
+
+
+class OpenRouterModelName(StrEnum):
+    """https://openrouter.ai/models"""
+
+    GEMINI_25_FLASH = "google/gemini-2.5-flash"
 
 
 class OpenAICompatibleName(StrEnum):
@@ -118,5 +126,6 @@ AllModelEnum: TypeAlias = (
     | GroqModelName
     | AWSModelName
     | OllamaModelName
+    | OpenRouterModelName
     | FakeModelName
 )

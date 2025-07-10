@@ -25,10 +25,12 @@ Run directly in python
 # At least one LLM API key is required
 echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 
-# uv is recommended but "pip install ." also works
-pip install uv
+# uv is the recommended way to install agent-service toolkit, but "pip install ." also works
+# uv install options: https://docs.astral.sh/uv/getting-started/installation/
+curl -LsSf https://astral.sh/uv/0.7.19/install.sh | sh
+
+# Install dependencies. "uv sync" creates .venv automatically
 uv sync --frozen
-# "uv sync" creates .venv automatically
 source .venv/bin/activate
 python src/run_service.py
 
@@ -102,6 +104,12 @@ To customize the agent for your own use case:
 1. Import and add your new agent to the `agents` dictionary in `src/agents/agents.py`. Your agent can be called by `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`.
 1. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
 
+
+### Handling Private Credential files
+
+If your agents or chosen LLM require file-based credential files or certificates, the `privatecredentials/` has been provided for your development convenience. All contents, excluding the `.gitkeep` files, are ignored by git and docker's build process. See [Working with File-based Credentials](docs/File_Based_Credentials.md) for suggested use.
+
+
 ### Docker Setup
 
 This project includes a Docker setup for easy development and deployment. The `compose.yaml` file defines three services: `postgres`, `agent_service` and `streamlit_app`. The `Dockerfile` for each service is in their respective directories.
@@ -160,9 +168,9 @@ response.pretty_print()
 
 ### Development with LangGraph Studio
 
-The agent supports [LangGraph Studio](https://github.com/langchain-ai/langgraph-studio), a new IDE for developing agents in LangGraph.
+The agent supports [LangGraph Studio](https://langchain-ai.github.io/langgraph/concepts/langgraph_studio/), the IDE for developing agents in LangGraph.
 
-You can simply install LangGraph Studio, add your `.env` file to the root directory as described above, and then launch LangGraph studio pointed at the root directory. Customize `langgraph.json` as needed.
+`langgraph-cli[inmem]` is installed with `uv sync`. You can simply add your `.env` file to the root directory as described above, and then launch LangGraph Studio with `langgraph dev`. Customize `langgraph.json` as needed. See the [local quickstart](https://langchain-ai.github.io/langgraph/cloud/how-tos/studio/quick_start/#local-development-server) to learn more.
 
 ### Local development without Docker
 
@@ -171,7 +179,6 @@ You can also run the agent service and the Streamlit app locally without Docker,
 1. Create a virtual environment and install dependencies:
 
    ```sh
-   pip install uv
    uv sync --frozen
    source .venv/bin/activate
    ```
@@ -209,7 +216,6 @@ Contributions are welcome! Please feel free to submit a Pull Request. Currently 
 2. Install the development dependencies and pre-commit hooks:
 
    ```sh
-   pip install uv
    uv sync --frozen
    pre-commit install
    ```
