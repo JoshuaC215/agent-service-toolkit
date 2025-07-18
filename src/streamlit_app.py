@@ -334,7 +334,10 @@ async def draw_messages(
                             status.write(tool_call["args"])
 
                         # Expect one ToolMessage for each tool call.
-                        for _ in range(len(call_results)):
+                        for tool_call in msg.tool_calls:
+                            if "transfer_to" in tool_call["name"]:
+                                await handle_agent_msgs(messages_agen, call_results, is_new)
+                                break
                             tool_result: ChatMessage = await anext(messages_agen)
 
                             if tool_result.type != "tool":
@@ -412,6 +415,60 @@ async def handle_feedback() -> None:
             st.stop()
         st.session_state.last_feedback = (latest_run_id, feedback)
         st.toast("Feedback recorded", icon=":material/reviews:")
+
+
+async def handle_agent_msgs(messages_agen, call_results, is_new):
+    """
+    This function segregates agent output into a status container.
+    It handles all messages after the initial tool call message
+    until it reaches the final AI message.
+    """
+    nested_popovers = {}
+    # looking for the Success tool call message
+    first_msg = await anext(messages_agen)
+    if is_new:
+        st.session_state.messages.append(first_msg)
+    status = call_results.get(getattr(first_msg, "tool_call_id", None))
+    # Process first message
+    if status and first_msg.content:
+        status.write(first_msg.content)
+        # Continue reading until finish_reason='stop'
+    while True:
+        # Check for completion on current message
+        finish_reason = getattr(first_msg, "response_metadata", {}).get("finish_reason")
+        # Break out of status container if finish_reason is anything other than "tool_calls"
+        if finish_reason is not None and finish_reason != "tool_calls":
+            if status:
+                status.update(state="complete")
+            break
+        # Read next message
+        sub_msg = await anext(messages_agen)
+        # this should only happen is skip_stream flag is removed
+        # if isinstance(sub_msg, str):
+        #     continue
+        if is_new:
+            st.session_state.messages.append(sub_msg)
+
+        if sub_msg.type == "tool" and sub_msg.tool_call_id in nested_popovers:
+            popover = nested_popovers[sub_msg.tool_call_id]
+            popover.write("**Output:**")
+            popover.write(sub_msg.content)
+            first_msg = sub_msg
+            continue
+        # Display content and tool calls using the same status
+        if status:
+            if sub_msg.content:
+                status.write(sub_msg.content)
+            if hasattr(sub_msg, "tool_calls") and sub_msg.tool_calls:
+                for tc in sub_msg.tool_calls:
+                    popover = status.popover(f"{tc['name']}", icon="🛠️")
+                    popover.write(f"**Tool:** {tc['name']}")
+                    popover.write("**Input:**")
+                    popover.write(tc["args"])
+                    # Store the popover reference using the tool call ID
+                    nested_popovers[tc["id"]] = popover
+        # Update first_msg for next iteration
+        first_msg = sub_msg
 
 
 if __name__ == "__main__":
