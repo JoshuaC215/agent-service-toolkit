@@ -6,6 +6,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Annotated, Any
 from uuid import UUID, uuid4
+import os
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -47,6 +48,15 @@ def verify_bearer(
         Depends(HTTPBearer(description="Please provide AUTH_SECRET api key.", auto_error=False)),
     ],
 ) -> None:
+    """
+    Dependency to verify the provided Bearer token against AUTH_SECRET.
+
+    Args:
+        http_auth (HTTPAuthorizationCredentials | None): The HTTP Bearer credentials.
+
+    Raises:
+        HTTPException: If the provided token does not match AUTH_SECRET.
+    """
     if not settings.AUTH_SECRET:
         return
     auth_secret = settings.AUTH_SECRET.get_secret_value()
@@ -56,6 +66,18 @@ def verify_bearer(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    FastAPI lifespan context manager to initialize database checkpointer and store.
+
+    Sets up both short-term (conversation) and long-term (cross-conversation) memory
+    for all agents, based on the current settings.
+
+    Args:
+        app (FastAPI): The FastAPI application instance.
+
+    Yields:
+        None
+    """
     """
     Configurable lifespan that initializes the appropriate database checkpointer and store
     based on settings.
@@ -90,6 +112,12 @@ router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 @router.get("/info")
 async def info() -> ServiceMetadata:
+    """
+    Get service metadata including available agents and models.
+
+    Returns:
+        ServiceMetadata: Metadata about agents, models, and defaults.
+    """
     models = list(settings.AVAILABLE_MODELS)
     models.sort()
     return ServiceMetadata(
@@ -103,6 +131,19 @@ async def info() -> ServiceMetadata:
 async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[str, Any], UUID]:
     """
     Parse user input and handle any required interrupt resumption.
+
+    Prepares the input and config for agent invocation, including run/thread/user IDs,
+    and checks for any interrupted tasks to resume.
+
+    Args:
+        user_input (UserInput): The user's input message and metadata.
+        agent (AgentGraph): The agent graph to invoke.
+
+    Returns:
+        tuple: (kwargs for agent invocation, run_id)
+    """
+    """
+    Parse user input and handle any required interrupt resumption.
     Returns kwargs for agent invocation and the run_id.
     """
     run_id = uuid4()
@@ -114,7 +155,14 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     callbacks = []
     if settings.LANGFUSE_TRACING:
         # Initialize Langfuse CallbackHandler for Langchain (tracing)
-        langfuse_handler = CallbackHandler()
+        langfuse_handler = CallbackHandler(
+            public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+            secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+            host=os.getenv("LANGFUSE_HOST"),
+            user_id=user_input.user_id,
+            session_id="Skill-Companion",
+        )
+        #langfuse_handler = CallbackHandler()
 
         callbacks.append(langfuse_handler)
 
@@ -138,12 +186,13 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
         task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
     ]
 
-    input: Command | dict[str, Any]
-    if interrupted_tasks:
-        # assume user input is response to resume agent execution from interrupt
-        input = Command(resume=user_input.message)
-    else:
-        input = {"messages": [HumanMessage(content=user_input.message)]}
+    input: Command | dict[str, Any] 
+    # if interrupted_tasks: 
+    #     # assume user input is response to resume agent execution from interrupt
+    #     input = Command(resume=user_input.message)
+    # else:
+    # ToDo
+    input = {"messages": [HumanMessage(content=user_input.message)]}
 
     kwargs = {
         "input": input,
@@ -153,9 +202,34 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     return kwargs, run_id
 
 
+    def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
+        run_id = uuid4()
+        thread_id = user_input.thread_id or str(uuid4())
+        kwargs = {
+            "input": {"messages": [HumanMessage(content=user_input.message)]},
+            "config": RunnableConfig(
+                configurable={"thread_id": thread_id, "model": user_input.model, "api_key": user_input.api_key}, run_id=run_id
+            ),
+        }
+        return kwargs, run_id
+
+
 @router.post("/{agent_id}/invoke")
 @router.post("/invoke")
 async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
+    """
+    Invoke an agent with user input to retrieve a final response.
+
+    Handles both normal and interrupt-driven agent outputs, returning the last message
+    or interrupt as a ChatMessage.
+
+    Args:
+        user_input (UserInput): The user's input message and metadata.
+        agent_id (str, optional): The agent identifier. Defaults to DEFAULT_AGENT.
+
+    Returns:
+        ChatMessage: The final response message.
+    """
     """
     Invoke an agent with user input to retrieve a final response.
 
@@ -173,34 +247,44 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     kwargs, run_id = await _handle_input(user_input, agent)
 
     try:
-        response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
-        response_type, response = response_events[-1]
-        if response_type == "values":
-            # Normal response, the agent completed successfully
-            output = langchain_to_chat_message(response["messages"][-1])
-        elif response_type == "updates" and "__interrupt__" in response:
-            # The last thing to occur was an interrupt
-            # Return the value of the first interrupt as an AIMessage
-            output = langchain_to_chat_message(
-                AIMessage(content=response["__interrupt__"][0].value)
-            )
-        else:
-            raise ValueError(f"Unexpected response type: {response_type}")
+        #response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"]) # TODO readd updates mode, # type: ignore # fmt: skip
+        response_events = await agent.ainvoke(**kwargs)
+        output = langchain_to_chat_message(response_events["messages"][-1])
+        #output = langchain_to_chat_message(response["messages"][-1])
+        # if response_type == "values":
+        #     # Normal response, the agent completed successfully
+        #     output = langchain_to_chat_message(response["messages"][-1])
+        # elif response_type == "updates" and "__interrupt__" in response:
+        #     # The last thing to occur was an interrupt
+        #     # Return the value of the first interrupt as an AIMessage
+        #     output = langchain_to_chat_message(
+        #         AIMessage(content=response["__interrupt__"][0].value)
+        #     )
+        #else:
+        #    raise ValueError(f"Unexpected response type: {response_type}")
 
         output.run_id = str(run_id)
         return output
     except Exception as e:
-        logger.error(f"An exception occurred: {e}")
-        raise HTTPException(status_code=500, detail="Unexpected error")
+        logger.error(f"An exception occurred during agent invocation: {e}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
 
 
 async def message_generator(
     user_input: StreamInput, agent_id: str = DEFAULT_AGENT
 ) -> AsyncGenerator[str, None]:
     """
-    Generate a stream of messages from the agent.
+    Async generator to stream messages from the agent for the /stream endpoint.
 
-    This is the workhorse method for the /stream endpoint.
+    Processes streamed events from the agent graph and yields Server-Sent Events (SSE)
+    frames for each message or token.
+
+    Args:
+        user_input (StreamInput): The user's input message and metadata.
+        agent_id (str, optional): The agent identifier. Defaults to DEFAULT_AGENT.
+
+    Yields:
+        str: SSE-formatted message or token.
     """
     agent: AgentGraph = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent)
@@ -241,7 +325,7 @@ async def message_generator(
                             update_messages = [update_messages[-1]]
                         else:
                             update_messages = []
-
+    
                     if node in ("research_expert", "math_expert"):
                         update_messages = []
                     new_messages.extend(update_messages)
@@ -308,13 +392,29 @@ async def message_generator(
 
 
 def _create_ai_message(parts: dict) -> AIMessage:
+    """
+    Helper to construct an AIMessage from a dictionary of message parts.
+
+    Args:
+        parts (dict): Dictionary of message fields.
+
+    Returns:
+        AIMessage: Constructed AIMessage object.
+    """
     sig = inspect.signature(AIMessage)
     valid_keys = set(sig.parameters)
     filtered = {k: v for k, v in parts.items() if k in valid_keys}
+    filtered["content"] = str(filtered.get("content") or "")
     return AIMessage(**filtered)
 
 
 def _sse_response_example() -> dict[int | str, Any]:
+    """
+    Example response schema for SSE endpoints.
+
+    Returns:
+        dict: Example OpenAPI response for text/event-stream.
+    """
     return {
         status.HTTP_200_OK: {
             "description": "Server Sent Event Response",
@@ -338,6 +438,18 @@ async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> Stre
     """
     Stream an agent's response to a user input, including intermediate messages and tokens.
 
+    Returns a StreamingResponse with SSE frames for each message or token.
+
+    Args:
+        user_input (StreamInput): The user's input message and metadata.
+        agent_id (str, optional): The agent identifier. Defaults to DEFAULT_AGENT.
+
+    Returns:
+        StreamingResponse: The streaming response object.
+    """
+    """
+    Stream an agent's response to a user input, including intermediate messages and tokens.
+
     If agent_id is not provided, the default agent will be used.
     Use thread_id to persist and continue a multi-turn conversation. run_id kwarg
     is also attached to all messages for recording feedback.
@@ -353,6 +465,17 @@ async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> Stre
 
 @router.post("/feedback")
 async def feedback(feedback: Feedback) -> FeedbackResponse:
+    """
+    Record feedback for a run to LangSmith.
+
+    Wraps the LangSmith create_feedback API so credentials can be managed server-side.
+
+    Args:
+        feedback (Feedback): Feedback data for a run.
+
+    Returns:
+        FeedbackResponse: Confirmation of feedback recording.
+    """
     """
     Record feedback for a run to LangSmith.
 
@@ -374,6 +497,17 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
 @router.post("/history")
 def history(input: ChatHistoryInput) -> ChatHistory:
     """
+    Get chat history for a given thread.
+
+    Retrieves the message history for the specified thread_id.
+
+    Args:
+        input (ChatHistoryInput): Input containing the thread_id.
+
+    Returns:
+        ChatHistory: The chat history for the thread.
+    """
+    """
     Get chat history.
     """
     # TODO: Hard-coding DEFAULT_AGENT here is wonky
@@ -392,6 +526,12 @@ def history(input: ChatHistoryInput) -> ChatHistory:
 
 @app.get("/health")
 async def health_check():
+    """
+    Health check endpoint for the service.
+
+    Returns:
+        dict: Health status, including Langfuse connection if enabled.
+    """
     """Health check endpoint."""
 
     health_status = {"status": "ok"}

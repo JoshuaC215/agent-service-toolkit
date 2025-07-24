@@ -2,8 +2,11 @@ import json
 import os
 from collections.abc import AsyncGenerator, Generator
 from typing import Any
-
+from pathlib import Path
 import httpx
+import logging
+
+
 
 from schema import (
     ChatHistory,
@@ -15,6 +18,8 @@ from schema import (
     UserInput,
 )
 
+
+logging.basicConfig(level=logging.INFO)
 
 class AgentClientError(Exception):
     pass
@@ -29,6 +34,7 @@ class AgentClient:
         agent: str | None = None,
         timeout: float | None = None,
         get_info: bool = True,
+        api_key: str | None = None,
     ) -> None:
         """
         Initialize the client.
@@ -45,6 +51,7 @@ class AgentClient:
         self.timeout = timeout
         self.info: ServiceMetadata | None = None
         self.agent: str | None = None
+        self.api_key = api_key
         if get_info:
             self.retrieve_info()
         if agent:
@@ -68,9 +75,10 @@ class AgentClient:
         except httpx.HTTPError as e:
             raise AgentClientError(f"Error getting service info: {e}")
 
-        self.info = ServiceMetadata.model_validate(response.json())
-        if not self.agent or self.agent not in [a.key for a in self.info.agents]:
-            self.agent = self.info.default_agent
+        print("DEBUG /info response:", response.json())
+        # self.info = ServiceMetadata.model_validate(response.json())
+        # if not self.agent or self.agent not in [a.key for a in self.info.agents]:
+        #     self.agent = self.info.default_agent
 
     def update_agent(self, agent: str, verify: bool = True) -> None:
         if verify:
@@ -106,7 +114,7 @@ class AgentClient:
         """
         if not self.agent:
             raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
-        request = UserInput(message=message)
+        request = UserInput(message=message, api_key= self.api_key)
         if thread_id:
             request.thread_id = thread_id
         if model:
@@ -115,11 +123,13 @@ class AgentClient:
             request.agent_config = agent_config
         if user_id:
             request.user_id = user_id
+        
+        print(f"SENDING TO {self.base_url}/{self.agent}/invoke: {request.dict()}")
         async with httpx.AsyncClient() as client:
             try:
                 response = await client.post(
                     f"{self.base_url}/{self.agent}/invoke",
-                    json=request.model_dump(),
+                    json=request.dict(),
                     headers=self._headers,
                     timeout=self.timeout,
                 )
@@ -152,7 +162,7 @@ class AgentClient:
         """
         if not self.agent:
             raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
-        request = UserInput(message=message)
+        request = UserInput(message=message, api_key=self.api_key)
         if thread_id:
             request.thread_id = thread_id
         if model:
@@ -164,7 +174,7 @@ class AgentClient:
         try:
             response = httpx.post(
                 f"{self.base_url}/{self.agent}/invoke",
-                json=request.model_dump(),
+                json=request.dict(),
                 headers=self._headers,
                 timeout=self.timeout,
             )
@@ -229,7 +239,7 @@ class AgentClient:
         """
         if not self.agent:
             raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
-        request = StreamInput(message=message, stream_tokens=stream_tokens)
+        request = StreamInput(message=message, stream_tokens=stream_tokens,api_key=self.api_key)
         if thread_id:
             request.thread_id = thread_id
         if user_id:
@@ -242,7 +252,7 @@ class AgentClient:
             with httpx.stream(
                 "POST",
                 f"{self.base_url}/{self.agent}/stream",
-                json=request.model_dump(),
+                json=request.dict(),
                 headers=self._headers,
                 timeout=self.timeout,
             ) as response:
@@ -286,7 +296,7 @@ class AgentClient:
         """
         if not self.agent:
             raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
-        request = StreamInput(message=message, stream_tokens=stream_tokens)
+        request = StreamInput(message=message, stream_tokens=stream_tokens,api_key=self.api_key)
         if thread_id:
             request.thread_id = thread_id
         if model:
@@ -300,7 +310,7 @@ class AgentClient:
                 async with client.stream(
                     "POST",
                     f"{self.base_url}/{self.agent}/stream",
-                    json=request.model_dump(),
+                    json=request.dict(),
                     headers=self._headers,
                     timeout=self.timeout,
                 ) as response:
@@ -329,7 +339,7 @@ class AgentClient:
             try:
                 response = await client.post(
                     f"{self.base_url}/feedback",
-                    json=request.model_dump(),
+                    json=request.dict(),
                     headers=self._headers,
                     timeout=self.timeout,
                 )
@@ -349,7 +359,7 @@ class AgentClient:
         try:
             response = httpx.post(
                 f"{self.base_url}/history",
-                json=request.model_dump(),
+                json=request.dict(),
                 headers=self._headers,
                 timeout=self.timeout,
             )
@@ -358,3 +368,39 @@ class AgentClient:
             raise AgentClientError(f"Error: {e}")
 
         return ChatHistory.model_validate(response.json())
+
+def transcribe(
+        self,
+        filename: str,
+        file: bytes
+    ) -> str:
+        if self.api_key == None:
+            raise AgentClientError("API Key required")
+
+        allowed_types = {
+            ".mp3": "audio/mpeg",
+            ".wav": "audio/wav",
+            ".ogg": "audio/ogg",
+            ".m4a": "audio/x-m4a"
+        }
+
+        filetype = Path(filename).suffix
+        if filetype not in allowed_types:
+            raise AgentClientError(f"File type {filetype} not allowed.")
+        
+        try:
+            headers = {
+                "Authorization": f"Bearer {self.api_key}",
+            }
+            files = {"file": (filename, file, allowed_types[filetype])}
+            response = httpx.post(
+                f"{os.getenv("OWUI_AUDIO_API_URL")}/transcriptions",
+                files=files,
+                headers=headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+            transcription = response.json()
+            return transcription["text"]
+        except Exception as e:
+            raise AgentClientError(f"Error: {e}")

@@ -1,6 +1,6 @@
 from functools import cache
 from typing import TypeAlias
-
+import os
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models import FakeListChatModel
@@ -9,6 +9,8 @@ from langchain_google_vertexai import ChatVertexAI
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from pydantic import SecretStr
+
 
 from core.settings import settings
 from schema.models import (
@@ -25,6 +27,7 @@ from schema.models import (
     OpenAIModelName,
     OpenRouterModelName,
     VertexAIModelName,
+    OpenwebuiModelName
 )
 
 _MODEL_TABLE = (
@@ -40,6 +43,7 @@ _MODEL_TABLE = (
     | {m: m.value for m in OllamaModelName}
     | {m: m.value for m in OpenRouterModelName}
     | {m: m.value for m in FakeModelName}
+    | {m: m.value for m in OpenwebuiModelName}
 )
 
 
@@ -65,7 +69,7 @@ ModelT: TypeAlias = (
 
 
 @cache
-def get_model(model_name: AllModelEnum, /) -> ModelT:
+def get_model(model_name: AllModelEnum, api_key =os.getenv("OWUI_API_KEY")) -> ModelT:
     # NOTE: models with streaming=True will send tokens as they are generated
     # if the /stream endpoint is called with stream_tokens=True (the default)
     api_model_name = _MODEL_TABLE.get(model_name)
@@ -73,13 +77,12 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         raise ValueError(f"Unsupported model: {model_name}")
 
     if model_name in OpenAIModelName:
-        return ChatOpenAI(model=api_model_name, temperature=0.5, streaming=True)
+            return ChatOpenAI(model_name=api_model_name, temperature=0.5, streaming=True)
     if model_name in OpenAICompatibleName:
         if not settings.COMPATIBLE_BASE_URL or not settings.COMPATIBLE_MODEL:
             raise ValueError("OpenAICompatible base url and endpoint must be configured")
-
         return ChatOpenAI(
-            model=settings.COMPATIBLE_MODEL,
+            model_name=settings.COMPATIBLE_MODEL,
             temperature=0.5,
             streaming=True,
             openai_api_base=settings.COMPATIBLE_BASE_URL,
@@ -92,15 +95,13 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         return AzureChatOpenAI(
             azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
             deployment_name=api_model_name,
-            api_version=settings.AZURE_OPENAI_API_VERSION,
             temperature=0.5,
             streaming=True,
-            timeout=60,
             max_retries=3,
         )
     if model_name in DeepseekModelName:
         return ChatOpenAI(
-            model=api_model_name,
+            model_name=api_model_name,
             temperature=0.5,
             streaming=True,
             openai_api_base="https://api.deepseek.com",
@@ -109,32 +110,45 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
     if model_name in AnthropicModelName:
         return ChatAnthropic(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GoogleModelName:
-        return ChatGoogleGenerativeAI(model=api_model_name, temperature=0.5, streaming=True)
+        return ChatGoogleGenerativeAI(model=api_model_name, temperature=0.5)
     if model_name in VertexAIModelName:
         return ChatVertexAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GroqModelName:
         if model_name == GroqModelName.LLAMA_GUARD_4_12B:
-            return ChatGroq(model=api_model_name, temperature=0.0)
-        return ChatGroq(model=api_model_name, temperature=0.5)
+            return ChatGroq(model_name=api_model_name, temperature=0.0)
+        return ChatGroq(model_name=api_model_name, temperature=0.5)
     if model_name in AWSModelName:
         return ChatBedrock(model_id=api_model_name, temperature=0.5)
-    if model_name in OllamaModelName:
-        if settings.OLLAMA_BASE_URL:
-            chat_ollama = ChatOllama(
-                model=settings.OLLAMA_MODEL, temperature=0.5, base_url=settings.OLLAMA_BASE_URL
+    if model_name in OpenwebuiModelName:
+           
+            base_url = os.getenv("OWUI_CHAT_API_URL")
+            if not api_key or not base_url:
+                raise ValueError("OWUI_API_KEY and OWUI_BASE_URL must be set in the environment")
+            return ChatOpenAI(
+                model_name=api_model_name[5:],
+                temperature=0.5,
+                streaming=True,
+                openai_api_base=base_url,
+                openai_api_key=SecretStr(api_key)
             )
-        else:
-            chat_ollama = ChatOllama(model=settings.OLLAMA_MODEL, temperature=0.5)
-        return chat_ollama
-    if model_name in OpenRouterModelName:
-        return ChatOpenAI(
-            model=api_model_name,
-            temperature=0.5,
-            streaming=True,
-            base_url="https://openrouter.ai/api/v1/",
-            api_key=settings.OPENROUTER_API_KEY,
-        )
+    # if model_name in OllamaModelName:
+    #     if settings.OLLAMA_BASE_URL:
+    #         chat_ollama = ChatOllama(
+    #             model_name=settings.OLLAMA_MODEL, temperature=0.5, base_url=settings.OLLAMA_BASE_URL
+    #         )
+    #     else:
+    #         chat_ollama = ChatOllama(model_name=settings.OLLAMA_MODEL, temperature=0.5)
+    #     return chat_ollama
+    # if model_name in OpenRouterModelName:
+    #     return ChatOpenAI(
+    #         model_name=api_model_name,
+    #         temperature=0.5,
+    #         streaming=True,
+    #         openai_api_base="https://openrouter.ai/api/v1/",
+    #         openai_api_key=settings.OPENROUTER_API_KEY,
+    #     )
     if model_name in FakeModelName:
         return FakeToolModel(responses=["This is a test response from the fake model."])
+
 
     raise ValueError(f"Unsupported model: {model_name}")

@@ -105,6 +105,15 @@ class FakeModelName(StrEnum):
     FAKE = "fake"
 
 
+OWUI_PREFIX = "owui/"
+class OpenwebuiModelName(StrEnum):
+    """OWUI Model"""
+
+    GPT_4O = OWUI_PREFIX + "gpt-4o"
+    BASISMODELL = OWUI_PREFIX + "basismodell"
+    SKILL_CHECK = OWUI_PREFIX + "skill-check-demo-wip"
+    ROOSI_FRIENDS = OWUI_PREFIX + "roosi--friends-2025"
+
 AllModelEnum: TypeAlias = (
     OpenAIModelName
     | OpenAICompatibleName
@@ -118,4 +127,5 @@ AllModelEnum: TypeAlias = (
     | OllamaModelName
     | OpenRouterModelName
     | FakeModelName
+    | OpenwebuiModelName
 )
