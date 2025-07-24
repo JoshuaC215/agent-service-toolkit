@@ -1,12 +1,14 @@
-import requests
+import logging
 import os
+
+import requests
 import streamlit as st
 from dotenv import load_dotenv
-import logging
+
 logger = logging.getLogger(__name__)
 
 
-class Auth():
+class Auth:
     load_dotenv()
 
     OWUI_BASE_URL = os.getenv("OWUI_BASE_URL")

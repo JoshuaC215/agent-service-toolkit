@@ -1,0 +1,1287 @@
+{
+  "id": "d07eb66e-7ea2-41d8-8fae-b0df33618c87",
+  "data": {
+    "nodes": [
+      {
+        "id": "GroqWhisperComponent-t6d1e",
+        "type": "genericNode",
+        "position": {
+          "x": -1483.4857952490108,
+          "y": 36.31844286553667
+        },
+        "data": {
+          "type": "GroqWhisperComponent",
+          "node": {
+            "template": {
+              "_type": "Component",
+              "audio_file": {
+                "trace_as_metadata": true,
+                "file_path": "d07eb66e-7ea2-41d8-8fae-b0df33618c87/2025-01-08_13-29-20_test.m4a",
+                "fileTypes": [
+                  "mp3",
+                  "mp4",
+                  "m4a",
+                  "wav",
+                  "webm",
+                  "m4b",
+                  "mpga",
+                  "mp2",
+                  "flac"
+                ],
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "audio_file",
+                "value": "",
+                "display_name": "Audio File",
+                "advanced": false,
+                "dynamic": false,
+                "info": "Supported file types: mp3, mp4, m4a, wav, webm, m4b, mpga, mp2, flac",
+                "title_case": false,
+                "type": "file",
+                "_input_type": "FileInput"
+              },
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "from langflow.custom import Component\nfrom langflow.inputs import (\n    FileInput,\n    SecretStrInput,\n    DropdownInput,\n    StrInput,\n    FloatInput,\n)\nfrom langflow.io import BoolInput, IntInput, MessageTextInput\nfrom langflow.template import Output\nfrom langflow.schema.message import Message\nfrom groq import Groq\n\nclass GroqWhisperComponent(Component):\n    display_name = \"Groq Whisper\"\n    description = \"Audio to text with Whisper model using Groq API\"\n    icon = \"file-audio\"\n    inputs = [\n        SecretStrInput(\n            name=\"groq_api_key\",\n            display_name=\"Groq API Key\",\n            info=\"The Groq API Key to use for the Whisper model.\",\n            advanced=False,\n        ),\n        FileInput(\n            name=\"audio_file\",\n            display_name=\"Audio File\",\n            file_types=[\"mp3\", \"mp4\", \"m4a\", \"wav\", \"webm\", \"m4b\", \"mpga\", \"mp2\", \"flac\"],\n            info=\"Supported file types: mp3, mp4, m4a, wav, webm, m4b, mpga, mp2, flac\",\n        ),\n        DropdownInput(\n            name=\"model_name\",\n            display_name=\"Model\",\n            info=\"The name of the model to use.\",\n            options=[\"distil-whisper-large-v3-en\", \"whisper-large-v3\"],\n            value=\"distil-whisper-large-v3-en\",\n        ),\n        MessageTextInput(\n            name=\"prompt\",\n            display_name=\"Prompt\",\n            info=\"An optional text to guide the model's style or continue a previous audio segment.\",\n            advanced=True,\n            value=\"\",\n        ),\n        StrInput(\n            name=\"language\",\n            display_name=\"Language\",\n            info=\"The language of the input audio. Supplying the input language in ISO-639-1 format will improve accuracy and latency.\",\n            advanced=True,\n            value=\"\",\n        ),\n        FloatInput(\n            name=\"temperature\",\n            display_name=\"Temperature\",\n            info=\"The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.\",\n            advanced=True,\n            value=0.0,\n        ),\n    ]\n    outputs = [\n        Output(\n            display_name=\"Transcription\",\n            name=\"transcription\",\n            method=\"transcribe_audio\",\n        ),\n    ]\n\n    def transcribe_audio(self) -> Message:\n        client = Groq(api_key=self.groq_api_key)\n        with open(self.audio_file, \"rb\") as file:\n            transcription = client.audio.transcriptions.create(\n                model=self.model_name,\n                file=file,\n                prompt=self.prompt or None,\n                response_format=\"verbose_json\",\n                temperature=self.temperature or 0.0,\n                language=self.language or None\n            )\n            # print(transcription)\n            return Message(text=transcription.text)",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              },
+              "groq_api_key": {
+                "load_from_db": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "groq_api_key",
+                "value": "",
+                "display_name": "Groq API Key",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "The Groq API Key to use for the Whisper model.",
+                "title_case": false,
+                "password": true,
+                "type": "str",
+                "_input_type": "SecretStrInput"
+              },
+              "language": {
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "language",
+                "value": "",
+                "display_name": "Language",
+                "advanced": true,
+                "dynamic": false,
+                "info": "The language of the input audio. Supplying the input language in ISO-639-1 format will improve accuracy and latency.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "StrInput"
+              },
+              "model_name": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "options": [
+                  "distil-whisper-large-v3-en",
+                  "whisper-large-v3"
+                ],
+                "combobox": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "model_name",
+                "value": "whisper-large-v3",
+                "display_name": "Model",
+                "advanced": false,
+                "dynamic": false,
+                "info": "The name of the model to use.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "DropdownInput",
+                "load_from_db": false
+              },
+              "prompt": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "prompt",
+                "value": "",
+                "display_name": "Prompt",
+                "advanced": true,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "An optional text to guide the model's style or continue a previous audio segment.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MessageTextInput"
+              },
+              "temperature": {
+                "trace_as_metadata": true,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "temperature",
+                "value": 0,
+                "display_name": "Temperature",
+                "advanced": true,
+                "dynamic": false,
+                "info": "The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.",
+                "title_case": false,
+                "type": "float",
+                "_input_type": "FloatInput"
+              }
+            },
+            "description": "Audio to text with Whisper model using Groq API",
+            "icon": "file-audio",
+            "base_classes": [
+              "Message"
+            ],
+            "display_name": "Groq Whisper",
+            "documentation": "",
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "transcription",
+                "display_name": "Transcription",
+                "method": "transcribe_audio",
+                "value": "__UNDEFINED__",
+                "cache": true
+              }
+            ],
+            "field_order": [
+              "groq_api_key",
+              "audio_file",
+              "model_name",
+              "prompt",
+              "language",
+              "temperature"
+            ],
+            "beta": false,
+            "legacy": false,
+            "edited": true,
+            "metadata": {},
+            "tool_mode": false,
+            "lf_version": "1.1.1"
+          },
+          "id": "GroqWhisperComponent-t6d1e"
+        },
+        "selected": false,
+        "width": 320,
+        "height": 423,
+        "dragging": false,
+        "positionAbsolute": {
+          "x": -1483.4857952490108,
+          "y": 36.31844286553667
+        }
+      },
+      {
+        "id": "Prompt-A2xtQ",
+        "type": "genericNode",
+        "position": {
+          "x": -981.6329126277515,
+          "y": -67.39310132366732
+        },
+        "data": {
+          "type": "Prompt",
+          "node": {
+            "template": {
+              "_type": "Component",
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "from langflow.base.prompts.api_utils import process_prompt_template\nfrom langflow.custom import Component\nfrom langflow.inputs.inputs import DefaultPromptField\nfrom langflow.io import Output, PromptInput\nfrom langflow.schema.message import Message\nfrom langflow.template.utils import update_template_values\n\n\nclass PromptComponent(Component):\n    display_name: str = \"Prompt\"\n    description: str = \"Create a prompt template with dynamic variables.\"\n    icon = \"prompts\"\n    trace_type = \"prompt\"\n    name = \"Prompt\"\n\n    inputs = [\n        PromptInput(name=\"template\", display_name=\"Template\"),\n    ]\n\n    outputs = [\n        Output(display_name=\"Prompt Message\", name=\"prompt\", method=\"build_prompt\"),\n    ]\n\n    async def build_prompt(self) -> Message:\n        prompt = Message.from_template(**self._attributes)\n        self.status = prompt.text\n        return prompt\n\n    def _update_template(self, frontend_node: dict):\n        prompt_template = frontend_node[\"template\"][\"template\"][\"value\"]\n        custom_fields = frontend_node[\"custom_fields\"]\n        frontend_node_template = frontend_node[\"template\"]\n        _ = process_prompt_template(\n            template=prompt_template,\n            name=\"template\",\n            custom_fields=custom_fields,\n            frontend_node_template=frontend_node_template,\n        )\n        return frontend_node\n\n    def post_code_processing(self, new_frontend_node: dict, current_frontend_node: dict):\n        \"\"\"This function is called after the code validation is done.\"\"\"\n        frontend_node = super().post_code_processing(new_frontend_node, current_frontend_node)\n        template = frontend_node[\"template\"][\"template\"][\"value\"]\n        # Kept it duplicated for backwards compatibility\n        _ = process_prompt_template(\n            template=template,\n            name=\"template\",\n            custom_fields=frontend_node[\"custom_fields\"],\n            frontend_node_template=frontend_node[\"template\"],\n        )\n        # Now that template is updated, we need to grab any values that were set in the current_frontend_node\n        # and update the frontend_node with those values\n        update_template_values(new_template=frontend_node, previous_template=current_frontend_node[\"template\"])\n        return frontend_node\n\n    def _get_fallback_input(self, **kwargs):\n        return DefaultPromptField(**kwargs)\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              },
+              "template": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "template",
+                "value": "Based on the user transcription data you have access to, you need to produce a Breakdown of Categories:\n\nTasks: Tasks with varying priorities, owners, and due dates.\nExample task assignments include preparing reports, setting up meetings, and submitting proposals.\n\nDecisions: Important decisions made during the meeting\nDecisions include vendor choice, marketing strategy, and budget approval.\n\nQuestions: Questions raised during the meeting, with their status (answered/unanswered).\nAnswered questions include additional context in the form of answers.\n\nInsights: Insights based on the conversation, ranging from sales performance to concerns about deadlines.\nEach insight refer back to the exact part of the conversation.\n\nDeadlines: Upcoming deadlines related to the budget, product launch, and client presentation.\nThis helps track time-sensitive matters.\n\nAttendees: Attendees who attended the meeting\nThis tracks attendance and their respective roles.\n\nFollow-ups: Follow-up tasks assigned to individuals after the meeting, each with a due date.\nFollow-up items focus on clarifying budget, design, and scheduling next actions.\n\nRisks: Risks identified during the meeting, each with potential impacts on the project.\nThese include risks like budget overruns, delays, and potential staff turnover.\n\nAgenda: A list of the agenda items covered in the meeting.\nThe agenda provides a structured overview of the topics discussed. You need to extract as many items as you can, some might have 1-2 items, and some might 10, so make sure to capture every point.\n\nMeeting Name: The title of the meeting, reflecting its official designation. This gives a clear identifier for the meeting, often including a specific date or purpose, such as \"October 2024 Municipal Council Meeting.\"\n\nDescription: A high-level overview of the meeting’s purpose and key areas of focus. The description captures the essential topics discussed, decisions made, and the overall scope of the meeting, such as infrastructure updates, budget approvals, and key community concerns.\n\nSummary: A brief consolidation of the main points and outcomes from the meeting. The summary encapsulates the flow of the meeting, including major tasks, decisions, and action points, along with any significant challenges or risks highlighted, offering a concise review of the meeting’s results.\n\nYou must format your output as a JSON data, like:\n\n{output_example}\n\n\nThe transcript is as follow:\n\n{transcription}",
+                "display_name": "Template",
+                "advanced": false,
+                "dynamic": false,
+                "info": "",
+                "title_case": false,
+                "type": "prompt",
+                "_input_type": "PromptInput",
+                "load_from_db": false
+              },
+              "output_example": {
+                "field_type": "str",
+                "required": false,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "",
+                "fileTypes": [],
+                "file_path": "",
+                "name": "output_example",
+                "display_name": "output_example",
+                "advanced": false,
+                "input_types": [
+                  "Message",
+                  "Text"
+                ],
+                "dynamic": false,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false,
+                "type": "str"
+              },
+              "transcription": {
+                "field_type": "str",
+                "required": false,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "",
+                "fileTypes": [],
+                "file_path": "",
+                "name": "transcription",
+                "display_name": "transcription",
+                "advanced": false,
+                "input_types": [
+                  "Message",
+                  "Text"
+                ],
+                "dynamic": false,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false,
+                "type": "str"
+              }
+            },
+            "description": "Create a prompt template with dynamic variables.",
+            "icon": "prompts",
+            "base_classes": [
+              "Message"
+            ],
+            "display_name": "Prompt",
+            "documentation": "",
+            "custom_fields": {
+              "template": [
+                "output_example",
+                "transcription"
+              ]
+            },
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "prompt",
+                "display_name": "Prompt Message",
+                "method": "build_prompt",
+                "value": "__UNDEFINED__",
+                "cache": true
+              }
+            ],
+            "field_order": [
+              "template"
+            ],
+            "beta": false,
+            "legacy": false,
+            "edited": false,
+            "metadata": {},
+            "tool_mode": false,
+            "lf_version": "1.1.1"
+          },
+          "id": "Prompt-A2xtQ",
+          "description": "Create a prompt template with dynamic variables.",
+          "display_name": "Prompt"
+        },
+        "selected": false,
+        "width": 320,
+        "height": 431,
+        "positionAbsolute": {
+          "x": -981.6329126277515,
+          "y": -67.39310132366732
+        },
+        "dragging": false
+      },
+      {
+        "id": "TextInput-4E2Qg",
+        "type": "genericNode",
+        "position": {
+          "x": -1517.9689142084346,
+          "y": -332.4509973473767
+        },
+        "data": {
+          "type": "TextInput",
+          "node": {
+            "template": {
+              "_type": "Component",
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "from langflow.base.io.text import TextComponent\nfrom langflow.io import MultilineInput, Output\nfrom langflow.schema.message import Message\n\n\nclass TextInputComponent(TextComponent):\n    display_name = \"Text Input\"\n    description = \"Get text inputs from the Playground.\"\n    icon = \"type\"\n    name = \"TextInput\"\n\n    inputs = [\n        MultilineInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            info=\"Text to be passed as input.\",\n        ),\n    ]\n    outputs = [\n        Output(display_name=\"Text\", name=\"text\", method=\"text_response\"),\n    ]\n\n    def text_response(self) -> Message:\n        return Message(\n            text=self.input_value,\n        )\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              },
+              "input_value": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "multiline": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "input_value",
+                "value": "{\n  \"Breakdown\": {\n    \"tasks\": [\n      {\n        \"description\": \"Prepare a report on the status of the procedural bylaw 2410.\",\n        \"assigned_to\": \"CEO\",\n        \"priority\": \"High\"\n      },\n      {\n        \"description\": \"Follow up with the public works department regarding the tree asset projections.\",\n        \"assigned_to\": \"Nomar\",\n        \"priority\": \"Medium\"\n      },\n      {\n        \"description\": \"Gather names for the two vacant positions on the Northeast Red Watershed District Committee.\",\n        \"assigned_to\": \"Council Members\",\n        \"priority\": \"Medium\"\n      },\n      {\n        \"description\": \"Draft the policy changes for the new community grant system.\",\n        \"assigned_to\": \"Grants Officer\",\n        \"priority\": \"High\"\n      },\n      {\n        \"description\": \"Schedule a meeting with local business leaders to discuss economic growth initiatives.\",\n        \"assigned_to\": \"Economic Development Manager\",\n        \"priority\": \"Low\"\n      }\n    ],\n    \"decisions\": [\n      {\n        \"description\": \"The agenda for the meeting was approved unanimously.\"\n      },\n      {\n        \"description\": \"The council activity reports for September were received as information.\"\n      },\n      {\n        \"description\": \"The additional cost of $33,300 for the Settlers Road Bridge Crossing project will be included in the 2025 capital budget.\"\n      },\n      {\n        \"description\": \"Nonprofit organizations and community service groups will receive grants for 2024 as listed.\"\n      },\n      {\n        \"description\": \"The municipal recreation center expansion was approved with an amended budget.\"\n      },\n      {\n        \"description\": \"The council decided to allocate $15,000 for the local library digital resources upgrade.\"\n      }\n    ],\n    \"questions\": [\n      {\n        \"question\": \"What is the status of the procedural bylaw 2410?\",\n        \"raised_by\": \"Janet\",\n        \"status\": \"Unanswered\"\n      },\n      {\n        \"question\": \"Why are the costs for the Settlers Road Bridge Crossing project increasing?\",\n        \"raised_by\": \"Andy\",\n        \"status\": \"Answered\",\n        \"answer\": \"The costs are increasing due to unforeseen costs and additional decommissioning requirements for the existing infrastructure.\"\n      },\n      {\n        \"question\": \"What is the Society of Ivan Franco?\",\n        \"raised_by\": \"Mark\",\n        \"status\": \"Answered\",\n        \"answer\": \"It used to be an active community club located off Warren Hill Road, and discussions are ongoing about obtaining that land.\"\n      },\n      {\n        \"question\": \"When will the public works department complete the tree asset projections?\",\n        \"raised_by\": \"Councilor Miller\",\n        \"status\": \"Pending\"\n      },\n      {\n        \"question\": \"How is the council planning to address the growing number of emergency motor vehicle collisions?\",\n        \"raised_by\": \"Glenn\",\n        \"status\": \"Unanswered\"\n      }\n    ],\n    \"insights\": [\n      {\n        \"description\": \"The council is committed to supporting seniors' activities and improving lodging for seniors in the community.\",\n      },\n      {\n        \"description\": \"There is a need for a daycare center in the RM, and land has been identified for this purpose.\",\n      },\n      {\n        \"description\": \"The increase in emergency motor vehicle collisions is concerning and needs further investigation.\",\n      },\n      {\n        \"description\": \"Public interest in developing additional recreational trails continues to grow.\",\n      },\n      {\n        \"description\": \"The community expressed concerns about rising utility rates in the region.\",\n      }\n    ],\n    \"deadlines\": [\n      {\n        \"description\": \"Submit names for the two vacant positions on the Northeast Red Watershed District Committee.\",\n        \"date\": \"2024-10-15\"\n      },\n      {\n        \"description\": \"Prepare the report on the procedural bylaw 2410 for the next meeting.\",\n        \"date\": \"2024-10-15\"\n      },\n      {\n        \"description\": \"Submit the draft policy changes for the new community grant system.\",\n        \"date\": \"2024-11-01\"\n      },\n      {\n        \"description\": \"Submit the budget proposal for the library digital resources upgrade.\",\n        \"date\": \"2024-10-20\"\n      }\n    ],\n    \"attendees\": [\n      {\n        \"name\": \"Mr. Mayor\"\n      },\n      {\n        \"name\": \"Councilor Miller\"\n      },\n      {\n        \"name\": \"Councilor Fuels\"\n      },\n      {\n        \"name\": \"Councilor Kaczynski\"\n      },\n      {\n        \"name\": \"Councilor Warren\"\n      },\n      {\n        \"name\": \"Councilor Lee\"\n      },\n      {\n        \"name\": \"Mark\"\n      },\n      {\n        \"name\": \"Melinda\"\n      },\n      {\n        \"name\": \"Andy\"\n      },\n      {\n        \"name\": \"Glenn\"\n      },\n      {\n        \"name\": \"Janet\"\n      },\n      {\n        \"name\": \"Nomar\"\n      },\n      {\n        \"name\": \"Public Works Director\"\n      },\n      {\n        \"name\": \"Grants Officer\"\n      }\n    ],\n    \"follow_ups\": [\n      {\n        \"description\": \"Follow up with the finance team regarding the budget approval for the Settlers Road Bridge Crossing project.\",\n        \"owner\": \"CEO\",\n        \"due_date\": \"2024-10-18\"\n      },\n      {\n        \"description\": \"Prepare a detailed report on the emergency motor vehicle collisions for the next meeting.\",\n        \"owner\": \"Public Works Director\",\n        \"due_date\": \"2024-10-15\"\n      },\n      {\n        \"description\": \"Meet with the daycare development committee to review the proposed land options.\",\n        \"owner\": \"Planning Department\",\n        \"due_date\": \"2024-10-22\"\n      },\n      {\n        \"description\": \"Organize a public forum on recreational trail development.\",\n        \"owner\": \"Community Engagement Coordinator\",\n        \"due_date\": \"2024-10-30\"\n      }\n    ],\n    \"risks\": [\n      {\n        \"description\": \"There is a risk of budget overruns due to unforeseen costs in ongoing projects.\"\n      },\n      {\n        \"description\": \"Potential delays in the Settlers Road Bridge Crossing project could impact future budgets.\"\n      },\n      {\n        \"description\": \"A shortage of qualified contractors may delay the municipal recreation center expansion.\"\n      },\n      {\n        \"description\": \"Uncertainty around the future of federal infrastructure funding could affect long-term projects.\"\n      }\n    ],\n    \"agenda\": [\n      \"Invocation and land acknowledgement\",\n      \"Approval of the agenda\",\n      \"Adoption of the minutes from the previous meeting\",\n      \"Reports from council activities\",\n      \"Departmental reports\",\n      \"Question period\",\n      \"Consent agenda\",\n      \"Settlers Road Bridge Crossing project discussion\",\n      \"Northeast Red Watershed District Committee appointments\",\n      \"2024 nonprofit community grants discussion\",\n      \"Public forum planning for recreational trail development\",\n      \"2025 capital budget planning\",\n      \"Utility rate increase concerns\",\n      \"Closing of the meeting\"\n    ],\n   \"meeting_name\": \"October 2024 Municipal Council Meeting\",\n   \"description\": \"This meeting covered several key topics including updates on ongoing infrastructure projects, community grant allocations, and recreational development initiatives. Key decisions were made regarding the Settlers Road Bridge Crossing, the municipal recreation center expansion, and the allocation of funds for the local library's digital resources. Questions and concerns about rising utility rates and the growing number of emergency motor vehicle collisions were raised. Several tasks, follow-ups, and deadlines were established to address ongoing issues, and risks were identified for future project planning.\",\n   \"summary\": \"The meeting involved high-priority tasks such as preparing a procedural bylaw report, addressing public works follow-ups, and drafting policy changes for the community grant system. Key decisions included funding allocations for infrastructure projects and community services. Several questions were raised about project cost increases and emergency incidents, while the council focused on issues like recreational trail development and senior support. Insights indicated growing public concerns over utility rates, and various risks to project budgets and timelines were discussed.\"\n  }\n}\n\n",
+                "display_name": "Text",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "Text to be passed as input.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MultilineInput"
+              }
+            },
+            "description": "Get text inputs from the Playground.",
+            "icon": "type",
+            "base_classes": [
+              "Message"
+            ],
+            "display_name": "Format JSON Template of Tasks",
+            "documentation": "",
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "text",
+                "display_name": "Text",
+                "method": "text_response",
+                "value": "__UNDEFINED__",
+                "cache": true
+              }
+            ],
+            "field_order": [
+              "input_value"
+            ],
+            "beta": false,
+            "legacy": false,
+            "edited": false,
+            "metadata": {},
+            "tool_mode": false,
+            "lf_version": "1.1.1"
+          },
+          "id": "TextInput-4E2Qg",
+          "description": "Get text inputs from the Playground.",
+          "display_name": "Format JSON Template of Tasks"
+        },
+        "selected": false,
+        "width": 320,
+        "height": 233,
+        "positionAbsolute": {
+          "x": -1517.9689142084346,
+          "y": -332.4509973473767
+        },
+        "dragging": false
+      },
+      {
+        "id": "JSONCleaner-jn5Ea",
+        "type": "genericNode",
+        "position": {
+          "x": 93.51863880601047,
+          "y": 428.6163565103991
+        },
+        "data": {
+          "type": "JSONCleaner",
+          "node": {
+            "template": {
+              "_type": "Component",
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "import json\nimport re\nimport unicodedata\n\nfrom langflow.custom import Component\nfrom langflow.inputs import BoolInput, MessageTextInput\nfrom langflow.schema.message import Message\nfrom langflow.template import Output\n\n\nclass JSONCleaner(Component):\n    icon = \"braces\"\n    display_name = \"JSON Cleaner\"\n    description = (\n        \"Cleans the messy and sometimes incorrect JSON strings produced by LLMs \"\n        \"so that they are fully compliant with the JSON spec.\"\n    )\n\n    inputs = [\n        MessageTextInput(\n            name=\"json_str\", display_name=\"JSON String\", info=\"The JSON string to be cleaned.\", required=True\n        ),\n        BoolInput(\n            name=\"remove_control_chars\",\n            display_name=\"Remove Control Characters\",\n            info=\"Remove control characters from the JSON string.\",\n            required=False,\n        ),\n        BoolInput(\n            name=\"normalize_unicode\",\n            display_name=\"Normalize Unicode\",\n            info=\"Normalize Unicode characters in the JSON string.\",\n            required=False,\n        ),\n        BoolInput(\n            name=\"validate_json\",\n            display_name=\"Validate JSON\",\n            info=\"Validate the JSON string to ensure it is well-formed.\",\n            required=False,\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Cleaned JSON String\", name=\"output\", method=\"clean_json\"),\n    ]\n\n    def clean_json(self) -> Message:\n        try:\n            from json_repair import repair_json\n        except ImportError as e:\n            msg = \"Could not import the json_repair package. Please install it with `pip install json_repair`.\"\n            raise ImportError(msg) from e\n\n        \"\"\"Clean the input JSON string based on provided options and return the cleaned JSON string.\"\"\"\n        json_str = self.json_str\n        remove_control_chars = self.remove_control_chars\n        normalize_unicode = self.normalize_unicode\n        validate_json = self.validate_json\n\n        start = json_str.find(\"{\")\n        end = json_str.rfind(\"}\")\n        if start == -1 or end == -1:\n            msg = \"Invalid JSON string: Missing '{' or '}'\"\n            raise ValueError(msg)\n        try:\n            json_str = json_str[start : end + 1]\n\n            if remove_control_chars:\n                json_str = self._remove_control_characters(json_str)\n            if normalize_unicode:\n                json_str = self._normalize_unicode(json_str)\n            if validate_json:\n                json_str = self._validate_json(json_str)\n\n            cleaned_json_str = repair_json(json_str)\n            result = str(cleaned_json_str)\n\n            self.status = result\n            return Message(text=result)\n        except Exception as e:\n            msg = f\"Error cleaning JSON string: {e}\"\n            raise ValueError(msg) from e\n\n    def _remove_control_characters(self, s: str) -> str:\n        \"\"\"Remove control characters from the string.\"\"\"\n        return re.sub(r\"[\\x00-\\x1F\\x7F]\", \"\", s)\n\n    def _normalize_unicode(self, s: str) -> str:\n        \"\"\"Normalize Unicode characters in the string.\"\"\"\n        return unicodedata.normalize(\"NFC\", s)\n\n    def _validate_json(self, s: str) -> str:\n        \"\"\"Validate the JSON string.\"\"\"\n        try:\n            json.loads(s)\n        except json.JSONDecodeError as e:\n            msg = f\"Invalid JSON string: {e}\"\n            raise ValueError(msg) from e\n        return s\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              },
+              "json_str": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "required": true,
+                "placeholder": "",
+                "show": true,
+                "name": "json_str",
+                "value": "",
+                "display_name": "JSON String",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "The JSON string to be cleaned.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MessageTextInput"
+              },
+              "normalize_unicode": {
+                "trace_as_metadata": true,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "normalize_unicode",
+                "value": false,
+                "display_name": "Normalize Unicode",
+                "advanced": false,
+                "dynamic": false,
+                "info": "Normalize Unicode characters in the JSON string.",
+                "title_case": false,
+                "type": "bool",
+                "_input_type": "BoolInput"
+              },
+              "remove_control_chars": {
+                "trace_as_metadata": true,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "remove_control_chars",
+                "value": false,
+                "display_name": "Remove Control Characters",
+                "advanced": false,
+                "dynamic": false,
+                "info": "Remove control characters from the JSON string.",
+                "title_case": false,
+                "type": "bool",
+                "_input_type": "BoolInput"
+              },
+              "validate_json": {
+                "trace_as_metadata": true,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "validate_json",
+                "value": true,
+                "display_name": "Validate JSON",
+                "advanced": false,
+                "dynamic": false,
+                "info": "Validate the JSON string to ensure it is well-formed.",
+                "title_case": false,
+                "type": "bool",
+                "_input_type": "BoolInput",
+                "load_from_db": false
+              }
+            },
+            "description": "Cleans the messy and sometimes incorrect JSON strings produced by LLMs so that they are fully compliant with the JSON spec.",
+            "icon": "braces",
+            "base_classes": [
+              "Message"
+            ],
+            "display_name": "JSON Cleaner",
+            "documentation": "",
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "output",
+                "display_name": "Cleaned JSON String",
+                "method": "clean_json",
+                "value": "__UNDEFINED__",
+                "cache": true
+              }
+            ],
+            "field_order": [
+              "json_str",
+              "remove_control_chars",
+              "normalize_unicode",
+              "validate_json"
+            ],
+            "beta": false,
+            "legacy": false,
+            "edited": false,
+            "metadata": {},
+            "tool_mode": false,
+            "lf_version": "1.1.1"
+          },
+          "id": "JSONCleaner-jn5Ea",
+          "description": "Cleans the messy and sometimes incorrect JSON strings produced by LLMs so that they are fully compliant with the JSON spec.",
+          "display_name": "JSON Cleaner"
+        },
+        "selected": false,
+        "width": 320,
+        "height": 405,
+        "positionAbsolute": {
+          "x": 93.51863880601047,
+          "y": 428.6163565103991
+        },
+        "dragging": false
+      },
+      {
+        "id": "TextOutput-mIx2T",
+        "type": "genericNode",
+        "position": {
+          "x": 730.3183362631719,
+          "y": 684.803464364877
+        },
+        "data": {
+          "type": "TextOutput",
+          "node": {
+            "template": {
+              "_type": "Component",
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "from langflow.base.io.text import TextComponent\nfrom langflow.io import MultilineInput, Output\nfrom langflow.schema.message import Message\n\n\nclass TextOutputComponent(TextComponent):\n    display_name = \"Text Output\"\n    description = \"Display a text output in the Playground.\"\n    icon = \"type\"\n    name = \"TextOutput\"\n\n    inputs = [\n        MultilineInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            info=\"Text to be passed as output.\",\n        ),\n    ]\n    outputs = [\n        Output(display_name=\"Text\", name=\"breakdown\", method=\"text_response\"),\n    ]\n\n    def text_response(self) -> Message:\n        message = Message(\n            text=self.input_value,\n        )\n        self.status = self.input_value\n        return message\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              },
+              "input_value": {
+                "trace_as_input": true,
+                "multiline": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "input_value",
+                "value": "",
+                "display_name": "Text",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "Text to be passed as output.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MultilineInput"
+              }
+            },
+            "description": "Display a text output in the Playground.",
+            "icon": "type",
+            "base_classes": [
+              "Message"
+            ],
+            "display_name": "Text Output",
+            "documentation": "",
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "breakdown",
+                "display_name": "Text",
+                "method": "text_response",
+                "value": "__UNDEFINED__",
+                "cache": true
+              }
+            ],
+            "field_order": [
+              "input_value"
+            ],
+            "beta": false,
+            "edited": true,
+            "lf_version": "1.1.1"
+          },
+          "id": "TextOutput-mIx2T"
+        },
+        "selected": false,
+        "width": 320,
+        "height": 233,
+        "positionAbsolute": {
+          "x": 730.3183362631719,
+          "y": 684.803464364877
+        },
+        "dragging": false
+      },
+      {
+        "id": "TextOutput-Jqzqu",
+        "type": "genericNode",
+        "position": {
+          "x": -168.42547892835069,
+          "y": 1481.9272105863972
+        },
+        "data": {
+          "type": "TextOutput",
+          "node": {
+            "template": {
+              "_type": "Component",
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "from langflow.base.io.text import TextComponent\nfrom langflow.io import MultilineInput, Output\nfrom langflow.schema.message import Message\n\n\nclass TextOutputComponent(TextComponent):\n    display_name = \"Text Output\"\n    description = \"Display a text output in the Playground.\"\n    icon = \"type\"\n    name = \"TextOutput\"\n\n    inputs = [\n        MultilineInput(\n            name=\"input_value\",\n            display_name=\"Text\",\n            info=\"Text to be passed as output.\",\n        ),\n    ]\n    outputs = [\n        Output(display_name=\"Text\", name=\"transcription\", method=\"text_response\"),\n    ]\n\n    def text_response(self) -> Message:\n        message = Message(\n            text=self.input_value,\n        )\n        self.status = self.input_value\n        return message\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              },
+              "input_value": {
+                "trace_as_input": true,
+                "multiline": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "input_value",
+                "value": "",
+                "display_name": "Text",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "Text to be passed as output.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MultilineInput"
+              }
+            },
+            "description": "Display a text output in the Playground.",
+            "icon": "type",
+            "base_classes": [
+              "Message"
+            ],
+            "display_name": "Text Output",
+            "documentation": "",
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "transcription",
+                "display_name": "Text",
+                "method": "text_response",
+                "value": "__UNDEFINED__",
+                "cache": true
+              }
+            ],
+            "field_order": [
+              "input_value"
+            ],
+            "beta": false,
+            "edited": true
+          },
+          "id": "TextOutput-Jqzqu"
+        },
+        "selected": false,
+        "width": 320,
+        "height": 233,
+        "positionAbsolute": {
+          "x": -168.42547892835069,
+          "y": 1481.9272105863972
+        },
+        "dragging": false
+      },
+      {
+        "id": "AzureOpenAIModel-y0otr",
+        "type": "genericNode",
+        "position": {
+          "x": -502.67243893992656,
+          "y": -161.11035057147785
+        },
+        "data": {
+          "node": {
+            "template": {
+              "_type": "Component",
+              "output_parser": {
+                "trace_as_metadata": true,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "output_parser",
+                "value": "",
+                "display_name": "Output Parser",
+                "advanced": true,
+                "input_types": [
+                  "OutputParser"
+                ],
+                "dynamic": false,
+                "info": "The parser to use to parse the output of the model",
+                "title_case": false,
+                "type": "other",
+                "_input_type": "HandleInput"
+              },
+              "api_key": {
+                "load_from_db": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "api_key",
+                "value": "",
+                "display_name": "API Key",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "",
+                "title_case": false,
+                "password": true,
+                "type": "str",
+                "_input_type": "SecretStrInput"
+              },
+              "api_version": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "options": [
+                  "2024-10-01-preview",
+                  "2024-09-01-preview",
+                  "2024-08-01-preview",
+                  "2024-07-01-preview",
+                  "2024-06-01",
+                  "2024-03-01-preview",
+                  "2024-02-15-preview",
+                  "2023-12-01-preview",
+                  "2023-05-15"
+                ],
+                "combobox": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "api_version",
+                "value": "2024-06-01",
+                "display_name": "API Version",
+                "advanced": false,
+                "dynamic": false,
+                "info": "",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "DropdownInput"
+              },
+              "azure_deployment": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "required": true,
+                "placeholder": "",
+                "show": true,
+                "name": "azure_deployment",
+                "value": "gpt-4o",
+                "display_name": "Deployment Name",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MessageTextInput"
+              },
+              "azure_endpoint": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "required": true,
+                "placeholder": "",
+                "show": true,
+                "name": "azure_endpoint",
+                "value": "https://azure-openai-940703.openai.azure.com/openai/deployments/gpt-4o/chat/completions?api-version=2024-06-01",
+                "display_name": "Azure Endpoint",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "Your Azure endpoint, including the resource. Example: `https://example-resource.azure.openai.com/`",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MessageTextInput"
+              },
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "from langchain_openai import AzureChatOpenAI\n\nfrom langflow.base.models.model import LCModelComponent\nfrom langflow.field_typing import LanguageModel\nfrom langflow.inputs import MessageTextInput\nfrom langflow.inputs.inputs import HandleInput\nfrom langflow.io import DropdownInput, FloatInput, IntInput, SecretStrInput\n\n\nclass AzureChatOpenAIComponent(LCModelComponent):\n    display_name: str = \"Azure OpenAI\"\n    description: str = \"Generate text using Azure OpenAI LLMs.\"\n    documentation: str = \"https://python.langchain.com/docs/integrations/llms/azure_openai\"\n    beta = False\n    icon = \"Azure\"\n    name = \"AzureOpenAIModel\"\n\n    AZURE_OPENAI_API_VERSIONS = [\n        \"2024-06-01\",\n        \"2024-07-01-preview\",\n        \"2024-08-01-preview\",\n        \"2024-09-01-preview\",\n        \"2024-10-01-preview\",\n        \"2023-05-15\",\n        \"2023-12-01-preview\",\n        \"2024-02-15-preview\",\n        \"2024-03-01-preview\",\n    ]\n\n    inputs = [\n        *LCModelComponent._base_inputs,\n        MessageTextInput(\n            name=\"azure_endpoint\",\n            display_name=\"Azure Endpoint\",\n            info=\"Your Azure endpoint, including the resource. Example: `https://example-resource.azure.openai.com/`\",\n            required=True,\n        ),\n        MessageTextInput(name=\"azure_deployment\", display_name=\"Deployment Name\", required=True),\n        SecretStrInput(name=\"api_key\", display_name=\"API Key\"),\n        DropdownInput(\n            name=\"api_version\",\n            display_name=\"API Version\",\n            options=sorted(AZURE_OPENAI_API_VERSIONS, reverse=True),\n            value=next(\n                (\n                    version\n                    for version in sorted(AZURE_OPENAI_API_VERSIONS, reverse=True)\n                    if not version.endswith(\"-preview\")\n                ),\n                AZURE_OPENAI_API_VERSIONS[0],\n            ),\n        ),\n        FloatInput(name=\"temperature\", display_name=\"Temperature\", value=0.7),\n        IntInput(\n            name=\"max_tokens\",\n            display_name=\"Max Tokens\",\n            advanced=True,\n            info=\"The maximum number of tokens to generate. Set to 0 for unlimited tokens.\",\n        ),\n        HandleInput(\n            name=\"output_parser\",\n            display_name=\"Output Parser\",\n            info=\"The parser to use to parse the output of the model\",\n            advanced=True,\n            input_types=[\"OutputParser\"],\n        ),\n    ]\n\n    def build_model(self) -> LanguageModel:  # type: ignore[type-var]\n        azure_endpoint = self.azure_endpoint\n        azure_deployment = self.azure_deployment\n        api_version = self.api_version\n        api_key = self.api_key\n        temperature = self.temperature\n        max_tokens = self.max_tokens\n        stream = self.stream\n\n        try:\n            output = AzureChatOpenAI(\n                azure_endpoint=azure_endpoint,\n                azure_deployment=azure_deployment,\n                api_version=api_version,\n                api_key=api_key,\n                temperature=temperature,\n                max_tokens=max_tokens or None,\n                streaming=stream,\n            )\n        except Exception as e:\n            msg = f\"Could not connect to AzureOpenAI API: {e}\"\n            raise ValueError(msg) from e\n\n        return output\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              },
+              "input_value": {
+                "trace_as_input": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "input_value",
+                "value": "",
+                "display_name": "Input",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MessageInput"
+              },
+              "max_tokens": {
+                "trace_as_metadata": true,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "max_tokens",
+                "value": "",
+                "display_name": "Max Tokens",
+                "advanced": true,
+                "dynamic": false,
+                "info": "The maximum number of tokens to generate. Set to 0 for unlimited tokens.",
+                "title_case": false,
+                "type": "int",
+                "_input_type": "IntInput"
+              },
+              "stream": {
+                "trace_as_metadata": true,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "stream",
+                "value": false,
+                "display_name": "Stream",
+                "advanced": false,
+                "dynamic": false,
+                "info": "Stream the response from the model. Streaming works only in Chat.",
+                "title_case": false,
+                "type": "bool",
+                "_input_type": "BoolInput"
+              },
+              "system_message": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "system_message",
+                "value": "",
+                "display_name": "System Message",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "System message to pass to the model.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MessageTextInput"
+              },
+              "temperature": {
+                "trace_as_metadata": true,
+                "list": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "temperature",
+                "value": 0.7,
+                "display_name": "Temperature",
+                "advanced": false,
+                "dynamic": false,
+                "info": "",
+                "title_case": false,
+                "type": "float",
+                "_input_type": "FloatInput"
+              }
+            },
+            "description": "Generate text using Azure OpenAI LLMs.",
+            "icon": "Azure",
+            "base_classes": [
+              "LanguageModel",
+              "Message"
+            ],
+            "display_name": "Azure OpenAI",
+            "documentation": "https://python.langchain.com/docs/integrations/llms/azure_openai",
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "text_output",
+                "display_name": "Text",
+                "method": "text_response",
+                "value": "__UNDEFINED__",
+                "cache": true,
+                "required_inputs": []
+              },
+              {
+                "types": [
+                  "LanguageModel"
+                ],
+                "selected": "LanguageModel",
+                "name": "model_output",
+                "display_name": "Language Model",
+                "method": "build_model",
+                "value": "__UNDEFINED__",
+                "cache": true,
+                "required_inputs": [
+                  "azure_deployment",
+                  "azure_endpoint"
+                ]
+              }
+            ],
+            "field_order": [
+              "input_value",
+              "system_message",
+              "stream",
+              "azure_endpoint",
+              "azure_deployment",
+              "api_key",
+              "api_version",
+              "temperature",
+              "max_tokens",
+              "output_parser"
+            ],
+            "beta": false,
+            "legacy": false,
+            "edited": false,
+            "metadata": {},
+            "tool_mode": false,
+            "lf_version": "1.1.1"
+          },
+          "type": "AzureOpenAIModel",
+          "id": "AzureOpenAIModel-y0otr"
+        },
+        "selected": false,
+        "width": 320,
+        "height": 841,
+        "positionAbsolute": {
+          "x": -502.67243893992656,
+          "y": -161.11035057147785
+        },
+        "dragging": false
+      }
+    ],
+    "edges": [
+      {
+        "source": "TextInput-4E2Qg",
+        "sourceHandle": "{œdataTypeœ:œTextInputœ,œidœ:œTextInput-4E2Qgœ,œnameœ:œtextœ,œoutput_typesœ:[œMessageœ]}",
+        "target": "Prompt-A2xtQ",
+        "targetHandle": "{œfieldNameœ:œoutput_exampleœ,œidœ:œPrompt-A2xtQœ,œinputTypesœ:[œMessageœ,œTextœ],œtypeœ:œstrœ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "output_example",
+            "id": "Prompt-A2xtQ",
+            "inputTypes": [
+              "Message",
+              "Text"
+            ],
+            "type": "str"
+          },
+          "sourceHandle": {
+            "dataType": "TextInput",
+            "id": "TextInput-4E2Qg",
+            "name": "text",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "reactflow__edge-TextInput-4E2Qg{œdataTypeœ:œTextInputœ,œidœ:œTextInput-4E2Qgœ,œnameœ:œtextœ,œoutput_typesœ:[œMessageœ]}-Prompt-A2xtQ{œfieldNameœ:œoutput_exampleœ,œidœ:œPrompt-A2xtQœ,œinputTypesœ:[œMessageœ,œTextœ],œtypeœ:œstrœ}",
+        "className": "",
+        "animated": false
+      },
+      {
+        "source": "GroqWhisperComponent-t6d1e",
+        "sourceHandle": "{œdataTypeœ:œGroqWhisperComponentœ,œidœ:œGroqWhisperComponent-t6d1eœ,œnameœ:œtranscriptionœ,œoutput_typesœ:[œMessageœ]}",
+        "target": "Prompt-A2xtQ",
+        "targetHandle": "{œfieldNameœ:œtranscriptionœ,œidœ:œPrompt-A2xtQœ,œinputTypesœ:[œMessageœ,œTextœ],œtypeœ:œstrœ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "transcription",
+            "id": "Prompt-A2xtQ",
+            "inputTypes": [
+              "Message",
+              "Text"
+            ],
+            "type": "str"
+          },
+          "sourceHandle": {
+            "dataType": "GroqWhisperComponent",
+            "id": "GroqWhisperComponent-t6d1e",
+            "name": "transcription",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "reactflow__edge-GroqWhisperComponent-t6d1e{œdataTypeœ:œGroqWhisperComponentœ,œidœ:œGroqWhisperComponent-t6d1eœ,œnameœ:œtranscriptionœ,œoutput_typesœ:[œMessageœ]}-Prompt-A2xtQ{œfieldNameœ:œtranscriptionœ,œidœ:œPrompt-A2xtQœ,œinputTypesœ:[œMessageœ,œTextœ],œtypeœ:œstrœ}",
+        "className": "",
+        "animated": false
+      },
+      {
+        "source": "JSONCleaner-jn5Ea",
+        "sourceHandle": "{œdataTypeœ:œJSONCleanerœ,œidœ:œJSONCleaner-jn5Eaœ,œnameœ:œoutputœ,œoutput_typesœ:[œMessageœ]}",
+        "target": "TextOutput-mIx2T",
+        "targetHandle": "{œfieldNameœ:œinput_valueœ,œidœ:œTextOutput-mIx2Tœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "input_value",
+            "id": "TextOutput-mIx2T",
+            "inputTypes": [
+              "Message"
+            ],
+            "type": "str"
+          },
+          "sourceHandle": {
+            "dataType": "JSONCleaner",
+            "id": "JSONCleaner-jn5Ea",
+            "name": "output",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "reactflow__edge-JSONCleaner-jn5Ea{œdataTypeœ:œJSONCleanerœ,œidœ:œJSONCleaner-jn5Eaœ,œnameœ:œoutputœ,œoutput_typesœ:[œMessageœ]}-TextOutput-mIx2T{œfieldNameœ:œinput_valueœ,œidœ:œTextOutput-mIx2Tœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "className": "",
+        "animated": false
+      },
+      {
+        "source": "GroqWhisperComponent-t6d1e",
+        "sourceHandle": "{œdataTypeœ:œGroqWhisperComponentœ,œidœ:œGroqWhisperComponent-t6d1eœ,œnameœ:œtranscriptionœ,œoutput_typesœ:[œMessageœ]}",
+        "target": "TextOutput-Jqzqu",
+        "targetHandle": "{œfieldNameœ:œinput_valueœ,œidœ:œTextOutput-Jqzquœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "input_value",
+            "id": "TextOutput-Jqzqu",
+            "inputTypes": [
+              "Message"
+            ],
+            "type": "str"
+          },
+          "sourceHandle": {
+            "dataType": "GroqWhisperComponent",
+            "id": "GroqWhisperComponent-t6d1e",
+            "name": "transcription",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "reactflow__edge-GroqWhisperComponent-t6d1e{œdataTypeœ:œGroqWhisperComponentœ,œidœ:œGroqWhisperComponent-t6d1eœ,œnameœ:œtranscriptionœ,œoutput_typesœ:[œMessageœ]}-TextOutput-Jqzqu{œfieldNameœ:œinput_valueœ,œidœ:œTextOutput-Jqzquœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "className": "",
+        "animated": false
+      },
+      {
+        "source": "Prompt-A2xtQ",
+        "sourceHandle": "{œdataTypeœ:œPromptœ,œidœ:œPrompt-A2xtQœ,œnameœ:œpromptœ,œoutput_typesœ:[œMessageœ]}",
+        "target": "AzureOpenAIModel-y0otr",
+        "targetHandle": "{œfieldNameœ:œinput_valueœ,œidœ:œAzureOpenAIModel-y0otrœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "input_value",
+            "id": "AzureOpenAIModel-y0otr",
+            "inputTypes": [
+              "Message"
+            ],
+            "type": "str"
+          },
+          "sourceHandle": {
+            "dataType": "Prompt",
+            "id": "Prompt-A2xtQ",
+            "name": "prompt",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "reactflow__edge-Prompt-A2xtQ{œdataTypeœ:œPromptœ,œidœ:œPrompt-A2xtQœ,œnameœ:œpromptœ,œoutput_typesœ:[œMessageœ]}-AzureOpenAIModel-y0otr{œfieldNameœ:œinput_valueœ,œidœ:œAzureOpenAIModel-y0otrœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "animated": false,
+        "className": ""
+      },
+      {
+        "source": "AzureOpenAIModel-y0otr",
+        "sourceHandle": "{œdataTypeœ:œAzureOpenAIModelœ,œidœ:œAzureOpenAIModel-y0otrœ,œnameœ:œtext_outputœ,œoutput_typesœ:[œMessageœ]}",
+        "target": "JSONCleaner-jn5Ea",
+        "targetHandle": "{œfieldNameœ:œjson_strœ,œidœ:œJSONCleaner-jn5Eaœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "json_str",
+            "id": "JSONCleaner-jn5Ea",
+            "inputTypes": [
+              "Message"
+            ],
+            "type": "str"
+          },
+          "sourceHandle": {
+            "dataType": "AzureOpenAIModel",
+            "id": "AzureOpenAIModel-y0otr",
+            "name": "text_output",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "reactflow__edge-AzureOpenAIModel-y0otr{œdataTypeœ:œAzureOpenAIModelœ,œidœ:œAzureOpenAIModel-y0otrœ,œnameœ:œtext_outputœ,œoutput_typesœ:[œMessageœ]}-JSONCleaner-jn5Ea{œfieldNameœ:œjson_strœ,œidœ:œJSONCleaner-jn5Eaœ,œinputTypesœ:[œMessageœ],œtypeœ:œstrœ}",
+        "animated": false,
+        "className": ""
+      }
+    ],
+    "viewport": {
+      "x": 1046.1563583346451,
+      "y": 384.5190257782883,
+      "zoom": 0.4692138289696809
+    }
+  },
+  "description": "A Flow that processes an audio using Groq Whisper, process it and return a JSON of the analysis.",
+  "name": "Meeting Mind",
+  "last_tested_version": "1.1.1",
+  "endpoint_name": null,
+  "is_component": false
+}

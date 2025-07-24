@@ -1,22 +1,18 @@
 import asyncio
-import os
+import io
 import json
+import os
 
 import streamlit as st
+from audiorecorder import audiorecorder
 from dotenv import load_dotenv
+from pydub import AudioSegment
 from streamlit.runtime.scriptrunner import get_script_run_ctx
+from streamlit_extras.stylable_container import stylable_container
 
 from client import AgentClient, AgentClientError
-from schema import ChatHistory
-
-from streamlit_extras.stylable_container import stylable_container 
-
 from client.auth import Auth
-import io
-from pydub import AudioSegment
-from audiorecorder import audiorecorder
-
-
+from schema import ChatHistory
 
 APP_TITLE = "Meeting Mind"
 APP_ICON = "🧠"
@@ -61,7 +57,7 @@ async def main() -> None:
         load_dotenv()
         backend_url = os.getenv("BACKEND_URL")
         try:
-            with st.spinner(f"Connecting to agent service..."):
+            with st.spinner("Connecting to agent service..."):
                 api_key = None
                 if "owui-token" in st.session_state:
                     api_key = st.session_state["owui-token"]

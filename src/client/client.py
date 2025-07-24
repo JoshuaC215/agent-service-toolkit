@@ -1,12 +1,11 @@
 import json
+import logging
 import os
 from collections.abc import AsyncGenerator, Generator
-from typing import Any
 from pathlib import Path
+from typing import Any
+
 import httpx
-import logging
-
-
 
 from schema import (
     ChatHistory,
@@ -17,7 +16,6 @@ from schema import (
     StreamInput,
     UserInput,
 )
-
 
 logging.basicConfig(level=logging.INFO)
 

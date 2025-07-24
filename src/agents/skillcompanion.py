@@ -1,25 +1,19 @@
 import json
 import logging
-import os
-from pydantic import SecretStr
-from typing import Annotated, Any, Dict, List, Literal, Optional, TypedDict
-import streamlit as st
+from typing import Annotated, Any, TypedDict
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage,BaseMessage
-from langchain_core.runnables import RunnableConfig
-from langchain_openai import ChatOpenAI
-from langfuse.callback import CallbackHandler
+from langchain.prompts import SystemMessagePromptTemplate
+from langchain_core.language_models.base import LanguageModelInput
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda, RunnableSerializable
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.types import Command, interrupt
+from langgraph.types import interrupt
 
-from core import get_model, settings
+from core import get_model
 from schema.models import OpenwebuiModelName
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda, RunnableSerializable
-from langchain_core.language_models.base import LanguageModelInput
-from langchain.prompts import SystemMessagePromptTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +22,8 @@ class State(TypedDict):
     testid: int
     question:str 
     question_index: int
-    answers: List[Dict[str, Any]]
-    category: Optional[str]
+    answers: list[dict[str, Any]]
+    category: str | None
     finished: bool
 
 memory = SqliteSaver.from_conn_string(":memory:")

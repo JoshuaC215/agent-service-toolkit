@@ -1,20 +1,20 @@
 import asyncio
+import logging
 import os
-from collections.abc import AsyncGenerator
 import uuid
+from collections.abc import AsyncGenerator
+from datetime import datetime
+
 import streamlit as st
 from dotenv import load_dotenv
 from pydantic import ValidationError
-from streamlit.runtime.scriptrunner import get_script_run_ctx
-from datetime import datetime
 
 from client import AgentClient, AgentClientError
 from client.auth import Auth
 from schema import ChatHistory, ChatMessage
+from schema.models import OpenwebuiModelName
 from schema.task_data import TaskData, TaskDataStatus
 
-import logging
-from schema.models import OpenwebuiModelName
 logger = logging.getLogger(__name__)
 
 

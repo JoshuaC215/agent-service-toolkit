@@ -9,10 +9,9 @@ from pydantic import ValidationError
 from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from client import AgentClient, AgentClientError
+from client.auth import Auth
 from schema import ChatHistory, ChatMessage
 from schema.task_data import TaskData, TaskDataStatus
-
-from client.auth import Auth
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:
@@ -61,7 +60,7 @@ async def main() -> None:
         load_dotenv()
         backend_url = os.getenv("BACKEND_URL")
         try:
-            with st.spinner(f"Connecting to agent service..."):
+            with st.spinner("Connecting to agent service..."):
                 api_key = None
                 if "owui-token" in st.session_state:
                     api_key = st.session_state["owui-token"]

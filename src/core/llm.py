@@ -1,6 +1,7 @@
+import os
 from functools import cache
 from typing import TypeAlias
-import os
+
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
 from langchain_community.chat_models import FakeListChatModel
@@ -10,7 +11,6 @@ from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic import SecretStr
-
 
 from core.settings import settings
 from schema.models import (
@@ -26,8 +26,8 @@ from schema.models import (
     OpenAICompatibleName,
     OpenAIModelName,
     OpenRouterModelName,
+    OpenwebuiModelName,
     VertexAIModelName,
-    OpenwebuiModelName
 )
 
 _MODEL_TABLE = (
