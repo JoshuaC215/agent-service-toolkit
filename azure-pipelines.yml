@@ -1,0 +1,76 @@
+# Docker
+# Build a Docker image
+# https://docs.microsoft.com/azure/devops/pipelines/languages/docker
+
+trigger:
+- main
+
+resources:
+- repo: self
+
+variables:
+  # Container registry service connection established during pipeline creation
+  dockerRegistryServiceConnection: 'sc-rooai-aios-dev-gwc-001'
+  imageRepository: 'astk-backend'
+  containerRegistry: 'crrooaiaiosdevgwc001.azurecr.io'
+  tag: '$(Build.BuildNumber)'
+  DOCKER_IMAGE_NAME: $(imageRepository)
+  DOCKERFILE_PATH: $(Build.SourcesDirectory)/docker/Dockerfile.backend
+  DOCKERFILE_PATH_UI: $(Build.SourcesDirectory)/docker/Dockerfile.app
+  # Agent VM image name
+  vmImageName: 'ubuntu-latest'
+
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+
+    - task: CmdLine@2
+      displayName: Build $(DOCKER_IMAGE_NAME) Docker Image
+      inputs:
+        script: |
+
+          echo 'docker build --build-arg -t $(containerRegistry)/$(DOCKER_IMAGE_NAME):$(tag) -f $(DOCKERFILE_PATH) .'
+          docker build -t $(containerRegistry)/$(DOCKER_IMAGE_NAME):$(tag) -f $(DOCKERFILE_PATH) .
+
+    - task: Docker@2
+      displayName: push image to the container registry
+      inputs:
+        command: push
+        repository: $(imageRepository)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+  - job: Build_UI
+    displayName: Build-UI
+    pool:
+      vmImage: $(vmImageName)
+    steps:
+    - task: Docker@2
+      displayName: Login to ACR
+      inputs:
+        command: login
+        containerRegistry: $(dockerRegistryServiceConnection)
+
+    - task: CmdLine@2
+      displayName: Iterate and Build Docker Images for Each Page
+      inputs:
+        script: |
+          for file in $(Build.SourcesDirectory)/src/pages/*.py; do
+            if [ -f "$file" ]; then
+              page_name=$(basename "$file")
+              page_name_pretty=$(echo "astk-${page_name%.py}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+
+              echo "Building Docker image for $page_name"
+              docker build --build-arg STREAMLIT_PAGE_NAME=$page_name -t $(containerRegistry)/$page_name_pretty:$(tag) -f $(DOCKERFILE_PATH_UI) --target=prod .
+
+              echo "Pushing Docker image for $page_name_pretty"
+              docker push $(containerRegistry)/$page_name_pretty:$(tag)
+            fi
+          done

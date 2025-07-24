@@ -19,8 +19,12 @@ def convert_message_content_to_string(content: str | list[str | dict]) -> str:
         if isinstance(content_item, str):
             text.append(content_item)
             continue
-        if content_item["type"] == "text":
-            text.append(content_item["text"])
+        if isinstance(content_item, dict) and content_item.get("type") == "text":
+            text.append(content_item.get("text", ""))
+            continue
+        # Skip unsupported types (e.g., tuple, object) to avoid validation errors
+        # Optionally, log or print a warning here if needed
+        continue
     return "".join(text)
 
 

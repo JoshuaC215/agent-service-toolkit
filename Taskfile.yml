@@ -1,0 +1,36 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
+  
+  init:
+    cmds:
+      - uv sync --frozen
+      - source .venv/bin/activate
+  
+  run:
+    cmds:
+      - uv run src/run_service.py
+  
+  runui:
+    cmds:
+      - uv run streamlit run src/Skill_Companion.py
+
+  dev:
+    desc: "Run Ruff for code quality and formatting"
+    cmds:
+      - uv run ruff check . --fix
+      - uv run ruff format .
+
+  
+
+  
+

@@ -1,6 +1,6 @@
 from typing import Any, Literal, NotRequired
 
-from pydantic import BaseModel, Field, SerializeAsAny
+from pydantic import BaseModel, Field
 from typing_extensions import TypedDict
 
 from schema.models import AllModelEnum, AnthropicModelName, OpenAIModelName
@@ -44,7 +44,7 @@ class UserInput(BaseModel):
         description="User input to the agent.",
         examples=["What is the weather in Tokyo?"],
     )
-    model: SerializeAsAny[AllModelEnum] | None = Field(
+    model: AllModelEnum | None = Field(
         title="Model",
         description="LLM Model to use for the agent.",
         default=OpenAIModelName.GPT_4O_MINI,
@@ -65,6 +65,32 @@ class UserInput(BaseModel):
         default={},
         examples=[{"spicy_level": 0.8}],
     )
+    api_key: str | None = Field(
+        description="custom chat api key, e.g. JWT token for openwebui",
+        default = None,
+        examples=["difazlvgduhijfagäfoö.rtphrqefwizurwohtij45"],
+    )
+
+    @classmethod
+    def __get_validators__(cls):
+        yield from super().__get_validators__()
+        yield cls._coerce_model_enum
+
+    @classmethod
+    def _coerce_model_enum(cls, values):
+        # Only coerce if 'model' is present and is a string
+        if isinstance(values, dict) and "model" in values:
+            model_val = values["model"]
+            if isinstance(model_val, str):
+                # Try all enums in AllModelEnum
+                for enum_type in AllModelEnum.__args__:
+                    try:
+                        values["model"] = enum_type(model_val)
+                        break
+                    except ValueError:
+                        continue
+        return values
+
 
 
 class StreamInput(UserInput):
