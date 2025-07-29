@@ -52,7 +52,7 @@ async def main() -> None:
         await asyncio.sleep(0.1)
         st.rerun()
 
-    auth = Auth()
+    auth = Auth(True)
     if not auth.is_logged_in():
         return
 

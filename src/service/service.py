@@ -1,7 +1,6 @@
 import inspect
 import json
 import logging
-import os
 import warnings
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -155,14 +154,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     callbacks = []
     if settings.LANGFUSE_TRACING:
         # Initialize Langfuse CallbackHandler for Langchain (tracing)
-        langfuse_handler = CallbackHandler(
-            public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
-            secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
-            host=os.getenv("LANGFUSE_HOST"),
-            user_id=user_input.user_id,
-            session_id="Skill-Companion",
-        )
-        #langfuse_handler = CallbackHandler()
+        langfuse_handler = CallbackHandler()
 
         callbacks.append(langfuse_handler)
 
@@ -186,13 +178,12 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
         task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
     ]
 
-    input: Command | dict[str, Any] 
-    # if interrupted_tasks: 
-    #     # assume user input is response to resume agent execution from interrupt
-    #     input = Command(resume=user_input.message)
-    # else:
-    # ToDo
-    input = {"messages": [HumanMessage(content=user_input.message)]}
+    input: Command | dict[str, Any]
+    if interrupted_tasks:
+        # assume user input is response to resume agent execution from interrupt
+        input = Command(resume=user_input.message)
+    else:
+        input = {"messages": [HumanMessage(content=user_input.message)]}
 
     kwargs = {
         "input": input,
@@ -200,19 +191,6 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     }
 
     return kwargs, run_id
-
-
-    def _parse_input(user_input: UserInput) -> tuple[dict[str, Any], UUID]:
-        run_id = uuid4()
-        thread_id = user_input.thread_id or str(uuid4())
-        kwargs = {
-            "input": {"messages": [HumanMessage(content=user_input.message)]},
-            "config": RunnableConfig(
-                configurable={"thread_id": thread_id, "model": user_input.model, "api_key": user_input.api_key}, run_id=run_id
-            ),
-        }
-        return kwargs, run_id
-
 
 @router.post("/{agent_id}/invoke")
 @router.post("/invoke")
@@ -247,27 +225,25 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     kwargs, run_id = await _handle_input(user_input, agent)
 
     try:
-        #response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"]) # TODO readd updates mode, # type: ignore # fmt: skip
-        response_events = await agent.ainvoke(**kwargs)
-        output = langchain_to_chat_message(response_events["messages"][-1])
-        #output = langchain_to_chat_message(response["messages"][-1])
-        # if response_type == "values":
-        #     # Normal response, the agent completed successfully
-        #     output = langchain_to_chat_message(response["messages"][-1])
-        # elif response_type == "updates" and "__interrupt__" in response:
-        #     # The last thing to occur was an interrupt
-        #     # Return the value of the first interrupt as an AIMessage
-        #     output = langchain_to_chat_message(
-        #         AIMessage(content=response["__interrupt__"][0].value)
-        #     )
-        #else:
-        #    raise ValueError(f"Unexpected response type: {response_type}")
+        response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
+        response_type, response = response_events[-1]
+        if response_type == "values":
+            # Normal response, the agent completed successfully
+            output = langchain_to_chat_message(response["messages"][-1])
+        elif response_type == "updates" and "__interrupt__" in response:
+            # The last thing to occur was an interrupt
+            # Return the value of the first interrupt as an AIMessage
+            output = langchain_to_chat_message(
+                AIMessage(content=response["__interrupt__"][0].value)
+            )
+        else:
+            raise ValueError(f"Unexpected response type: {response_type}")
 
         output.run_id = str(run_id)
         return output
     except Exception as e:
-        logger.error(f"An exception occurred during agent invocation: {e}")
-        raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+        logger.error(f"An exception occurred: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error")
 
 
 async def message_generator(

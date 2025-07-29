@@ -69,7 +69,7 @@ ModelT: TypeAlias = (
 
 
 @cache
-def get_model(model_name: AllModelEnum, api_key =os.getenv("OWUI_API_KEY")) -> ModelT:
+def get_model(model_name: AllModelEnum) -> ModelT:
     # NOTE: models with streaming=True will send tokens as they are generated
     # if the /stream endpoint is called with stream_tokens=True (the default)
     api_model_name = _MODEL_TABLE.get(model_name)
@@ -120,7 +120,7 @@ def get_model(model_name: AllModelEnum, api_key =os.getenv("OWUI_API_KEY")) -> M
     if model_name in AWSModelName:
         return ChatBedrock(model_id=api_model_name, temperature=0.5)
     if model_name in OpenwebuiModelName:
-           
+            api_key =os.getenv("OWUI_API_KEY")
             base_url = os.getenv("OWUI_CHAT_API_URL")
             if not api_key or not base_url:
                 raise ValueError("OWUI_API_KEY and OWUI_BASE_URL must be set in the environment")

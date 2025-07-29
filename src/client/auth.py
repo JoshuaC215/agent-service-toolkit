@@ -86,7 +86,7 @@ class Auth:
         """Ensures logged in user is actually the same as in owui."""
         url = f"{self.OWUI_BASE_URL}/api/v1/auths"
         headers = {
-            "Authorization": f"Bearer {st.session_state["owui-token"]}"
+            "Authorization": f"Bearer {st.session_state['owui-token']}"
             }
         response = requests.get(url, headers=headers)
         logger.info(response.json())

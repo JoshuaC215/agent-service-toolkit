@@ -270,18 +270,23 @@ async def after_process_answer(state: State) -> str:
         str: The name of the next node ("interrupt_process" or "categorize").
     """
     idx = state.get("testid", 0)
-    if idx <9:
+    if idx < 9:
         return "interrupt_process"
+    elif idx >= 9:
+        return "categorize"
     else:
+        # Defensive fallback: always return a valid key
+        import logging
+        logging.getLogger(__name__).error(f"Unexpected idx value in after_process_answer: {idx}")
         return "categorize"
     
     
 async def interrupt_process(state: State) -> dict:
     """
-    Interrupt the current process and optionally inform the user.
+    Interrupt the current process and inform the user, following the pattern of interrupt_agent.
 
-    This function triggers a LangGraph interrupt, appends an AIMessage to the state,
-    and returns the updated state to loop back to the next question.
+    This function triggers a LangGraph interrupt, appends a HumanMessage to the state
+    with a user-friendly prompt, and returns the updated state to loop back to the next question.
 
     Args:
         state (State): The current state of the dialog.
@@ -290,7 +295,9 @@ async def interrupt_process(state: State) -> dict:
         dict: The updated state with an interrupt message appended to "messages".
     """
     logger.info("Interrupting")
-    interrupt({"query": "test"})
+    # Use a user-friendly prompt for clarification, similar to interrupt_agent
+    prompt = interrupt("Bitte präzisieren Sie Ihre letzte Antwort oder wählen Sie eine Option, damit ich fortfahren kann.")
+    state["messages"].append(HumanMessage(prompt))
     return state
 
 graph_builder.add_node("ask_question", ask_question)

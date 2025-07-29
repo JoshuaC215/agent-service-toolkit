@@ -73,10 +73,10 @@ class AgentClient:
         except httpx.HTTPError as e:
             raise AgentClientError(f"Error getting service info: {e}")
 
-        print("DEBUG /info response:", response.json())
-        # self.info = ServiceMetadata.model_validate(response.json())
-        # if not self.agent or self.agent not in [a.key for a in self.info.agents]:
-        #     self.agent = self.info.default_agent
+        data = response.json()
+        self.info = ServiceMetadata.model_validate(data)
+        if not self.agent or self.agent not in [a.key for a in self.info.agents]:
+            self.agent = self.info.default_agent
 
     def update_agent(self, agent: str, verify: bool = True) -> None:
         if verify:
@@ -372,7 +372,7 @@ def transcribe(
         filename: str,
         file: bytes
     ) -> str:
-        if self.api_key == None:
+        if self.api_key is None:
             raise AgentClientError("API Key required")
 
         allowed_types = {
@@ -392,7 +392,7 @@ def transcribe(
             }
             files = {"file": (filename, file, allowed_types[filetype])}
             response = httpx.post(
-                f"{os.getenv("OWUI_AUDIO_API_URL")}/transcriptions",
+                f"{os.getenv('OWUI_AUDIO_API_URL')}/transcriptions",
                 files=files,
                 headers=headers,
                 timeout=self.timeout,

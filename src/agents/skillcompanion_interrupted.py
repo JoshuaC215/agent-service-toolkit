@@ -1,0 +1,196 @@
+import json
+import logging
+from typing import Any
+import os
+from langchain.prompts import SystemMessagePromptTemplate
+from langchain_core.language_models.base import LanguageModelInput
+from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda, RunnableSerializable
+from langgraph.graph import END, START, MessagesState, StateGraph
+from langgraph.types import interrupt
+from pydantic import Field
+
+from core import get_model
+from schema.models import OpenwebuiModelName
+
+from .utils import load_prompt, load_questions
+
+# Logger setup
+logger = logging.getLogger(__name__)
+QUESTIONLIMIT = os.getenv("QUESTIONLIMIT")
+
+# Fragen-Konstante
+# Default: use "skill_questions.json" from agents_questions folder
+QUESTIONS = load_questions("skill_questions.json")
+
+class AgentState(MessagesState):
+    questions: list[str] = Field(default_factory=list)
+    answers: list[str] = Field(default_factory=list)
+    category: str | None
+    finished: bool = False
+
+llm_model = get_model(OpenwebuiModelName.GPT_4O)
+
+
+def wrap_model(
+    model: BaseChatModel | Runnable[LanguageModelInput, Any], system_prompt: str
+) -> RunnableSerializable[AgentState, Any]:
+    """
+    Wraps a language model with a system prompt preprocessor.
+
+    Args:
+        model: The language model or runnable to be wrapped.
+        system_prompt: The system prompt to prepend to the messages.
+
+    Returns:
+        A RunnableSerializable that applies the system prompt before invoking the model.
+    """
+    preprocessor = RunnableLambda(
+        lambda state: [SystemMessage(content=str(system_prompt))] + state["messages"],
+        name="StateModifier",
+    )
+    return preprocessor | model
+
+
+async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
+    """
+    Sequentially asks questions, waits for user responses, and stores the answers.
+
+    Args:
+        state: The current AgentState containing messages, questions, and answers.
+        config: The RunnableConfig for the model invocation.
+
+    Returns:
+        AgentState: Updated state with new question, user answer, and messages.
+    """
+    answers = state.get("answers", [])
+    questions_json = json.dumps(QUESTIONS, ensure_ascii=False)
+    answers_json = json.dumps(answers, ensure_ascii=False)
+    # Use prompts directory instead of agents_questions
+    prompt_template = load_prompt(
+        "../prompts/ask_question_prompt.txt",
+        questions_json=questions_json,
+        answers_json=answers_json
+    )
+    system_prompt = SystemMessagePromptTemplate.from_template(prompt_template)
+    messages = state.get("messages", [])
+    if not (messages and isinstance(messages[0], SystemMessage) and str(system_prompt) in getattr(messages[0], "content", "")):
+        messages = [SystemMessage(content=str(system_prompt))] + messages
+    try:
+        model_runnable = wrap_model(llm_model, messages)
+        llm_response = await model_runnable.ainvoke(state, config)
+    except Exception as e:
+        logger.error(f"Exception: {e}")
+    # Include company_size and tech_affinity in the LLM invocation
+    question_text = llm_response.content.strip()
+    #state["questions"].append(AIMessage(question_text))
+    #if not question_index<1:
+    questions = state.get("questions",[])
+    answers = state.get("answers",[])
+    questions.append(question_text)
+    state["messages"].append(AIMessage(content=question_text))
+    user_input = interrupt(question_text)
+    answers.append(user_input)
+    state["messages"].append(HumanMessage(user_input))
+
+    return {
+             "messages": messages,
+             "questions": questions,
+             "answers":answers
+         }
+
+async def categorize_user(state: AgentState, config: RunnableConfig):
+    """
+    Categorizes the user based on their answers after all questions have been answered.
+
+    Args:
+        state: The current AgentState containing questions and answers.
+        config: The RunnableConfig for the model invocation.
+
+    Returns:
+        dict: Updated state with the assigned category and finished flag if complete,
+              otherwise returns the unchanged state.
+    """
+    answers_of_user = state.get("answers",[])
+    questions_of_system = state.get("questions",[])
+    if len(answers_of_user)==int(QUESTIONLIMIT):
+        if len(questions_of_system) != len(answers_of_user):
+           raise ValueError("The number of answers and questions must be equal!")
+        else:
+            pairs_of_question_answers = {frage: antwort for frage, antwort in zip(questions_of_system, answers_of_user)}
+            pairs_of_question_answers_json = json.dumps(pairs_of_question_answers, ensure_ascii=False, indent=4)
+            prompt_template = load_prompt(
+                "../prompts/categorize_user_prompt.txt",
+                pairs_of_question_answers_json=pairs_of_question_answers_json
+            )
+            prompt = prompt_template
+            messages = state.get("messages", [])
+            if not (messages and isinstance(messages[0], SystemMessage) and str(prompt) in getattr(messages[0], "content", "")):
+                messages = [SystemMessage(content=str(prompt))] + messages
+            try:
+                model_runnable = wrap_model(llm_model, messages)
+                llm_response = await model_runnable.ainvoke(state, config)
+            except Exception as e:
+                logger.error(f"Exception: {e}")
+            catagory = llm_response.content.strip()
+            return {
+                "category": catagory,
+                "finished": True
+                }
+    return state
+
+async def finish_skill_check(state: AgentState) -> dict:
+    """
+    Finalizes the skill check and presents the result to the user.
+
+    Args:
+        state: The current AgentState containing the assigned category.
+
+    Returns:
+        dict: Contains the final AIMessage with the result and resource link.
+    """
+    category = state.get("category", "Beginner")
+    url = f'https://bento.roosi.ai/?kiskill={category}'
+    md_link = f'[Weitere Informationen]({url})'
+    msg = (
+        f"Vielen Dank für Ihre Teilnahme!\n\n"
+        f"Basierend auf Ihren Angaben ordne ich Sie der Kategorie **{category}** zu. "
+        f"Diese Information wird nun an unser System weitergeleitet, um Ihnen passende Ressourcen bereitzustellen.\n\n"
+        f"{md_link}\n\n"
+        f"Es folgen entsprechende nächste Schritte."
+    )
+    return {
+            "messages": [AIMessage(content=msg)]
+        }
+
+async def ask_further_questions(state: AgentState) -> str:
+    """
+    Determines the next node after processing an answer.
+
+    Args:
+        state: The current AgentState containing the finished flag.
+
+    Returns:
+        str: The name of the next node ("finished" or "ask_question").
+    """
+    finished:bool = state.get("finished",False)
+    if finished:
+        return "finished"
+    else:
+        return "ask_question"
+
+
+
+skill_companion_graph = StateGraph(AgentState)
+skill_companion_graph.add_node("ask_question", ask_question)
+skill_companion_graph.add_node("categorize", categorize_user)
+skill_companion_graph.add_node("finish", finish_skill_check)
+
+skill_companion_graph.add_edge(START, "ask_question")
+skill_companion_graph.add_edge("ask_question", "categorize")
+skill_companion_graph.add_edge("finish",END)
+skill_companion_graph.add_conditional_edges("categorize",ask_further_questions, {"finished": "finish", "ask_question": "ask_question"})
+
+skillcompanion_interrupted = skill_companion_graph.compile()
+skillcompanion_interrupted.name = "skillcompanion_interrupted"

@@ -38,7 +38,7 @@ async def main() -> None:
         """,
     )
 
-    auth = Auth()
+    auth = Auth(False)
 
     if not auth.is_logged_in():
         return
@@ -51,7 +51,6 @@ async def main() -> None:
 
     # Load the audio file from the local file manager
     uploaded_file = container_main.file_uploader("Datei hochladen", type=["wav", "m4a", "mp3"])
-    transcribed_file = None
 
     if "agent_client" not in st.session_state:
         load_dotenv()

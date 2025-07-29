@@ -22,7 +22,7 @@ tasks:
   
   runui:
     cmds:
-      - uv run streamlit run src/Skill_Companion.py
+      - uv run streamlit run src/Agent_Service_Toolkit.py
 
   dev:
     desc: "Run Ruff for code quality and formatting"

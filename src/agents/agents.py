@@ -12,6 +12,7 @@ from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
 from agents.rag_assistant import rag_assistant
 from agents.research_assistant import research_assistant
 from agents.skillcompanion import skillcompanion
+from agents.skillcompanion_interrupted import skillcompanion_interrupted
 from schema import AgentInfo
 
 DEFAULT_AGENT = "research-assistant"
@@ -46,7 +47,11 @@ agents: dict[str, Agent] = {
         description="A retrieval-augmented generation agent using Amazon Bedrock Knowledge Base",
         graph=kb_agent,
     ),
-    "skill-companion": Agent(description="An Assistant to check your skills with AI", graph=skillcompanion)
+    "skill-companion": Agent(description="An Assistant to check your skills with AI", graph=skillcompanion),
+    "skillcompanion_interrupted": Agent(
+        description="A Skill Companion agent with interrupt capability.",
+        graph=skillcompanion_interrupted
+    ), 
 }
 
 

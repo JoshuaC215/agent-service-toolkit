@@ -83,8 +83,10 @@ async def main() -> None:
         st.set_option("client.toolbarMode", "minimal")
         await asyncio.sleep(0.1)
         st.rerun()
+    if "question_limit" not in st.session_state:
+        st.session_state.question_limit = os.getenv("QUESTIONLIMIT")
 
-    auth = Auth(False)
+    auth = Auth(True)
     if not auth.is_logged_in():
         return
     
@@ -125,7 +127,7 @@ async def main() -> None:
 
     # Config options
     model = OpenwebuiModelName.GPT_4O
-    agent_client.agent = "skill-companion"
+    agent_client.agent = "skillcompanion_interrupted"
     use_streaming = False
   
     # Draw existing messages
@@ -200,7 +202,8 @@ async def main() -> None:
                     )
                     messages.append(response)
                     st.chat_message("ai",avatar="src/static/roosi_logo.png").write(response.content)
-                    st.session_state.skill_progress = st.session_state.skill_progress + 12.5/100
+                    test = 100/float(st.session_state.question_limit)
+                    st.session_state.skill_progress = st.session_state.skill_progress + 1/float(st.session_state.question_limit)
                     skill_bar.progress(st.session_state.skill_progress, text = "test")
                 st.rerun()  # Clear stale containers
             except AgentClientError as e:
