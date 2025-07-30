@@ -106,6 +106,8 @@ class FakeModelName(StrEnum):
 
 
 OWUI_PREFIX = "owui/"
+
+
 class OpenwebuiModelName(StrEnum):
     """OWUI Model"""
 
@@ -113,6 +115,7 @@ class OpenwebuiModelName(StrEnum):
     BASISMODELL = OWUI_PREFIX + "basismodell"
     SKILL_CHECK = OWUI_PREFIX + "skill-check-demo-wip"
     ROOSI_FRIENDS = OWUI_PREFIX + "roosi--friends-2025"
+
 
 AllModelEnum: TypeAlias = (
     OpenAIModelName

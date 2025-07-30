@@ -33,12 +33,13 @@ APP_TITLE = "roosi SkillCompanion"
 APP_ICON = "🤖"
 HIDE_SIDEBAR = True
 
+
 async def main() -> None:
     st.set_page_config(
         page_title=APP_TITLE,
         page_icon=APP_ICON,
         # collapse sidebar on default
-        initial_sidebar_state= "collapsed" if HIDE_SIDEBAR else "auto"
+        initial_sidebar_state="collapsed" if HIDE_SIDEBAR else "auto",
     )
 
     # Hide the streamlit upper-right chrome
@@ -78,18 +79,20 @@ async def main() -> None:
     if st.session_state.show_title:
         st.title("roosi Skill Companion")
     if not st.session_state.show_title:
-        skill_bar = st.progress(st.session_state.skill_progress, text="Fortschritt im Skill-Companion")
+        skill_bar = st.progress(
+            st.session_state.skill_progress, text="Fortschritt im Skill-Companion"
+        )
     if st.get_option("client.toolbarMode") != "minimal":
         st.set_option("client.toolbarMode", "minimal")
         await asyncio.sleep(0.1)
         st.rerun()
     if "question_limit" not in st.session_state:
-        st.session_state.question_limit = os.getenv("QUESTIONLIMIT")
+        st.session_state.question_limit = os.getenv("QUESTIONLIMIT", 5)
 
     auth = Auth(True)
     if not auth.is_logged_in():
         return
-    
+
     if "agent_client" not in st.session_state:
         load_dotenv()
         agent_url = os.getenv("AGENT_URL")
@@ -103,13 +106,14 @@ async def main() -> None:
                 if "owui-token" in st.session_state:
                     api_key = st.session_state["owui-token"]
                     logger.info(api_key)
-                st.session_state.agent_client = AgentClient(base_url=agent_url,api_key=str(api_key or ""))
+                st.session_state.agent_client = AgentClient(
+                    base_url=agent_url, api_key=str(api_key or "")
+                )
         except AgentClientError as e:
             st.error(f"Error connecting to agent service: {e}")
             st.markdown("The service might be booting up. Try again in a few seconds.")
             st.stop()
     agent_client: AgentClient = st.session_state.agent_client
-    
 
     if "thread_id" not in st.session_state:
         thread_id = st.query_params.get("thread_id")
@@ -129,14 +133,9 @@ async def main() -> None:
     model = OpenwebuiModelName.GPT_4O
     agent_client.agent = "skillcompanion_interrupted"
     use_streaming = False
-  
+
     # Draw existing messages
     messages: list[ChatMessage] = st.session_state.messages
-    
-    #if len(messages) == 0:
-        #WELCOME = "Willkommen zum KI Skill Check mit dem roosi Skill-Companion! Ich werde Ihnen einige Fragen stellen, um Ihre Kenntnisse und Erfahrungen im Bereich Künstliche Intelligenz besser einschätzen zu können.\n\nFangen wir an: Wie würden Sie Künstliche Intelligenz in eigenen Worten beschreiben?"
-        
-    
 
     # draw_messages() expects an async iterator over messages
     async def amessage_iter() -> AsyncGenerator[ChatMessage, None]:
@@ -145,38 +144,35 @@ async def main() -> None:
 
     await draw_messages(amessage_iter())
 
-    
-
     if st.session_state.show_slider:
         tech_affinity = st.select_slider(
-            'Wie technisch affin ist Ihre Firma (1=nicht technisch bzw. 5= sehr technisch affin)?',
+            "Wie technisch affin ist Ihre Firma (1=nicht technisch bzw. 5= sehr technisch affin)?",
             options=[1, 2, 3, 4, 5],
-            value=3  # Standardwert
+            value=3,
         )
         st.write(f"Die technische Affinität Ihrer Firma ist: {tech_affinity}")
-        company_size = st.slider(
-            'Wie viele Mitarbeiter hat ihre Firma?',
-            0,1000,500
-        )
+        company_size = st.slider("Wie viele Mitarbeiter hat ihre Firma?", 0, 1000, 500)
         st.write(f"Die Größe ihres Unternehmens beträgt {company_size} Mitarbeiter!")
         st.session_state["company_size"] = company_size
-        date_of_skill_check= datetime.now().strftime("%Y-%m-%d")   
-    
+        date_of_skill_check = datetime.now().strftime("%Y-%m-%d")
+    user = st.session_state["user"]
+    run_id = st.session_state["run_id"]
     if st.session_state.show_start_button:
         if st.button("START Skill Companion"):
             toggle_chat_input()
             try:
                 response = await agent_client.ainvoke(
-                        message=f"Companysize: {company_size}, Datum: {date_of_skill_check} und technische Affinität: {tech_affinity}",
-                        model=model,
-                        thread_id=st.session_state.thread_id,
-                    )
+                    message=f"Companysize: {company_size}, Datum: {date_of_skill_check} und technische Affinität: {tech_affinity}",
+                    model=model,
+                    thread_id=st.session_state.thread_id,
+                    user_id=user["id"],
+                    run_id=run_id,
+                )
                 messages.append(response)
                 st.chat_message("ai", avatar="src/static/roosi_logo.png").write(response.content)
             except Exception as e:
                 logger.error(f"Exception: {e}")
             st.rerun()
-        
 
     # Generate new message if the user provided new input
     if st.session_state.show_chat_input and not st.session_state.show_slider:
@@ -184,7 +180,7 @@ async def main() -> None:
             # Hide slider after first user input
             st.session_state.show_slider = False
             messages.append(ChatMessage(type="human", content=user_input))
-            st.chat_message("human",avatar="src/static/user.png").write(user_input)
+            st.chat_message("human", avatar="src/static/user.png").write(user_input)
             try:
                 if use_streaming:
                     logger.error("streaming true")
@@ -192,6 +188,8 @@ async def main() -> None:
                         message=user_input,
                         model=model,
                         thread_id=st.session_state.thread_id,
+                        user_id=user["id"],
+                        run_id=run_id,
                     )
                     await draw_messages(stream, is_new=True)
                 else:
@@ -199,12 +197,17 @@ async def main() -> None:
                         message=user_input,
                         model=model,
                         thread_id=st.session_state.thread_id,
+                        user_id=user["id"],
+                        run_id=run_id,
                     )
                     messages.append(response)
-                    st.chat_message("ai",avatar="src/static/roosi_logo.png").write(response.content)
-                    test = 100/float(st.session_state.question_limit)
-                    st.session_state.skill_progress = st.session_state.skill_progress + 1/float(st.session_state.question_limit)
-                    skill_bar.progress(st.session_state.skill_progress, text = "test")
+                    st.chat_message("ai", avatar="src/static/roosi_logo.png").write(
+                        response.content
+                    )
+                    st.session_state.skill_progress = st.session_state.skill_progress + 1 / float(
+                        st.session_state.question_limit
+                    )
+                    skill_bar.progress(st.session_state.skill_progress, text="test")
                 st.rerun()  # Clear stale containers
             except AgentClientError as e:
                 st.error(f"Error generating response: {e}")
@@ -253,7 +256,9 @@ async def draw_messages(
             if not streaming_placeholder:
                 if last_message_type != "ai":
                     last_message_type = "ai"
-                    st.session_state.last_message = st.chat_message("ai", avatar="src/static/roosi_logo.png")
+                    st.session_state.last_message = st.chat_message(
+                        "ai", avatar="src/static/roosi_logo.png"
+                    )
                 with st.session_state.last_message:
                     streaming_placeholder = st.empty()
 
@@ -268,7 +273,7 @@ async def draw_messages(
             # A message from the user, the easiest case
             case "human":
                 last_message_type = "human"
-                st.chat_message("human",avatar="src/static/user.png").write(msg.content)
+                st.chat_message("human", avatar="src/static/user.png").write(msg.content)
 
             # A message from the agent is the most complex case, since we need to
             # handle streaming tokens and tool calls.
@@ -280,7 +285,9 @@ async def draw_messages(
                 # If the last message type was not AI, create a new chat message
                 if last_message_type != "ai":
                     last_message_type = "ai"
-                    st.session_state.last_message = st.chat_message("ai",avatar='src/static/roosi_logo.png')
+                    st.session_state.last_message = st.chat_message(
+                        "ai", avatar="src/static/roosi_logo.png"
+                    )
 
                 with st.session_state.last_message:
                     # If the message has content, write it out.
@@ -355,11 +362,13 @@ async def draw_messages(
                 st.write(msg)
                 st.stop()
 
+
 def toggle_chat_input():
     st.session_state.show_chat_input = True
     st.session_state.show_slider = False
     st.session_state.show_start_button = False
     st.session_state.show_title = False
+
 
 if __name__ == "__main__":
     asyncio.run(main())

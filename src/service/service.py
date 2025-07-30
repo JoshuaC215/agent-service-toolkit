@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+import os
 import warnings
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -145,7 +146,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     Parse user input and handle any required interrupt resumption.
     Returns kwargs for agent invocation and the run_id.
     """
-    run_id = uuid4()
+    run_id = user_input.run_id or str(uuid4())
     thread_id = user_input.thread_id or str(uuid4())
     user_id = user_input.user_id or str(uuid4())
 
@@ -154,8 +155,12 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     callbacks = []
     if settings.LANGFUSE_TRACING:
         # Initialize Langfuse CallbackHandler for Langchain (tracing)
-        langfuse_handler = CallbackHandler()
-
+        langfuse_handler = CallbackHandler(
+            public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
+            secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
+            host=os.getenv("LANGFUSE_HOST"),
+            user_id=user_input.user_id,
+        )
         callbacks.append(langfuse_handler)
 
     if user_input.agent_config:
@@ -191,6 +196,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     }
 
     return kwargs, run_id
+
 
 @router.post("/{agent_id}/invoke")
 @router.post("/invoke")
@@ -301,7 +307,7 @@ async def message_generator(
                             update_messages = [update_messages[-1]]
                         else:
                             update_messages = []
-    
+
                     if node in ("research_expert", "math_expert"):
                         update_messages = []
                     new_messages.extend(update_messages)

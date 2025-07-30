@@ -17,14 +17,16 @@ from schema.models import OpenwebuiModelName
 
 logger = logging.getLogger(__name__)
 
+
 class State(TypedDict):
     messages: Annotated[list, add_messages]
     testid: int
-    question:str 
+    question: str
     question_index: int
     answers: list[dict[str, Any]]
     category: str | None
     finished: bool
+
 
 memory = SqliteSaver.from_conn_string(":memory:")
 llm_model = get_model(OpenwebuiModelName.GPT_4O)
@@ -39,23 +41,51 @@ def wrap_model(
     )
     return preprocessor | model
 
-#llm2 = ChatOpenAI(model="gpt-4o", temperature=0.5, s)
+
 # --- Questions (mix of open/closed, 3-4 about KI use cases) ---
 QUESTIONS = [
-    # General KI knowledge
-    {"text": "Haben Sie bereits praktische Erfahrungen mit KI-Technologien gesammelt? (Ja/Nein)", "type": "closed"},
-    {"text": "Welche Anwendungen von KI finden Sie in Ihrem aktuellen Arbeitsbereich besonders interessant?", "type": "open_usecase"},
-    {"text": "Können Sie ein Projekt beschreiben, bei dem Sie KI-Technologien eingesetzt haben? Falls nicht, geben Sie bitte an, welche Anwendungsfälle Sie interessieren würden.", "type": "open_usecase"},
-    {"text": "Welche zukünftigen KI-Trends halten Sie für besonders relevant in Ihrer Branche?", "type": "open_usecase"},
-    {"text": "Wie schätzen Sie Ihr theoretisches Wissen über KI ein? (Anfänger, Fortgeschritten, Experte)", "type": "closed"},
-    {"text": "Welche Herausforderungen sehen Sie beim Einsatz von KI in Ihrem Arbeitsumfeld?", "type": "open"},
-    {"text": "Nutzen Sie KI-Tools wie ChatGPT, Midjourney oder ähnliche regelmäßig?", "type": "closed"},
-    {"text": "Falls Sie noch keine konkreten KI-Anwendungsfälle kennen: Interessieren Sie sich eher für Automatisierung, Datenanalyse, Kreativitätsunterstützung oder etwas anderes? (Bitte wählen Sie eine Option oder beschreiben Sie Ihr Interesse)", "type": "guided_usecase"},
-    {"text": "Gibt es weitere Aspekte oder Fragen zu KI, die Sie besonders interessieren?", "type": "open"},
+    # General AI knowledge
+    {
+        "text": "Haben Sie bereits praktische Erfahrungen mit KI-Technologien gesammelt? (Ja/Nein)",
+        "type": "closed",
+    },
+    {
+        "text": "Welche Anwendungen von KI finden Sie in Ihrem aktuellen Arbeitsbereich besonders interessant?",
+        "type": "open_usecase",
+    },
+    {
+        "text": "Können Sie ein Projekt beschreiben, bei dem Sie KI-Technologien eingesetzt haben? Falls nicht, geben Sie bitte an, welche Anwendungsfälle Sie interessieren würden.",
+        "type": "open_usecase",
+    },
+    {
+        "text": "Welche zukünftigen KI-Trends halten Sie für besonders relevant in Ihrer Branche?",
+        "type": "open_usecase",
+    },
+    {
+        "text": "Wie schätzen Sie Ihr theoretisches Wissen über KI ein? (Anfänger, Fortgeschritten, Experte)",
+        "type": "closed",
+    },
+    {
+        "text": "Welche Herausforderungen sehen Sie beim Einsatz von KI in Ihrem Arbeitsumfeld?",
+        "type": "open",
+    },
+    {
+        "text": "Nutzen Sie KI-Tools wie ChatGPT, Midjourney oder ähnliche regelmäßig?",
+        "type": "closed",
+    },
+    {
+        "text": "Falls Sie noch keine konkreten KI-Anwendungsfälle kennen: Interessieren Sie sich eher für Automatisierung, Datenanalyse, Kreativitätsunterstützung oder etwas anderes? (Bitte wählen Sie eine Option oder beschreiben Sie Ihr Interesse)",
+        "type": "guided_usecase",
+    },
+    {
+        "text": "Gibt es weitere Aspekte oder Fragen zu KI, die Sie besonders interessieren?",
+        "type": "open",
+    },
 ]
 
 
 graph_builder = StateGraph(State)
+
 
 async def ask_question(state: State) -> dict:
     """
@@ -77,12 +107,12 @@ async def ask_question(state: State) -> dict:
         }
     """
     # Always prepend a system prompt about KI
-     # "Du bist ein KI-Skill-Check-Bot. "
-        # "Stelle die nächste sinnvolle Frage aus dieser Liste, die noch nicht beantwortet wurde, "
-        # "oder formuliere sie leicht um, falls sinnvoll. "
-        # "Berücksichtige dabei explizit die letzte Antwort des Nutzers und stelle eine möglichst relevante, darauf aufbauende Frage aus der Liste "
-        # "oder passe sie entsprechend an, sodass ein echter Dialog entsteht. "
-        # "Wenn sinnvoll, stelle eine Rückfrage oder gehe auf Details aus der letzten Antwort ein. "
+    # "Du bist ein KI-Skill-Check-Bot. "
+    # "Stelle die nächste sinnvolle Frage aus dieser Liste, die noch nicht beantwortet wurde, "
+    # "oder formuliere sie leicht um, falls sinnvoll. "
+    # "Berücksichtige dabei explizit die letzte Antwort des Nutzers und stelle eine möglichst relevante, darauf aufbauende Frage aus der Liste "
+    # "oder passe sie entsprechend an, sodass ein echter Dialog entsteht. "
+    # "Wenn sinnvoll, stelle eine Rückfrage oder gehe auf Details aus der letzten Antwort ein. "
     idx = state.get("testid", 0)
     answers = state.get("answers", [])
     logger.info(f"LLM response: {state}")
@@ -118,17 +148,21 @@ async def ask_question(state: State) -> dict:
         - Stelle nicht alle Fragen auf einmal. Sondern Du stellst eine Frage und wartest die Antwort ab. Danach stellst Du erst die nächste Frage.
         - Gib den Nutzer:innen bei Bedarf zusätzliche Kontextinformationen, um Missverständnisse zu vermeiden.
         """
-        +"Hier ist die Liste von möglichen Fragen (mit Typ):\n"
+        + "Hier ist die Liste von möglichen Fragen (mit Typ):\n"
         f"{questions_json}\n\n"
         "Hier sind die bisherigen Antworten:\n"
-        f"{answers_json}\n\n" 
+        f"{answers_json}\n\n"
     )
-    idx = idx+1
+    idx = idx + 1
     logger.info(f"idx: {idx}")
     ###
     # Prepare messages for LLM invocation
     messages = state.get("messages", [])
-    if not (messages and isinstance(messages[0], SystemMessage) and str(system_prompt) in getattr(messages[0], "content", "")):
+    if not (
+        messages
+        and isinstance(messages[0], SystemMessage)
+        and str(system_prompt) in getattr(messages[0], "content", "")
+    ):
         messages = [SystemMessage(content=str(system_prompt))] + messages
     config = RunnableConfig()
     ###
@@ -140,10 +174,12 @@ async def ask_question(state: State) -> dict:
         logger.error(f"Exception: {e}")
     # Include company_size and tech_affinity in the LLM invocation
     question_text = llm_response.content.strip()
-    return {"messages": [AIMessage(content=question_text)],
-            "question": question_text,
-            "testid":idx
-            }
+    return {
+        "messages": [AIMessage(content=question_text)],
+        "question": question_text,
+        "testid": idx,
+    }
+
 
 async def process_answer(state: State) -> dict:
     """
@@ -170,10 +206,12 @@ async def process_answer(state: State) -> dict:
             user_msg = m
             break
     answer_text = user_msg.content if user_msg else ""
-    answers.append({
-                "question": question,
-                "answer": answer_text,
-            })
+    answers.append(
+        {
+            "question": question,
+            "answer": answer_text,
+        }
+    )
     logger.info(f"LLM response: {answers}")
     return {
         "answers": answers,
@@ -208,7 +246,6 @@ async def assign_category(state: State) -> dict:
         answer_texts.append(f"Frage: {q}\nAntwort: {ans}")
     joined_answers = "\n\n".join(answer_texts)
 
-
     prompt = (
         "Du bist ein KI-Experte. Analysiere die folgenden Antworten eines Nutzers auf einen KI-Skill-Check "
         "und ordne den Nutzer einer der folgenden Kategorien zu: Beginner, Advanced, Expert. "
@@ -221,9 +258,8 @@ async def assign_category(state: State) -> dict:
     llm_response = await llm_model.ainvoke(messages, config=config)
 
     catagory = llm_response.content.strip()
-    return {
-        "category": catagory
-        }
+    return {"category": catagory}
+
 
 async def finish(state: State) -> dict:
     """
@@ -242,8 +278,8 @@ async def finish(state: State) -> dict:
         }
     """
     category = state.get("category", "Beginner")
-    url = f'https://bento.roosi.ai/?kiskill={category}'
-    md_link = f'[Weitere Informationen]({url})'
+    url = f"https://bento.roosi.ai/?kiskill={category}"
+    md_link = f"[Weitere Informationen]({url})"
     msg = (
         f"Vielen Dank für Ihre Teilnahme!\n\n"
         f"Basierend auf Ihren Angaben ordne ich Sie der Kategorie **{category}** zu. "
@@ -255,6 +291,7 @@ async def finish(state: State) -> dict:
         "messages": [AIMessage(content=msg)],
         "finished": True,
     }
+
 
 async def after_process_answer(state: State) -> str:
     """
@@ -277,10 +314,11 @@ async def after_process_answer(state: State) -> str:
     else:
         # Defensive fallback: always return a valid key
         import logging
+
         logging.getLogger(__name__).error(f"Unexpected idx value in after_process_answer: {idx}")
         return "categorize"
-    
-    
+
+
 async def interrupt_process(state: State) -> dict:
     """
     Interrupt the current process and inform the user, following the pattern of interrupt_agent.
@@ -296,9 +334,12 @@ async def interrupt_process(state: State) -> dict:
     """
     logger.info("Interrupting")
     # Use a user-friendly prompt for clarification, similar to interrupt_agent
-    prompt = interrupt("Bitte präzisieren Sie Ihre letzte Antwort oder wählen Sie eine Option, damit ich fortfahren kann.")
+    prompt = interrupt(
+        "Bitte präzisieren Sie Ihre letzte Antwort oder wählen Sie eine Option, damit ich fortfahren kann."
+    )
     state["messages"].append(HumanMessage(prompt))
     return state
+
 
 graph_builder.add_node("ask_question", ask_question)
 graph_builder.add_node("process_answer", process_answer)
@@ -311,9 +352,10 @@ graph_builder.add_edge("interrupt_process", "ask_question")
 graph_builder.add_edge("categorize", "finish")
 
 graph_builder.set_entry_point("ask_question")
-graph_builder.add_conditional_edges("process_answer",after_process_answer, {"interrupt_process": "interrupt_process", "categorize": "categorize"})
+graph_builder.add_conditional_edges(
+    "process_answer",
+    after_process_answer,
+    {"interrupt_process": "interrupt_process", "categorize": "categorize"},
+)
 
 skillcompanion = graph_builder.compile(checkpointer=memory)
-
-
-

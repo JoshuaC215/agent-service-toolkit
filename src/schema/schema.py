@@ -60,6 +60,11 @@ class UserInput(BaseModel):
         default=None,
         examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
     )
+    run_id: str | None = Field(
+        description="Run ID to persist and continue a trace in Langfuse.",
+        default=None,
+        examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
+    )
     agent_config: dict[str, Any] = Field(
         description="Additional configuration to pass through to the agent",
         default={},
@@ -67,7 +72,7 @@ class UserInput(BaseModel):
     )
     api_key: str | None = Field(
         description="custom chat api key, e.g. JWT token for openwebui",
-        default = None,
+        default=None,
         examples=["difazlvgduhijfagäfoö.rtphrqefwizurwohtij45"],
     )
 
@@ -90,7 +95,6 @@ class UserInput(BaseModel):
                     except ValueError:
                         continue
         return values
-
 
 
 class StreamInput(UserInput):

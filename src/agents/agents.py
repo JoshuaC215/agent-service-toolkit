@@ -47,11 +47,13 @@ agents: dict[str, Agent] = {
         description="A retrieval-augmented generation agent using Amazon Bedrock Knowledge Base",
         graph=kb_agent,
     ),
-    "skill-companion": Agent(description="An Assistant to check your skills with AI", graph=skillcompanion),
+    "skill-companion": Agent(
+        description="An Assistant to check your skills with AI", graph=skillcompanion
+    ),
     "skillcompanion_interrupted": Agent(
         description="A Skill Companion agent with interrupt capability.",
-        graph=skillcompanion_interrupted
-    ), 
+        graph=skillcompanion_interrupted,
+    ),
 }
 
 

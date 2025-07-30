@@ -19,6 +19,7 @@ from schema import (
 
 logging.basicConfig(level=logging.INFO)
 
+
 class AgentClientError(Exception):
     pass
 
@@ -95,6 +96,7 @@ class AgentClient:
         model: str | None = None,
         thread_id: str | None = None,
         user_id: str | None = None,
+        run_id: str | None = None,
         agent_config: dict[str, Any] | None = None,
     ) -> ChatMessage:
         """
@@ -112,7 +114,7 @@ class AgentClient:
         """
         if not self.agent:
             raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
-        request = UserInput(message=message, api_key= self.api_key)
+        request = UserInput(message=message, api_key=self.api_key)
         if thread_id:
             request.thread_id = thread_id
         if model:
@@ -121,7 +123,9 @@ class AgentClient:
             request.agent_config = agent_config
         if user_id:
             request.user_id = user_id
-        
+        if run_id:
+            request.run_id = run_id
+
         print(f"SENDING TO {self.base_url}/{self.agent}/invoke: {request.dict()}")
         async with httpx.AsyncClient() as client:
             try:
@@ -237,7 +241,7 @@ class AgentClient:
         """
         if not self.agent:
             raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
-        request = StreamInput(message=message, stream_tokens=stream_tokens,api_key=self.api_key)
+        request = StreamInput(message=message, stream_tokens=stream_tokens, api_key=self.api_key)
         if thread_id:
             request.thread_id = thread_id
         if user_id:
@@ -294,7 +298,7 @@ class AgentClient:
         """
         if not self.agent:
             raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
-        request = StreamInput(message=message, stream_tokens=stream_tokens,api_key=self.api_key)
+        request = StreamInput(message=message, stream_tokens=stream_tokens, api_key=self.api_key)
         if thread_id:
             request.thread_id = thread_id
         if model:
@@ -367,38 +371,35 @@ class AgentClient:
 
         return ChatHistory.model_validate(response.json())
 
-def transcribe(
-        self,
-        filename: str,
-        file: bytes
-    ) -> str:
-        if self.api_key is None:
-            raise AgentClientError("API Key required")
 
-        allowed_types = {
-            ".mp3": "audio/mpeg",
-            ".wav": "audio/wav",
-            ".ogg": "audio/ogg",
-            ".m4a": "audio/x-m4a"
+def transcribe(self, filename: str, file: bytes) -> str:
+    if self.api_key is None:
+        raise AgentClientError("API Key required")
+
+    allowed_types = {
+        ".mp3": "audio/mpeg",
+        ".wav": "audio/wav",
+        ".ogg": "audio/ogg",
+        ".m4a": "audio/x-m4a",
+    }
+
+    filetype = Path(filename).suffix
+    if filetype not in allowed_types:
+        raise AgentClientError(f"File type {filetype} not allowed.")
+
+    try:
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
         }
-
-        filetype = Path(filename).suffix
-        if filetype not in allowed_types:
-            raise AgentClientError(f"File type {filetype} not allowed.")
-        
-        try:
-            headers = {
-                "Authorization": f"Bearer {self.api_key}",
-            }
-            files = {"file": (filename, file, allowed_types[filetype])}
-            response = httpx.post(
-                f"{os.getenv('OWUI_AUDIO_API_URL')}/transcriptions",
-                files=files,
-                headers=headers,
-                timeout=self.timeout,
-            )
-            response.raise_for_status()
-            transcription = response.json()
-            return transcription["text"]
-        except Exception as e:
-            raise AgentClientError(f"Error: {e}")
+        files = {"file": (filename, file, allowed_types[filetype])}
+        response = httpx.post(
+            f"{os.getenv('OWUI_AUDIO_API_URL')}/transcriptions",
+            files=files,
+            headers=headers,
+            timeout=self.timeout,
+        )
+        response.raise_for_status()
+        transcription = response.json()
+        return transcription["text"]
+    except Exception as e:
+        raise AgentClientError(f"Error: {e}")

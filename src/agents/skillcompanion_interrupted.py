@@ -1,7 +1,8 @@
 import json
 import logging
-from typing import Any
 import os
+from typing import Any
+
 from langchain.prompts import SystemMessagePromptTemplate
 from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -18,17 +19,19 @@ from .utils import load_prompt, load_questions
 
 # Logger setup
 logger = logging.getLogger(__name__)
-QUESTIONLIMIT = os.getenv("QUESTIONLIMIT")
+QUESTIONLIMIT = os.getenv("QUESTIONLIMIT", 5)
 
 # Fragen-Konstante
 # Default: use "skill_questions.json" from agents_questions folder
 QUESTIONS = load_questions("skill_questions.json")
+
 
 class AgentState(MessagesState):
     questions: list[str] = Field(default_factory=list)
     answers: list[str] = Field(default_factory=list)
     category: str | None
     finished: bool = False
+
 
 llm_model = get_model(OpenwebuiModelName.GPT_4O)
 
@@ -71,11 +74,15 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
     prompt_template = load_prompt(
         "../prompts/ask_question_prompt.txt",
         questions_json=questions_json,
-        answers_json=answers_json
+        answers_json=answers_json,
     )
     system_prompt = SystemMessagePromptTemplate.from_template(prompt_template)
     messages = state.get("messages", [])
-    if not (messages and isinstance(messages[0], SystemMessage) and str(system_prompt) in getattr(messages[0], "content", "")):
+    if not (
+        messages
+        and isinstance(messages[0], SystemMessage)
+        and str(system_prompt) in getattr(messages[0], "content", "")
+    ):
         messages = [SystemMessage(content=str(system_prompt))] + messages
     try:
         model_runnable = wrap_model(llm_model, messages)
@@ -84,21 +91,16 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
         logger.error(f"Exception: {e}")
     # Include company_size and tech_affinity in the LLM invocation
     question_text = llm_response.content.strip()
-    #state["questions"].append(AIMessage(question_text))
-    #if not question_index<1:
-    questions = state.get("questions",[])
-    answers = state.get("answers",[])
+    questions = state.get("questions", [])
+    answers = state.get("answers", [])
     questions.append(question_text)
     state["messages"].append(AIMessage(content=question_text))
     user_input = interrupt(question_text)
     answers.append(user_input)
     state["messages"].append(HumanMessage(user_input))
 
-    return {
-             "messages": messages,
-             "questions": questions,
-             "answers":answers
-         }
+    return {"messages": messages, "questions": questions, "answers": answers}
+
 
 async def categorize_user(state: AgentState, config: RunnableConfig):
     """
@@ -112,21 +114,29 @@ async def categorize_user(state: AgentState, config: RunnableConfig):
         dict: Updated state with the assigned category and finished flag if complete,
               otherwise returns the unchanged state.
     """
-    answers_of_user = state.get("answers",[])
-    questions_of_system = state.get("questions",[])
-    if len(answers_of_user)==int(QUESTIONLIMIT):
+    answers_of_user = state.get("answers", [])
+    questions_of_system = state.get("questions", [])
+    if len(answers_of_user) == int(QUESTIONLIMIT):
         if len(questions_of_system) != len(answers_of_user):
-           raise ValueError("The number of answers and questions must be equal!")
+            raise ValueError("The number of answers and questions must be equal!")
         else:
-            pairs_of_question_answers = {frage: antwort for frage, antwort in zip(questions_of_system, answers_of_user)}
-            pairs_of_question_answers_json = json.dumps(pairs_of_question_answers, ensure_ascii=False, indent=4)
+            pairs_of_question_answers = {
+                frage: antwort for frage, antwort in zip(questions_of_system, answers_of_user)
+            }
+            pairs_of_question_answers_json = json.dumps(
+                pairs_of_question_answers, ensure_ascii=False, indent=4
+            )
             prompt_template = load_prompt(
                 "../prompts/categorize_user_prompt.txt",
-                pairs_of_question_answers_json=pairs_of_question_answers_json
+                pairs_of_question_answers_json=pairs_of_question_answers_json,
             )
             prompt = prompt_template
             messages = state.get("messages", [])
-            if not (messages and isinstance(messages[0], SystemMessage) and str(prompt) in getattr(messages[0], "content", "")):
+            if not (
+                messages
+                and isinstance(messages[0], SystemMessage)
+                and str(prompt) in getattr(messages[0], "content", "")
+            ):
                 messages = [SystemMessage(content=str(prompt))] + messages
             try:
                 model_runnable = wrap_model(llm_model, messages)
@@ -134,11 +144,9 @@ async def categorize_user(state: AgentState, config: RunnableConfig):
             except Exception as e:
                 logger.error(f"Exception: {e}")
             catagory = llm_response.content.strip()
-            return {
-                "category": catagory,
-                "finished": True
-                }
+            return {"category": catagory, "finished": True}
     return state
+
 
 async def finish_skill_check(state: AgentState) -> dict:
     """
@@ -151,8 +159,8 @@ async def finish_skill_check(state: AgentState) -> dict:
         dict: Contains the final AIMessage with the result and resource link.
     """
     category = state.get("category", "Beginner")
-    url = f'https://bento.roosi.ai/?kiskill={category}'
-    md_link = f'[Weitere Informationen]({url})'
+    url = f"https://bento.roosi.ai/?kiskill={category}"
+    md_link = f"[Weitere Informationen]({url})"
     msg = (
         f"Vielen Dank für Ihre Teilnahme!\n\n"
         f"Basierend auf Ihren Angaben ordne ich Sie der Kategorie **{category}** zu. "
@@ -160,9 +168,8 @@ async def finish_skill_check(state: AgentState) -> dict:
         f"{md_link}\n\n"
         f"Es folgen entsprechende nächste Schritte."
     )
-    return {
-            "messages": [AIMessage(content=msg)]
-        }
+    return {"messages": [AIMessage(content=msg)]}
+
 
 async def ask_further_questions(state: AgentState) -> str:
     """
@@ -174,12 +181,11 @@ async def ask_further_questions(state: AgentState) -> str:
     Returns:
         str: The name of the next node ("finished" or "ask_question").
     """
-    finished:bool = state.get("finished",False)
+    finished: bool = state.get("finished", False)
     if finished:
         return "finished"
     else:
         return "ask_question"
-
 
 
 skill_companion_graph = StateGraph(AgentState)
@@ -189,8 +195,10 @@ skill_companion_graph.add_node("finish", finish_skill_check)
 
 skill_companion_graph.add_edge(START, "ask_question")
 skill_companion_graph.add_edge("ask_question", "categorize")
-skill_companion_graph.add_edge("finish",END)
-skill_companion_graph.add_conditional_edges("categorize",ask_further_questions, {"finished": "finish", "ask_question": "ask_question"})
+skill_companion_graph.add_edge("finish", END)
+skill_companion_graph.add_conditional_edges(
+    "categorize", ask_further_questions, {"finished": "finish", "ask_question": "ask_question"}
+)
 
 skillcompanion_interrupted = skill_companion_graph.compile()
 skillcompanion_interrupted.name = "skillcompanion_interrupted"

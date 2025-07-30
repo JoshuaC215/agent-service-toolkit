@@ -23,7 +23,7 @@ async def main() -> None:
         page_title=APP_TITLE,
         page_icon=APP_ICON,
         menu_items={},
-        initial_sidebar_state= "collapsed" if HIDE_SIDEBAR else "auto"
+        initial_sidebar_state="collapsed" if HIDE_SIDEBAR else "auto",
     )
 
     # Hide the streamlit upper-right chrome
@@ -56,7 +56,8 @@ async def main() -> None:
         await asyncio.sleep(0.1)
         st.rerun()
 
-    st.markdown("""
+    st.markdown(
+        """
         <style>
         /* Make all Streamlit buttons full width */
         .stLinkButton > a {
@@ -64,14 +65,19 @@ async def main() -> None:
             margin-bottom: -5px;
         }
         </style>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     st.title("Willkommen beim roosi and friends 2025 Assistenten")
-    st.write("Vielen Dank für Ihr Interesse am roosi and friends Assistenten. Die Veranstaltung liegt bereits in der Vergangenheit. Weitere Informationen zu roosi AIOS sowie einige Eindrücke der Veranstaltung finden sie hier:")
-    
+    st.write(
+        "Vielen Dank für Ihr Interesse am roosi and friends Assistenten. Die Veranstaltung liegt bereits in der Vergangenheit. Weitere Informationen zu roosi AIOS sowie einige Eindrücke der Veranstaltung finden sie hier:"
+    )
+
     st.link_button("Informationen zu roosi AIOS", "https://news.roo.si/roosi-aios")
-    st.link_button("Bilder der Veranstaltung", "https://flickr.com/photos/roosigmbh/albums/72177720326420202/")
-   
+    st.link_button(
+        "Bilder der Veranstaltung", "https://flickr.com/photos/roosigmbh/albums/72177720326420202/"
+    )
 
 
 #     auth = Auth()
@@ -328,4 +334,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-

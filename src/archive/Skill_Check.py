@@ -33,7 +33,7 @@ async def main() -> None:
         page_title=APP_TITLE,
         page_icon=APP_ICON,
         # collapse sidebar on default
-        initial_sidebar_state= "collapsed" if HIDE_SIDEBAR else "auto"
+        initial_sidebar_state="collapsed" if HIDE_SIDEBAR else "auto",
     )
 
     # Hide the streamlit upper-right chrome
@@ -69,11 +69,13 @@ async def main() -> None:
     auth = Auth()
     if not auth.is_logged_in():
         # keep as idea
-        #user = auth.login('demo@roosi.ai', 'XXX') #TODO!
+        # user = auth.login('demo@roosi.ai', 'XXX') #TODO!
         user = {}
-        user['name'] = "Demo"
+        user["name"] = "Demo"
         if user:
-            st.session_state["owui-token"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImY2NTQwYTIxLWE0NTItNDIwOC04Zjg0LTc5MGUzY2VjMWNiYyJ9.D35iUQWt4ezG2gcHi8n3sgebr-361n-qhkzJHS4Fl0A" #TODO!
+            st.session_state["owui-token"] = (
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImY2NTQwYTIxLWE0NTItNDIwOC04Zjg0LTc5MGUzY2VjMWNiYyJ9.D35iUQWt4ezG2gcHi8n3sgebr-361n-qhkzJHS4Fl0A"  # TODO!
+            )
             st.session_state["user"] = user
             st.rerun()
 
@@ -107,17 +109,17 @@ async def main() -> None:
         st.session_state.thread_id = thread_id
 
     # Config options
-    model = 'owui/skill-check-demo-wip'
-    agent_client.agent = 'chatbot'
+    model = "owui/skill-check-demo-wip"
+    agent_client.agent = "chatbot"
     use_streaming = False
 
     # Draw existing messages
     messages: list[ChatMessage] = st.session_state.messages
 
     if len(messages) == 0:
-        #TODO: put into fnc
+        # TODO: put into fnc
         user_input = "START"
-        #messages.append(ChatMessage(type="human", content=user_input))
+        # messages.append(ChatMessage(type="human", content=user_input))
         st.chat_message("human").write(user_input)
         try:
             if use_streaming:

@@ -77,7 +77,7 @@ def get_model(model_name: AllModelEnum) -> ModelT:
         raise ValueError(f"Unsupported model: {model_name}")
 
     if model_name in OpenAIModelName:
-            return ChatOpenAI(model_name=api_model_name, temperature=0.5, streaming=True)
+        return ChatOpenAI(model_name=api_model_name, temperature=0.5, streaming=True)
     if model_name in OpenAICompatibleName:
         if not settings.COMPATIBLE_BASE_URL or not settings.COMPATIBLE_MODEL:
             raise ValueError("OpenAICompatible base url and endpoint must be configured")
@@ -120,17 +120,17 @@ def get_model(model_name: AllModelEnum) -> ModelT:
     if model_name in AWSModelName:
         return ChatBedrock(model_id=api_model_name, temperature=0.5)
     if model_name in OpenwebuiModelName:
-            api_key =os.getenv("OWUI_API_KEY")
-            base_url = os.getenv("OWUI_CHAT_API_URL")
-            if not api_key or not base_url:
-                raise ValueError("OWUI_API_KEY and OWUI_BASE_URL must be set in the environment")
-            return ChatOpenAI(
-                model_name=api_model_name[5:],
-                temperature=0.5,
-                streaming=True,
-                openai_api_base=base_url,
-                openai_api_key=SecretStr(api_key)
-            )
+        api_key = os.getenv("OWUI_API_KEY")
+        base_url = os.getenv("OWUI_CHAT_API_URL")
+        if not api_key or not base_url:
+            raise ValueError("OWUI_API_KEY and OWUI_BASE_URL must be set in the environment")
+        return ChatOpenAI(
+            model_name=api_model_name[5:],
+            temperature=0.5,
+            streaming=True,
+            openai_api_base=base_url,
+            openai_api_key=SecretStr(api_key),
+        )
     # if model_name in OllamaModelName:
     #     if settings.OLLAMA_BASE_URL:
     #         chat_ollama = ChatOllama(
@@ -149,6 +149,5 @@ def get_model(model_name: AllModelEnum) -> ModelT:
     #     )
     if model_name in FakeModelName:
         return FakeToolModel(responses=["This is a test response from the fake model."])
-
 
     raise ValueError(f"Unsupported model: {model_name}")

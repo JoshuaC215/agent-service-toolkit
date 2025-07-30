@@ -39,6 +39,7 @@ def load_questions(filename="skill_questions.json"):
     except Exception as e:
         raise RuntimeError(f"Failed to load questions from {path}: {e}")
 
+
 def load_prompt(filename: str, **kwargs) -> str:
     """
     Load a prompt template from a text file in the prompts directory and format it with kwargs.
