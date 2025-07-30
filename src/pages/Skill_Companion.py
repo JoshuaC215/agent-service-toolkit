@@ -12,7 +12,6 @@ from pydantic import ValidationError
 from client import AgentClient, AgentClientError
 from client.auth import Auth
 from schema import ChatHistory, ChatMessage
-from schema.models import OpenwebuiModelName
 from schema.task_data import TaskData, TaskDataStatus
 
 logger = logging.getLogger(__name__)
@@ -89,7 +88,7 @@ async def main() -> None:
     if "question_limit" not in st.session_state:
         st.session_state.question_limit = os.getenv("QUESTIONLIMIT", 5)
 
-    auth = Auth(True)
+    auth = Auth(default_login=True)
     if not auth.is_logged_in():
         return
 
@@ -130,7 +129,7 @@ async def main() -> None:
         st.session_state.thread_id = thread_id
 
     # Config options
-    model = OpenwebuiModelName.GPT_4O
+    model = "owui/gpt-4o"
     agent_client.agent = "skillcompanion_interrupted"
     use_streaming = False
 

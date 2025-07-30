@@ -69,13 +69,12 @@ ModelT: TypeAlias = (
 
 
 @cache
-def get_model(model_name: AllModelEnum) -> ModelT:
+def get_model(model_name: AllModelEnum, owui_api_key: str="") -> ModelT:
     # NOTE: models with streaming=True will send tokens as they are generated
     # if the /stream endpoint is called with stream_tokens=True (the default)
     api_model_name = _MODEL_TABLE.get(model_name)
     if not api_model_name:
         raise ValueError(f"Unsupported model: {model_name}")
-
     if model_name in OpenAIModelName:
         return ChatOpenAI(model_name=api_model_name, temperature=0.5, streaming=True)
     if model_name in OpenAICompatibleName:
@@ -120,16 +119,13 @@ def get_model(model_name: AllModelEnum) -> ModelT:
     if model_name in AWSModelName:
         return ChatBedrock(model_id=api_model_name, temperature=0.5)
     if model_name in OpenwebuiModelName:
-        api_key = os.getenv("OWUI_API_KEY")
         base_url = os.getenv("OWUI_CHAT_API_URL")
-        if not api_key or not base_url:
-            raise ValueError("OWUI_API_KEY and OWUI_BASE_URL must be set in the environment")
         return ChatOpenAI(
             model_name=api_model_name[5:],
             temperature=0.5,
             streaming=True,
             openai_api_base=base_url,
-            openai_api_key=SecretStr(api_key),
+            openai_api_key=SecretStr(owui_api_key),
         )
     # if model_name in OllamaModelName:
     #     if settings.OLLAMA_BASE_URL:

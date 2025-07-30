@@ -146,11 +146,17 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     Parse user input and handle any required interrupt resumption.
     Returns kwargs for agent invocation and the run_id.
     """
-    run_id = user_input.run_id or str(uuid4())
-    thread_id = user_input.thread_id or str(uuid4())
-    user_id = user_input.user_id or str(uuid4())
+    run_id: str = user_input.run_id or str(uuid4())
+    thread_id: str = user_input.thread_id or str(uuid4())
+    user_id: str = user_input.user_id or str(uuid4())
+    owui_token: str | None = user_input.api_key
 
-    configurable = {"thread_id": thread_id, "model": user_input.model, "user_id": user_id}
+    configurable = {
+        "thread_id": thread_id,
+        "model": user_input.model,
+        "user_id": user_id,
+        "owui_token": owui_token,
+    }
 
     callbacks = []
     if settings.LANGFUSE_TRACING:

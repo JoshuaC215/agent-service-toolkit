@@ -13,7 +13,6 @@ from langgraph.types import interrupt
 from pydantic import Field
 
 from core import get_model
-from schema.models import OpenwebuiModelName
 
 from .utils import load_prompt, load_questions
 
@@ -31,9 +30,7 @@ class AgentState(MessagesState):
     answers: list[str] = Field(default_factory=list)
     category: str | None
     finished: bool = False
-
-
-llm_model = get_model(OpenwebuiModelName.GPT_4O)
+    llm_model: Any | None
 
 
 def wrap_model(
@@ -70,6 +67,11 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
     answers = state.get("answers", [])
     questions_json = json.dumps(QUESTIONS, ensure_ascii=False)
     answers_json = json.dumps(answers, ensure_ascii=False)
+    model = state.get("llm_model", None)
+    if model is None:
+        state["llm_model"] = get_model(
+            config["metadata"]["model"], config["metadata"]["owui_token"]
+        )
     # Use prompts directory instead of agents_questions
     prompt_template = load_prompt(
         "../prompts/ask_question_prompt.txt",
@@ -85,7 +87,7 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
     ):
         messages = [SystemMessage(content=str(system_prompt))] + messages
     try:
-        model_runnable = wrap_model(llm_model, messages)
+        model_runnable = wrap_model(state.get("llm_model", None), messages)
         llm_response = await model_runnable.ainvoke(state, config)
     except Exception as e:
         logger.error(f"Exception: {e}")
@@ -95,11 +97,16 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
     answers = state.get("answers", [])
     questions.append(question_text)
     state["messages"].append(AIMessage(content=question_text))
+    state["llm_model"] = get_model(config["metadata"]["model"], config["metadata"]["owui_token"])
     user_input = interrupt(question_text)
     answers.append(user_input)
     state["messages"].append(HumanMessage(user_input))
-
-    return {"messages": messages, "questions": questions, "answers": answers}
+    return {
+        "messages": messages,
+        "questions": questions,
+        "answers": answers,
+        "llm_model": state.get("llm_model", None),
+    }
 
 
 async def categorize_user(state: AgentState, config: RunnableConfig):
@@ -139,7 +146,7 @@ async def categorize_user(state: AgentState, config: RunnableConfig):
             ):
                 messages = [SystemMessage(content=str(prompt))] + messages
             try:
-                model_runnable = wrap_model(llm_model, messages)
+                model_runnable = wrap_model(state.get("llm_model", None), messages)
                 llm_response = await model_runnable.ainvoke(state, config)
             except Exception as e:
                 logger.error(f"Exception: {e}")

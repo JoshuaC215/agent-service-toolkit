@@ -125,6 +125,7 @@ class AgentClient:
             request.user_id = user_id
         if run_id:
             request.run_id = run_id
+        request.api_key = self.api_key
 
         print(f"SENDING TO {self.base_url}/{self.agent}/invoke: {request.dict()}")
         async with httpx.AsyncClient() as client:
@@ -147,6 +148,7 @@ class AgentClient:
         model: str | None = None,
         thread_id: str | None = None,
         user_id: str | None = None,
+        run_id: str | None = None,
         agent_config: dict[str, Any] | None = None,
     ) -> ChatMessage:
         """
@@ -173,6 +175,10 @@ class AgentClient:
             request.agent_config = agent_config
         if user_id:
             request.user_id = user_id
+        if run_id:
+            request.run_id = run_id
+        request.api_key = self.api_key
+
         try:
             response = httpx.post(
                 f"{self.base_url}/{self.agent}/invoke",
