@@ -97,8 +97,8 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
     answers = state.get("answers", [])
     questions.append(question_text)
     state["messages"].append(AIMessage(content=question_text))
-    state["llm_model"] = get_model(config["metadata"]["model"], config["metadata"]["owui_token"])
     user_input = interrupt(question_text)
+    state["llm_model"] = get_model(config["metadata"]["model"], config["metadata"]["owui_token"])
     answers.append(user_input)
     state["messages"].append(HumanMessage(user_input))
     return {
@@ -155,7 +155,7 @@ async def categorize_user(state: AgentState, config: RunnableConfig):
     return state
 
 
-async def finish_skill_check(state: AgentState) -> dict:
+async def finish_skill_check(state: AgentState, config: RunnableConfig) -> dict:
     """
     Finalizes the skill check and presents the result to the user.
 
@@ -166,7 +166,12 @@ async def finish_skill_check(state: AgentState) -> dict:
         dict: Contains the final AIMessage with the result and resource link.
     """
     category = state.get("category", "Beginner")
+    url_parameters = config["configurable"].get("url_parameters")
     url = f"https://bento.roosi.ai/?kiskill={category}"
+    if url_parameters and "hubspot_id" in url_parameters:
+        hubspot_url = os.getenv("HUBSPOT_URL", "https://hubspot.de")
+        hubspot_id = url_parameters["hubspot_id"]
+        url = f"{hubspot_url.rstrip('/')}/?hubspot_id={hubspot_id}"
     md_link = f"[Weitere Informationen]({url})"
     msg = (
         f"Vielen Dank für Ihre Teilnahme!\n\n"

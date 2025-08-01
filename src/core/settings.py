@@ -1,6 +1,7 @@
 from enum import StrEnum
 from json import loads
 from typing import Annotated, Any
+import os
 
 from dotenv import find_dotenv
 from pydantic import (
@@ -141,7 +142,10 @@ class Settings(BaseSettings):
         }
         active_keys = [k for k, v in api_keys.items() if v]
         if not active_keys:
-            raise ValueError("At least one LLM API key must be provided.")
+            if os.getenv("OWUI_BASE_URL") is not None:
+                pass
+            else:
+                raise ValueError("At least one LLM API key must be provided.")
 
         for provider in active_keys:
             match provider:

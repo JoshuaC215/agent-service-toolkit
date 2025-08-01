@@ -97,6 +97,7 @@ class AgentClient:
         thread_id: str | None = None,
         user_id: str | None = None,
         run_id: str | None = None,
+        url_parameters: dict[str, Any] | None = None,
         agent_config: dict[str, Any] | None = None,
     ) -> ChatMessage:
         """
@@ -125,6 +126,8 @@ class AgentClient:
             request.user_id = user_id
         if run_id:
             request.run_id = run_id
+        if url_parameters:
+            request.url_parameters = url_parameters
         request.api_key = self.api_key
 
         print(f"SENDING TO {self.base_url}/{self.agent}/invoke: {request.dict()}")
@@ -149,6 +152,7 @@ class AgentClient:
         thread_id: str | None = None,
         user_id: str | None = None,
         run_id: str | None = None,
+        url_parameters: dict[str, Any] | None = None,
         agent_config: dict[str, Any] | None = None,
     ) -> ChatMessage:
         """
@@ -177,6 +181,8 @@ class AgentClient:
             request.user_id = user_id
         if run_id:
             request.run_id = run_id
+        if url_parameters:
+            request.url_parameters = url_parameters
         request.api_key = self.api_key
 
         try:

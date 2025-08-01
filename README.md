@@ -207,6 +207,28 @@ The following are a few of the public projects that drew code or inspiration fro
 
 **Please create a pull request editing the README or open a discussion with any new ones to be added!** Would love to include more projects.
 
+## URL-Parameter & HUBSPOT_URL
+
+### Dynamische Link-Generierung über URL-Parameter
+
+Das System unterstützt die Übergabe eines `hubspot_id`-Parameters in der URL, um dynamisch Links zu generieren oder externe Integrationen (z.B. zu HubSpot) zu ermöglichen.
+
+**Beispiel:**
+`https://<deine-app-url>?hubspot_id=12345`
+
+Der Wert von `hubspot_id` kann im Frontend oder Backend verwendet werden, um spezifische Inhalte, Links oder Integrationen zu steuern.
+
+### Konfiguration der Umgebungsvariable `HUBSPOT_URL`
+
+Die Umgebungsvariable `HUBSPOT_URL` definiert die Basis-URL für die HubSpot-Integration. Sie wird verwendet, um dynamisch Links zu HubSpot-Objekten (z.B. Kontakte, Deals) zu generieren.
+
+- **Beispielwert:** `HUBSPOT_URL=https://app.hubspot.com`
+- **Verwendung:** In Kombination mit dem URL-Parameter `hubspot_id` kann z.B. ein Link wie folgt erzeugt werden:
+  `${HUBSPOT_URL}/contacts/<hubspot_id>`
+
+**Hinweis:**
+Setze `HUBSPOT_URL` in deiner `.env`-Datei entsprechend deiner HubSpot-Instanz.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. Currently the tests need to be run using the local development without Docker setup. To run the tests for the agent service:

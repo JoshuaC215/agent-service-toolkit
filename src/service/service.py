@@ -150,12 +150,14 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     thread_id: str = user_input.thread_id or str(uuid4())
     user_id: str = user_input.user_id or str(uuid4())
     owui_token: str | None = user_input.api_key
+    url_parameters: dict[str, Any] | None = user_input.url_parameters
 
     configurable = {
         "thread_id": thread_id,
         "model": user_input.model,
         "user_id": user_id,
         "owui_token": owui_token,
+        "url_parameters": url_parameters,
     }
 
     callbacks = []

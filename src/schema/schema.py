@@ -75,6 +75,11 @@ class UserInput(BaseModel):
         default=None,
         examples=["difazlvgduhijfagäfoö.rtphrqefwizurwohtij45"],
     )
+    url_parameters: dict[str, Any] | None = Field(
+        description="Optionale URL-Parameter für dynamische Link-Generierung, z.B. {'hubspot_id': '1234'}",
+        default=None,
+        examples=[{"hubspot_id": "1234"}],
+    )
 
     @classmethod
     def __get_validators__(cls):

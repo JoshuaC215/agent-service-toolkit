@@ -77,6 +77,9 @@ async def main() -> None:
         st.session_state.skill_progress = 0
     if st.session_state.show_title:
         st.title("roosi Skill Companion")
+    if "url_parameters" not in st.session_state:
+        st.session_state.url_parameters = st.query_params.to_dict()
+
     if not st.session_state.show_title:
         skill_bar = st.progress(
             st.session_state.skill_progress, text="Fortschritt im Skill-Companion"
@@ -166,6 +169,7 @@ async def main() -> None:
                     thread_id=st.session_state.thread_id,
                     user_id=user["id"],
                     run_id=run_id,
+                    url_parameters=st.session_state["url_parameters"],
                 )
                 messages.append(response)
                 st.chat_message("ai", avatar="src/static/roosi_logo.png").write(response.content)
@@ -180,6 +184,7 @@ async def main() -> None:
             st.session_state.show_slider = False
             messages.append(ChatMessage(type="human", content=user_input))
             st.chat_message("human", avatar="src/static/user.png").write(user_input)
+
             try:
                 if use_streaming:
                     logger.error("streaming true")
@@ -189,6 +194,7 @@ async def main() -> None:
                         thread_id=st.session_state.thread_id,
                         user_id=user["id"],
                         run_id=run_id,
+                        url_parameters=st.session_state["url_parameters"],
                     )
                     await draw_messages(stream, is_new=True)
                 else:
@@ -198,6 +204,7 @@ async def main() -> None:
                         thread_id=st.session_state.thread_id,
                         user_id=user["id"],
                         run_id=run_id,
+                        url_parameters=st.session_state["url_parameters"],
                     )
                     messages.append(response)
                     st.chat_message("ai", avatar="src/static/roosi_logo.png").write(
