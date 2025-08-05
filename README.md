@@ -25,8 +25,8 @@ Run directly in python
 # At least one LLM API key is required
 echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 
-# uv is the recommended way to install agent-service toolkit, but "pip install ." also works
-# uv install options: https://docs.astral.sh/uv/getting-started/installation/
+# uv is the recommended way to install agent-service-toolkit, but "pip install ." also works
+# For uv installation options, see: https://docs.astral.sh/uv/getting-started/installation/
 curl -LsSf https://astral.sh/uv/0.7.19/install.sh | sh
 
 # Install dependencies. "uv sync" creates .venv automatically
@@ -116,7 +116,7 @@ This project includes a Docker setup for easy development and deployment. The `c
 
 For local development, we recommend using [docker compose watch](https://docs.docker.com/compose/file-watch/). This feature allows for a smoother development experience by automatically updating your containers when changes are detected in your source code.
 
-1. Make sure you have Docker and Docker Compose (>=[2.23.0](https://docs.docker.com/compose/release-notes/#2230)) installed on your system.
+1. Make sure you have Docker and Docker Compose (>= [v2.23.0](https://docs.docker.com/compose/release-notes/#2230)) installed on your system.
 
 2. Create a `.env` file from the `.env.example`. At minimum, you need to provide an LLM API key (e.g., OPENAI_API_KEY).
    ```sh
