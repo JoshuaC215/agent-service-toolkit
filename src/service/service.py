@@ -7,8 +7,17 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
+# AG-UI Protocol imports
+from ag_ui.core import (
+    EventType,
+    RunErrorEvent,
+    RunFinishedEvent,
+    RunStartedEvent,
+)
+from ag_ui.core.events import TextMessageChunkEvent, TextMessageEndEvent, TextMessageStartEvent
+from ag_ui.encoder import EventEncoder
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
@@ -33,6 +42,7 @@ from schema import (
 )
 from service.utils import (
     convert_message_content_to_string,
+    convert_message_to_agui_events,
     langchain_to_chat_message,
     remove_tool_calls,
 )
@@ -307,6 +317,154 @@ async def message_generator(
         yield "data: [DONE]\n\n"
 
 
+async def message_generator_agui(
+    user_input: StreamInput,
+    agent_id: str = DEFAULT_AGENT,
+) -> AsyncGenerator[str, None]:
+    """
+    Generate a stream of messages from the agent using the AG-UI protocol.
+
+    This closely mirrors message_generator but outputs AG-UI compatible events.
+    """
+    agent: AgentGraph = get_agent(agent_id)
+    kwargs, run_id = await _handle_input(user_input, agent)
+
+    # Create event encoder for AG-UI protocol
+    encoder = EventEncoder()
+
+    # Track current streaming message ID to ensure consistency
+    current_streaming_message_id = None
+
+    try:
+        # Send run started event
+        yield encoder.encode(
+            RunStartedEvent(
+                type=EventType.RUN_STARTED,
+                thread_id=kwargs["config"]["configurable"]["thread_id"],
+                run_id=str(run_id),
+            )
+        )
+
+        # Process streamed events from the graph - same structure as message_generator
+        async for stream_event in agent.astream(
+            **kwargs, stream_mode=["updates", "messages", "custom"]
+        ):
+            if not isinstance(stream_event, tuple):
+                continue
+            stream_mode, event = stream_event
+            new_messages = []
+
+            # Handle updates - same logic as original
+            if stream_mode == "updates":
+                for node, updates in event.items():
+                    if node == "__interrupt__":
+                        interrupt: Interrupt
+                        for interrupt in updates:
+                            new_messages.append(AIMessage(content=interrupt.value))
+                        continue
+                    updates = updates or {}
+                    update_messages = updates.get("messages", [])
+                    # special cases for using langgraph-supervisor library
+                    if node == "supervisor":
+                        ai_messages = [msg for msg in update_messages if isinstance(msg, AIMessage)]
+                        if ai_messages:
+                            update_messages = [ai_messages[-1]]
+                    if node in ("research_expert", "math_expert"):
+                        msg = ToolMessage(
+                            content=update_messages[0].content,
+                            name=node,
+                            tool_call_id="",
+                        )
+                        update_messages = [msg]
+                    new_messages.extend(update_messages)
+
+            # Handle custom events - same logic as original
+            if stream_mode == "custom":
+                new_messages = [event]
+
+            # Process message parts - similar to original but simpler
+            processed_messages = []
+            current_message: dict[str, Any] = {}
+            for message in new_messages:
+                if isinstance(message, tuple):
+                    key, value = message
+                    current_message[key] = value
+                else:
+                    if current_message:
+                        processed_messages.append(_create_ai_message(current_message))
+                        current_message = {}
+                    processed_messages.append(message)
+
+            if current_message:
+                processed_messages.append(_create_ai_message(current_message))
+
+            # Handle token streaming - for real-time token chunks
+            if stream_mode == "messages" and user_input.stream_tokens:
+                msg, metadata = event
+                if "skip_stream" in metadata.get("tags", []):
+                    continue
+                if not isinstance(msg, AIMessageChunk):
+                    continue
+                content = remove_tool_calls(msg.content)
+                if content:
+                    # Use consistent message_id for all tokens in the same message
+                    if current_streaming_message_id is None:
+                        current_streaming_message_id = str(uuid4())
+                        # Send message start event for token streaming
+                        yield encoder.encode(
+                            TextMessageStartEvent(
+                                type=EventType.TEXT_MESSAGE_START,
+                                message_id=current_streaming_message_id,
+                                role="assistant",
+                            )
+                        )
+
+                    yield encoder.encode(
+                        TextMessageChunkEvent(
+                            type=EventType.TEXT_MESSAGE_CHUNK,
+                            message_id=current_streaming_message_id,
+                            delta=convert_message_content_to_string(content),
+                        )
+                    )
+
+            # Convert complete messages to AG-UI events - handle updates and custom events
+            # Skip AI messages when token streaming is enabled to avoid duplication
+            elif stream_mode in ["updates", "custom"]:
+                for message in processed_messages:
+                    # Skip re-sent input messages
+                    if isinstance(message, HumanMessage) and message.content == user_input.message:
+                        continue
+
+                    # Skip AI messages when token streaming is enabled to avoid duplication
+                    if isinstance(message, AIMessage) and user_input.stream_tokens:
+                        continue
+
+                    # Convert each message to appropriate AG-UI events
+                    async for agui_event in convert_message_to_agui_events(message, encoder):
+                        yield agui_event
+
+        # Send message end event if we were streaming
+        if current_streaming_message_id is not None:
+            yield encoder.encode(
+                TextMessageEndEvent(
+                    type=EventType.TEXT_MESSAGE_END, message_id=current_streaming_message_id
+                )
+            )
+
+        # Send run finished event
+        yield encoder.encode(
+            RunFinishedEvent(
+                type=EventType.RUN_FINISHED,
+                thread_id=kwargs["config"]["configurable"]["thread_id"],
+                run_id=str(run_id),
+            )
+        )
+
+    except Exception as e:
+        logger.error(f"Error in AG-UI message generator: {e}")
+        yield encoder.encode(RunErrorEvent(type=EventType.RUN_ERROR, message=str(e)))
+
+
 def _create_ai_message(parts: dict) -> AIMessage:
     sig = inspect.signature(AIMessage)
     valid_keys = set(sig.parameters)
@@ -345,10 +503,18 @@ async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> Stre
 
     Set `stream_tokens=false` to return intermediate messages but not token-by-token.
     """
-    return StreamingResponse(
-        message_generator(user_input, agent_id),
-        media_type="text/event-stream",
-    )
+    if user_input.stream_protocol == "sse":
+        return StreamingResponse(
+            message_generator(user_input, agent_id),
+            media_type="text/event-stream",
+        )
+    elif user_input.stream_protocol == "agui":
+        return StreamingResponse(
+            message_generator_agui(user_input, agent_id),
+            media_type="text/event-stream",
+        )
+    else:
+        raise HTTPException(status_code=400, detail="Invalid stream protocol")
 
 
 @router.post("/feedback")
@@ -405,6 +571,14 @@ async def health_check():
             health_status["langfuse"] = "disconnected"
 
     return health_status
+
+
+@app.get("/agui/")
+async def agui_root():
+    with open("web-agui/index.html", encoding="utf-8") as file:
+        response = Response(content=file.read(), media_type="text/html")
+
+    return response
 
 
 app.include_router(router)
