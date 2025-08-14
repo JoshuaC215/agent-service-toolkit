@@ -105,7 +105,7 @@ jobs:
           '
 
       - name: Run app container
-        run: docker run -d --name app-container --network host -e AGENT_URL=http://0.0.0.0 agent-service-toolkit.app:${{ github.sha }}
+        run: docker run -d --name app-container --network host -e BACKEND_URL=http://0.0.0.0 agent-service-toolkit.app:${{ github.sha }}
 
       - name: Confirm app starts correctly
         run: |
@@ -134,7 +134,7 @@ jobs:
         run: |
           uv run pytest tests/integration -v --run-docker
         env:
-          AGENT_URL: http://0.0.0.0
+          BACKEND_URL: http://0.0.0.0
 
       - name: Clean up containers
         if: always()

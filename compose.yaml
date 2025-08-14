@@ -65,7 +65,7 @@ services:
       timeout: 5s
       retries: 5
     environment:
-      - AGENT_URL=http://agent_service:8080
+      - BACKEND_URL=http://agent_service:8080
     develop:
       watch:
         - path: src/client/

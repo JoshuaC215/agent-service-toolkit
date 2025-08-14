@@ -81,7 +81,7 @@ async def main() -> None:
 
     if "agent_client" not in st.session_state:
         load_dotenv()
-        agent_url = os.getenv("AGENT_URL")
+        agent_url = os.getenv("BACKEND_URL")
         if not agent_url:
             host = os.getenv("HOST", "0.0.0.0")
             port = os.getenv("PORT", 8080)
