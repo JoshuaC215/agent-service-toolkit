@@ -310,7 +310,9 @@ class AgentClient:
                             parsed = self._parse_stream_line(line)
                             if parsed is None:
                                 break
-                            yield parsed
+                            # Don't yield empty string tokens as they cause generator issues
+                            if parsed != "":
+                                yield parsed
             except httpx.HTTPError as e:
                 raise AgentClientError(f"Error: {e}")
 
