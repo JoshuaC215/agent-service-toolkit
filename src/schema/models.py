@@ -15,6 +15,7 @@ class Provider(StrEnum):
     OLLAMA = auto()
     OPENROUTER = auto()
     FAKE = auto()
+    OPENWEBUI = auto()
 
 
 class OpenAIModelName(StrEnum):

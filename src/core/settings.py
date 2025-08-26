@@ -29,6 +29,7 @@ from schema.models import (
     OpenRouterModelName,
     Provider,
     VertexAIModelName,
+    OpenwebuiModelName,
 )
 
 
@@ -69,6 +70,7 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str | None = None
     USE_FAKE_MODEL: bool = False
     OPENROUTER_API_KEY: str | None = None
+    OWUI_BASE_URL: str | None = None
 
     # If DEFAULT_MODEL is None, it will be set in model_post_init
     DEFAULT_MODEL: AllModelEnum | None = None  # type: ignore[assignment]
@@ -139,13 +141,11 @@ class Settings(BaseSettings):
             Provider.FAKE: self.USE_FAKE_MODEL,
             Provider.AZURE_OPENAI: self.AZURE_OPENAI_API_KEY,
             Provider.OPENROUTER: self.OPENROUTER_API_KEY,
+            Provider.OPENWEBUI: self.OWUI_BASE_URL, # Key will be provided through FrontEnd - just URL necessary at this point
         }
         active_keys = [k for k, v in api_keys.items() if v]
         if not active_keys:
-            if os.getenv("OWUI_BASE_URL") is not None:
-                pass
-            else:
-                raise ValueError("At least one LLM API key must be provided.")
+            raise ValueError("At least one LLM API key must be provided.")
 
         for provider in active_keys:
             match provider:
@@ -193,6 +193,10 @@ class Settings(BaseSettings):
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = FakeModelName.FAKE
                     self.AVAILABLE_MODELS.update(set(FakeModelName))
+                case Provider.OPENWEBUI:
+                    if self.DEFAULT_MODEL is None:
+                        self.DEFAULT_MODEL = OpenwebuiModelName.BASISMODELL
+                    self.AVAILABLE_MODELS.update(set(OpenwebuiModelName))
                 case Provider.AZURE_OPENAI:
                     if self.DEFAULT_MODEL is None:
                         self.DEFAULT_MODEL = AzureOpenAIModelName.AZURE_GPT_4O_MINI
