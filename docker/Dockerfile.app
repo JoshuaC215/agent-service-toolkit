@@ -21,7 +21,6 @@ COPY src/static ./src/static/
 COPY src/variants ./variants/
 COPY .streamlit/ ./.streamlit/
 COPY themes/ ./themes/
-COPY src/client/select_theme.py ./select_theme.py
 
 # Copy all possible app entrypoints so the runtime env var can select which to run
 COPY src/*.py .
