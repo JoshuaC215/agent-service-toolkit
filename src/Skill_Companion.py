@@ -11,7 +11,8 @@ from pydantic import ValidationError
 
 from client import AgentClient, AgentClientError
 from client.auth import Auth
-from schema import ChatHistory, ChatMessage
+from variants.variant_config import VariantConfig
+from schema import ChatHistory, ChatMessage, VariantIdentifier
 from schema.task_data import TaskData, TaskDataStatus
 
 logger = logging.getLogger(__name__)
@@ -28,15 +29,13 @@ logger = logging.getLogger(__name__)
 # The app heavily uses AgentClient to interact with the agent's FastAPI endpoints.
 
 
-APP_TITLE = "roosi SkillCompanion"
-APP_ICON = "🤖"
 HIDE_SIDEBAR = True
 
-
-async def main() -> None:
+# TODO: maybe hide input when check finished?
+async def main(config: VariantConfig) -> None:
     st.set_page_config(
-        page_title=APP_TITLE,
-        page_icon=APP_ICON,
+        page_title=config.get("title", "roosi SkillCompanion"),
+        page_icon=config.get("app_icon", "🤖"),
         # collapse sidebar on default
         initial_sidebar_state="collapsed" if HIDE_SIDEBAR else "auto",
     )
@@ -76,7 +75,7 @@ async def main() -> None:
     if "skill_progress" not in st.session_state:
         st.session_state.skill_progress = 0
     if st.session_state.show_title:
-        st.title("roosi Skill Companion")
+        st.title(config.get("title", "roosi SkillCompanion"))
     if "url_parameters" not in st.session_state:
         st.session_state.url_parameters = st.query_params.to_dict()
 
@@ -84,12 +83,14 @@ async def main() -> None:
         skill_bar = st.progress(
             st.session_state.skill_progress, text="Fortschritt im Skill-Companion"
         )
+
     if st.get_option("client.toolbarMode") != "minimal":
         st.set_option("client.toolbarMode", "minimal")
         await asyncio.sleep(0.1)
         st.rerun()
     if "question_limit" not in st.session_state:
-        st.session_state.question_limit = os.getenv("QUESTIONLIMIT", 5)
+        questions = config.get("skill_questions", [])
+        st.session_state.question_limit = len(questions)
 
     auth = Auth(default_login=True)
     if not auth.is_logged_in():
@@ -107,9 +108,12 @@ async def main() -> None:
                 api_key = None
                 if "owui-token" in st.session_state:
                     api_key = st.session_state["owui-token"]
-                    logger.info(api_key)
                 st.session_state.agent_client = AgentClient(
-                    base_url=agent_url, api_key=str(api_key or "")
+                    base_url=agent_url,
+                    api_key=str(api_key or ""),
+                    variant=VariantIdentifier(
+                        streamlit_app_name="Skill_Companion", variant=os.getenv("VARIANT", None)
+                    ),
                 )
         except AgentClientError as e:
             st.error(f"Error connecting to agent service: {e}")
@@ -132,8 +136,18 @@ async def main() -> None:
         st.session_state.thread_id = thread_id
 
     # Config options
-    model = "owui/gpt-4o"
-    agent_client.agent = "skillcompanion_interrupted"
+    model = config.get("model", "owui/gpt-4o")
+    if agent_client.info is None or model not in agent_client.info.models:
+        st.error("Selected Model not found.")
+        st.stop()
+
+    agent_client.agent = config.get("agent", "skillcompanion_interrupted")
+    if agent_client.info is None or agent_client.agent not in [
+        a.key for a in agent_client.info.agents
+    ]:
+        st.error("Selected Agent not found.")
+        st.stop()
+
     use_streaming = False
 
     # Draw existing messages
@@ -152,15 +166,15 @@ async def main() -> None:
             options=[1, 2, 3, 4, 5],
             value=3,
         )
-        st.write(f"Die technische Affinität Ihrer Firma ist: {tech_affinity}")
-        company_size = st.slider("Wie viele Mitarbeiter hat ihre Firma?", 0, 1000, 500)
-        st.write(f"Die Größe ihres Unternehmens beträgt {company_size} Mitarbeiter!")
+        company_size = st.select_slider(
+            "Wie viele Mitarbeiter hat ihre Firma?", options=["1-10", "11-50", "51-250", "251-1000", ">1000"], value="51-250"
+        )
         st.session_state["company_size"] = company_size
         date_of_skill_check = datetime.now().strftime("%Y-%m-%d")
     user = st.session_state["user"]
     run_id = st.session_state["run_id"]
     if st.session_state.show_start_button:
-        if st.button("START Skill Companion"):
+        if st.button("Mit dem Skill-Companion beginnen"):
             toggle_chat_input()
             try:
                 response = await agent_client.ainvoke(
@@ -172,14 +186,17 @@ async def main() -> None:
                     url_parameters=st.session_state["url_parameters"],
                 )
                 messages.append(response)
-                st.chat_message("ai", avatar="src/static/roosi_logo.png").write(response.content)
+                st.chat_message(
+                    "ai",
+                    avatar=f"src/static/{config.get('ai_message_avatar_filename', 'roosi_logo.png')}",
+                ).write(response.content)
             except Exception as e:
                 logger.error(f"Exception: {e}")
             st.rerun()
 
     # Generate new message if the user provided new input
     if st.session_state.show_chat_input and not st.session_state.show_slider:
-        if user_input := st.chat_input(placeholder="Erzähl mir mehr von deinen Gedanken!"):
+        if user_input := st.chat_input(placeholder="Ihre Antwort..."):
             # Hide slider after first user input
             st.session_state.show_slider = False
             messages.append(ChatMessage(type="human", content=user_input))
@@ -207,13 +224,16 @@ async def main() -> None:
                         url_parameters=st.session_state["url_parameters"],
                     )
                     messages.append(response)
-                    st.chat_message("ai", avatar="src/static/roosi_logo.png").write(
-                        response.content
+                    st.chat_message(
+                        "ai",
+                        avatar=f"src/static/{config.get('ai_message_avatar_filename', 'roosi_logo.png')}",
+                    ).write(response.content)
+                    st.session_state.skill_progress = min(
+                        st.session_state.skill_progress
+                        + 1 / float(st.session_state.question_limit),
+                        1.0,
                     )
-                    st.session_state.skill_progress = st.session_state.skill_progress + 1 / float(
-                        st.session_state.question_limit
-                    )
-                    skill_bar.progress(st.session_state.skill_progress, text="test")
+                    skill_bar.progress(st.session_state.skill_progress)
                 st.rerun()  # Clear stale containers
             except AgentClientError as e:
                 st.error(f"Error generating response: {e}")
@@ -263,7 +283,8 @@ async def draw_messages(
                 if last_message_type != "ai":
                     last_message_type = "ai"
                     st.session_state.last_message = st.chat_message(
-                        "ai", avatar="src/static/roosi_logo.png"
+                        "ai",
+                        avatar=f"src/static/{config.get('ai_message_avatar_filename', 'roosi_logo.png')}",
                     )
                 with st.session_state.last_message:
                     streaming_placeholder = st.empty()
@@ -292,7 +313,8 @@ async def draw_messages(
                 if last_message_type != "ai":
                     last_message_type = "ai"
                     st.session_state.last_message = st.chat_message(
-                        "ai", avatar="src/static/roosi_logo.png"
+                        "ai",
+                        avatar=f"src/static/{config.get('ai_message_avatar_filename', 'roosi_logo.png')}",
                     )
 
                 with st.session_state.last_message:
@@ -377,4 +399,9 @@ def toggle_chat_input():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    config = VariantConfig(
+        VariantIdentifier(
+            streamlit_app_name="Skill_Companion", variant=os.getenv("VARIANT", "default")
+        )
+    )
+    asyncio.run(main(config))

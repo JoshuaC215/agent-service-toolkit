@@ -15,6 +15,7 @@ from schema import (
     ServiceMetadata,
     StreamInput,
     UserInput,
+    VariantIdentifier,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -34,6 +35,7 @@ class AgentClient:
         timeout: float | None = None,
         get_info: bool = True,
         api_key: str | None = None,
+        variant: VariantIdentifier | None = None,
     ) -> None:
         """
         Initialize the client.
@@ -51,6 +53,7 @@ class AgentClient:
         self.info: ServiceMetadata | None = None
         self.agent: str | None = None
         self.api_key = api_key
+        self.variant = variant
         if get_info:
             self.retrieve_info()
         if agent:
@@ -115,7 +118,7 @@ class AgentClient:
         """
         if not self.agent:
             raise AgentClientError("No agent selected. Use update_agent() to select an agent.")
-        request = UserInput(message=message, api_key=self.api_key)
+        request = UserInput(message=message, api_key=self.api_key, variant=self.variant)
         if thread_id:
             request.thread_id = thread_id
         if model:
@@ -128,7 +131,6 @@ class AgentClient:
             request.run_id = run_id
         if url_parameters:
             request.url_parameters = url_parameters
-        request.api_key = self.api_key
 
         print(f"SENDING TO {self.base_url}/{self.agent}/invoke: {request.dict()}")
         async with httpx.AsyncClient() as client:
@@ -183,7 +185,6 @@ class AgentClient:
             request.run_id = run_id
         if url_parameters:
             request.url_parameters = url_parameters
-        request.api_key = self.api_key
 
         try:
             response = httpx.post(
@@ -231,6 +232,8 @@ class AgentClient:
         user_id: str | None = None,
         agent_config: dict[str, Any] | None = None,
         stream_tokens: bool = True,
+        run_id: str | None = None,
+        url_parameters: dict[str, Any] | None = None,
     ) -> Generator[ChatMessage | str, None, None]:
         """
         Stream the agent's response synchronously.
@@ -262,6 +265,10 @@ class AgentClient:
             request.model = model  # type: ignore[assignment]
         if agent_config:
             request.agent_config = agent_config
+        if run_id:
+            request.run_id = run_id
+        if url_parameters:
+            request.url_parameters = url_parameters
         try:
             with httpx.stream(
                 "POST",
@@ -288,6 +295,8 @@ class AgentClient:
         user_id: str | None = None,
         agent_config: dict[str, Any] | None = None,
         stream_tokens: bool = True,
+        run_id: str | None = None,
+        url_parameters: dict[str, Any] | None = None,
     ) -> AsyncGenerator[ChatMessage | str, None]:
         """
         Stream the agent's response asynchronously.
@@ -319,6 +328,10 @@ class AgentClient:
             request.agent_config = agent_config
         if user_id:
             request.user_id = user_id
+        if run_id:
+            request.run_id = run_id
+        if url_parameters:
+            request.url_parameters = url_parameters
         async with httpx.AsyncClient() as client:
             try:
                 async with client.stream(

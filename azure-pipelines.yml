@@ -12,9 +12,11 @@ variables:
   # Container registry service connection established during pipeline creation
   dockerRegistryServiceConnection: 'sc-rooai-aios-dev-gwc-001'
   imageRepository: 'astk-backend'
+  imageRepositoryUi: 'astk-ui'
   containerRegistry: 'crrooaiaiosdevgwc001.azurecr.io'
   tag: '$(Build.BuildNumber)'
   DOCKER_IMAGE_NAME: $(imageRepository)
+  DOCKER_IMAGE_NAME_UI: $(imageRepositoryUi)
   DOCKERFILE_PATH: $(Build.SourcesDirectory)/docker/Dockerfile.backend
   DOCKERFILE_PATH_UI: $(Build.SourcesDirectory)/docker/Dockerfile.app
   # Agent VM image name
@@ -59,18 +61,17 @@ stages:
         containerRegistry: $(dockerRegistryServiceConnection)
 
     - task: CmdLine@2
-      displayName: Iterate and Build Docker Images for Each Page
+      displayName: Build Docker Images for UI
       inputs:
         script: |
-          for file in $(Build.SourcesDirectory)/src/pages/*.py; do
-            if [ -f "$file" ]; then
-              page_name=$(basename "$file")
-              page_name_pretty=$(echo "astk-${page_name%.py}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
+          echo 'docker build --build-arg -t $(containerRegistry)/$(DOCKER_IMAGE_NAME_UI):$(tag) -f $(DOCKERFILE_PATH_UI) .'
+          docker build -t $(containerRegistry)/$(DOCKER_IMAGE_NAME_UI):$(tag) -f $(DOCKERFILE_PATH_UI) .
 
-              echo "Building Docker image for $page_name"
-              docker build --build-arg STREAMLIT_PAGE_NAME=$page_name -t $(containerRegistry)/$page_name_pretty:$(tag) -f $(DOCKERFILE_PATH_UI) --target=prod .
-
-              echo "Pushing Docker image for $page_name_pretty"
-              docker push $(containerRegistry)/$page_name_pretty:$(tag)
-            fi
-          done
+    - task: Docker@2
+      displayName: push image to the container registry
+      inputs:
+        command: push
+        repository: $(imageRepositoryUi)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)

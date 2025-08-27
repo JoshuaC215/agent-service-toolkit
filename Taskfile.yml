@@ -1,6 +1,7 @@
 # https://taskfile.dev
 
 version: '3'
+dotenv: ['.env']
 
 vars:
   GREETING: Hello, World!
@@ -20,9 +21,11 @@ tasks:
     cmds:
       - uv run src/run_service.py
   
-  runui:
+  # INFO: there will be commands for each new Frontend-Component.
+  run-sc:
     cmds:
-      - uv run streamlit run src/Agent_Service_Toolkit.py
+      - uv run src/theme_selector.py --app Skill_Companion --variant {{ .VARIANT | default "default" }}
+      - uv run streamlit run src/Skill_Companion.py
 
   dev:
     desc: "Run Ruff for code quality and formatting"

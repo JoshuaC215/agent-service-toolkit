@@ -1,0 +1,32 @@
+# Standard Config
+title: "sdx SkillCompanion"
+app_icon: "src/static/sdx_logo.png"
+theme: "sdx"
+model: "owui/gpt-4o"
+agent: "skillcompanion_interrupted"
+
+ai_message_avatar_filename: "sdx_logo.png"
+
+# Individual Config
+teaser_active: false
+question_limit: 5
+ask_question_prompt_filename: "skill_companion_strict_ask_question_prompt.txt"
+skill_questions:
+  - text: "Haben Sie bereits praktische Erfahrungen mit KI-Technologien gesammelt? (Ja/Nein)"
+    type: closed
+#  - text: "Welche Anwendungen von KI finden Sie in Ihrem aktuellen Arbeitsbereich besonders interessant?"
+#    type: open_usecase
+  - text: "Können Sie ein Projekt beschreiben, bei dem Sie KI-Technologien eingesetzt haben? Falls nicht, geben Sie bitte an, welche Anwendungsfälle Sie interessieren würden."
+    type: open_usecase
+  - text: "Welche zukünftigen KI-Trends halten Sie für besonders relevant in Ihrer Branche?"
+    type: open_usecase
+#  - text: "Wie schätzen Sie Ihr theoretisches Wissen über KI ein? (Anfänger, Fortgeschritten, Experte)"
+#    type: closed
+  - text: "Welche Herausforderungen sehen Sie beim Einsatz von KI in Ihrem Arbeitsumfeld?"
+    type: open
+  - text: "In welchem Umfang verwenden Sie regelmäßig KI-Tools wie ChatGPT, Midjourney oder ähnliche, und wie gut nutzen Sie dabei ihrer Meinung nach die gesamte Bandbreite der verfügbaren Funktionen?"
+    type: closed
+#  - text: "Falls Sie noch keine konkreten KI-Anwendungsfälle kennen: Interessieren Sie sich eher für Automatisierung, Datenanalyse, Kreativitätsunterstützung oder etwas anderes? (Bitte wählen Sie eine Option oder beschreiben Sie Ihr Interesse)"
+#    type: guided_usecase
+#  - text: "Gibt es weitere Aspekte oder Fragen zu KI, die Sie besonders interessieren?"
+#    type: open

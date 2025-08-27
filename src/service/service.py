@@ -31,6 +31,7 @@ from schema import (
     ServiceMetadata,
     StreamInput,
     UserInput,
+    VariantIdentifier,
 )
 from service.utils import (
     convert_message_content_to_string,
@@ -151,6 +152,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     user_id: str = user_input.user_id or str(uuid4())
     owui_token: str | None = user_input.api_key
     url_parameters: dict[str, Any] | None = user_input.url_parameters
+    variant: VariantIdentifier | None = user_input.variant or None
 
     configurable = {
         "thread_id": thread_id,
@@ -158,6 +160,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
         "user_id": user_id,
         "owui_token": owui_token,
         "url_parameters": url_parameters,
+        "variant": variant,
     }
 
     callbacks = []

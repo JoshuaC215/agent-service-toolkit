@@ -1,0 +1,37 @@
+browser.gatherUsageStats = false
+
+[server]
+enableStaticServing = true
+
+[[theme.fontFaces]]
+family="varta"
+url="app/static/Varta-Regular.ttf"
+style="normal"
+
+[[theme.fontFaces]]
+family="varta"
+url="app/static/Varta-SemiBold.ttf"
+style="bold"
+
+[theme]
+base="dark"
+backgroundColor = "#000"
+secondaryBackgroundColor = "#22495c"
+codeBackgroundColor = "#22495c"
+textColor = "#fff"
+linkColor = "#C40F6B"
+baseFontSize=18
+
+primaryColor = "#C40F6B"
+font= "varta, sans-serif"
+
+[theme.sidebar]
+base="dark"
+backgroundColor = "#000"
+secondaryBackgroundColor = "#22495c"
+codeBackgroundColor = "#22495c"
+textColor = "#fff"
+linkColor = "#C40F6B"
+
+primaryColor = "#C40F6B"
+font= "varta, sans-serif"

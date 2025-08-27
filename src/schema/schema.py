@@ -1,7 +1,6 @@
-from typing import Any, Literal, NotRequired
+from typing import Any, Literal, NotRequired, TypedDict
 
-from pydantic import BaseModel, Field
-from typing_extensions import TypedDict
+from pydantic import BaseModel, Field, SerializeAsAny
 
 from schema.models import AllModelEnum, AnthropicModelName, OpenAIModelName
 
@@ -17,6 +16,11 @@ class AgentInfo(BaseModel):
         description="Description of the agent.",
         examples=["A research assistant for generating research papers."],
     )
+
+
+class VariantIdentifier(TypedDict):
+    streamlit_app_name: str
+    variant: str | None
 
 
 class ServiceMetadata(BaseModel):
@@ -44,7 +48,7 @@ class UserInput(BaseModel):
         description="User input to the agent.",
         examples=["What is the weather in Tokyo?"],
     )
-    model: AllModelEnum | None = Field(
+    model: SerializeAsAny[AllModelEnum] | None = Field(
         title="Model",
         description="LLM Model to use for the agent.",
         default=OpenAIModelName.GPT_4O_MINI,
@@ -79,6 +83,11 @@ class UserInput(BaseModel):
         description="Optionale URL-Parameter für dynamische Link-Generierung, z.B. {'hubspot_id': '1234'}",
         default=None,
         examples=[{"hubspot_id": "1234"}],
+    )
+    variant: VariantIdentifier | None = Field(
+        description="custom variant identifier, containing streamlit app name and variant id",
+        default=None,
+        examples=[{"streamlit_app_name": "Skill_Companion", "variant": "default"}],
     )
 
     @classmethod

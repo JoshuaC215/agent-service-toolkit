@@ -1,0 +1,43 @@
+browser.gatherUsageStats = false
+
+[server]
+enableStaticServing = true
+
+[[theme.fontFaces]]
+family="titillium-web"
+url="app/static/TitilliumWeb-Regular.ttf"
+style="normal"
+
+[[theme.fontFaces]]
+family="titillium-web"
+url="app/static/TitilliumWeb-SemiBold.ttf"
+style="bold"
+
+[[theme.fontFaces]]
+family="titillium-web"
+url="app/static/TitilliumWeb-Italic.ttf"
+style="italic"
+
+[theme]
+base="dark"
+backgroundColor = "#414042"
+secondaryBackgroundColor = "#262730"
+codeBackgroundColor = "#262730"
+textColor = "#fff"
+linkColor = "#EC008C"
+baseFontSize=18
+
+
+primaryColor = "#EC008C"
+font= "titillium-web, sans-serif"
+
+[theme.sidebar]
+base="dark"
+backgroundColor = "#414042"
+secondaryBackgroundColor = "#262730"
+codeBackgroundColor = "#262730"
+textColor = "#fff"
+linkColor = "#EC008C"
+
+primaryColor = "#EC008C"
+font= "titillium-web, sans-serif"
