@@ -33,6 +33,19 @@ tasks:
       - uv run ruff check . --fix
       - uv run ruff format .
 
+  eval-skill:
+    desc: "Run skillcompanion_evaluation with timestamp parameters"
+    vars:
+      FROM: '{{.FROM | default "2025-08-25T11:00:00Z"}}'
+      TO: '{{.TO | default "2025-08-25T13:00:00Z"}}'
+      NAME: '{{.NAME | default "skillcompanion_interrupted"}}'
+    env:
+      FROM_TIMESTAMP: '{{.FROM}}'
+      TO_TIMESTAMP: '{{.TO}}'
+      AGENT_NAME: '{{.NAME}}'
+    cmds:
+      - uv run src/langfuse_evaluation/skillcompanion_evaluation.py
+
   
 
   

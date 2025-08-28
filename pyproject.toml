@@ -55,7 +55,7 @@ dependencies = [
     "streamlit ~=1.45.1",
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",
-
+    "matplotlib>=3.10.5",
 ]
 
 [dependency-groups]
