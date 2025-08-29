@@ -172,3 +172,130 @@ def test_app_new_chat_btn(mock_agent_client):
 
     assert at.session_state.thread_id != thread_id_a
     assert not at.exception
+
+
+@pytest.fixture
+def multi_agent_messages():
+    """Fixture providing reusable messages for multi-agent tests"""
+    from schema import ChatMessage
+
+    # tool 1
+    tool_1 = ChatMessage(
+        type="ai",
+        content="Starting tool 1...",
+        tool_calls=[{"name": "do_work_1", "id": "tool-1", "args": {"my-arg": "value"}}]
+    )
+    tool_1_result = ChatMessage(type="tool", content="Tool 1 complete", tool_call_id="tool-1")
+
+    # tool 2
+    tool_2 = ChatMessage(
+        type="ai",
+        content="Starting tool 2...",
+        tool_calls=[{"name": "do_work_2", "id": "tool-2", "args": {"my-arg-2": "value"}}]
+    )
+    tool_2_result = ChatMessage(type="tool", content="Tool 2 complete", tool_call_id="tool-2")
+
+    # Transfer to agent A
+    transfer_a = ChatMessage(
+        type="ai",
+        content="Transferring to agent A...",
+        tool_calls=[{"name": "transfer_to_agent_a", "id": "transfer-a", "args": {"task": "task_1"}}],
+    )
+    transfer_a_success = ChatMessage(
+        type="tool",
+        content="Successfully transferred via transfer_to_agent_a",
+        tool_call_id="transfer-a",
+    )
+
+    # Agent A transfers back to supervisor
+    transfer_back_a = ChatMessage(
+        type="ai",
+        content="Agent A finished.",
+        tool_calls=[{"name": "transfer_back_to_supervisor", "id": "back-a-super", "args": {"result": "result_1"}}]
+    )
+    transfer_back_a_success = ChatMessage(
+        type="tool",
+        content="Successfully transferred back via transfer_back_to_supervisor",
+        tool_call_id="back-a-super",
+    )
+
+    # Final response
+    supervisor_final = ChatMessage(
+        type="ai",
+        content="All agents have completed their tasks successfully."
+    )
+
+    return {
+        'tool_1': tool_1,
+        'tool_1_result': tool_1_result,
+        'tool_2': tool_2,
+        'tool_2_result': tool_2_result,
+        'transfer_a': transfer_a,
+        'transfer_a_success': transfer_a_success,
+        'transfer_back_a': transfer_back_a,
+        'transfer_back_a_success': transfer_back_a_success,
+        'supervisor_final': supervisor_final,
+    }
+
+
+@pytest.mark.asyncio
+async def test_app_streaming_hierarchical_sub_agents(mock_agent_client, multi_agent_messages):
+    """Test hierarchical sub-agent UI with proper status containers and visual indicators"""
+
+    at = AppTest.from_file("../../src/streamlit_app.py").run()
+
+    PROMPT = "Test hierarchical sub-agents with proper UI"
+
+    # Supervisor -> Agent A (with tool_1 and tool_2) -> Supervisor
+    messages = multi_agent_messages
+
+    async def amessage_iter():
+        for msg in [
+            messages['transfer_a'], messages['transfer_a_success'],
+            messages['tool_1'], messages['tool_1_result'],
+            messages['tool_2'], messages['tool_2_result'],
+            messages['transfer_back_a'], messages['transfer_back_a_success'],
+            messages['supervisor_final']
+        ]:
+            yield msg
+
+    mock_agent_client.astream = Mock(return_value=amessage_iter())
+
+    at.toggle[0].set_value(True)
+    at.chat_input[0].set_value(PROMPT).run()
+
+    ai_message = at.chat_message[1]
+
+    # Verify the transfer message is displayed
+    assert ai_message.children[0].value == "Transferring to agent A...", "First child should be transfer message"
+
+    # Verify the sub-agent status container
+    status_agent = ai_message.status[0]
+    assert status_agent == ai_message.children[1], "Second child should be the status container"
+    assert "💼 Sub Agent:" in status_agent.label or "transfer_to_agent_a" in status_agent.label
+
+    # Verify tool calls are displayed as popovers within the status
+    assert status_agent.children[0].value == "Starting tool 1...", "First tool message should be displayed"
+
+    popover_1 = status_agent.children[1]
+    assert hasattr(popover_1, 'type') and popover_1.type == 'popover', \
+        "Tool calls should be displayed as popovers"
+    assert popover_1.proto.popover.label == "do_work_1"
+    assert popover_1.proto.popover.icon == "🛠️"
+    assert popover_1.markdown[0].value == "**Tool:** do_work_1"
+    assert popover_1.markdown[2].value == "**Output:**"
+    assert popover_1.markdown[3].value == "Tool 1 complete"
+
+    # Verify second tool call
+    assert status_agent.children[2].value == "Starting tool 2...", "Second tool message should be displayed"
+
+    popover_2 = status_agent.children[3]
+    assert popover_2.type == "popover"
+    assert popover_2.proto.popover.label == "do_work_2"
+    assert popover_2.proto.popover.icon == "🛠️"
+
+    # Verify final supervisor message
+    assert ai_message.children[2].value == "All agents have completed their tasks successfully.", \
+        "Final supervisor message should be displayed"
+
+    assert not at.exception

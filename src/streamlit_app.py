@@ -453,10 +453,9 @@ async def handle_sub_agent_msgs(messages_agen, status, is_new):
         # Read next message
         sub_msg = await anext(messages_agen)
 
-        # Handle streaming tokens - ignore them
-        if isinstance(sub_msg, str):
-            # Skip streaming tokens in agent messages flow
-            continue
+        # this should only happen is skip_stream flag is removed
+        # if isinstance(sub_msg, str):
+        #     continue
 
         if is_new:
             st.session_state.messages.append(sub_msg)
