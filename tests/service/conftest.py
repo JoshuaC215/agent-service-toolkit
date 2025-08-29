@@ -4,12 +4,12 @@ import pytest
 from fastapi.testclient import TestClient
 from langchain_core.messages import AIMessage
 
-from service import app
-
 
 @pytest.fixture
 def test_client():
     """Fixture to create a FastAPI test client."""
+    from service import app
+
     return TestClient(app)
 
 
@@ -35,7 +35,8 @@ def mock_settings(mock_env):
 @pytest.fixture
 def mock_httpx():
     """Patch httpx.stream and httpx.get to use our test client."""
-
+    # Import here so we can patch in the service
+    from service import app
     with TestClient(app) as client:
 
         def mock_stream(method: str, url: str, **kwargs):
