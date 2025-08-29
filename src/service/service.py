@@ -244,9 +244,6 @@ async def message_generator(
                                 update_messages = [update_messages[-1]]
                         else:
                             update_messages = []
-
-                    if node in ("research_expert", "math_expert"):
-                        update_messages = []
                     new_messages.extend(update_messages)
 
             if stream_mode == "custom":
