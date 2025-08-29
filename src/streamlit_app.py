@@ -468,9 +468,11 @@ async def handle_sub_agent_msgs(messages_agen, status, is_new):
             continue
 
         # Handle transfer_back_to tool calls - these indicate a sub-agent is returning control
-        if (hasattr(sub_msg, "tool_calls") and sub_msg.tool_calls and
-                any("transfer_back_to" in tc.get("name", "") for tc in sub_msg.tool_calls)):
-
+        if (
+            hasattr(sub_msg, "tool_calls")
+            and sub_msg.tool_calls
+            and any("transfer_back_to" in tc.get("name", "") for tc in sub_msg.tool_calls)
+        ):
             # Process transfer_back_to tool calls
             for tc in sub_msg.tool_calls:
                 if "transfer_back_to" in tc.get("name", ""):
@@ -497,7 +499,7 @@ async def handle_sub_agent_msgs(messages_agen, status, is_new):
                         nested_status = status.status(
                             f"""💼 Sub Agent: {tc["name"]}""",
                             state="running" if is_new else "complete",
-                            expanded=True
+                            expanded=True,
                         )
 
                         # Recursively handle sub-agents of this sub-agent

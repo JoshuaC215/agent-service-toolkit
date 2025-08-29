@@ -79,11 +79,13 @@ agent.set_entry_point("static_messages")
 agent.add_edge("static_messages", END)
 static_agent = agent.compile(checkpointer=MemorySaver())
 
+
 @pytest.fixture
 def mock_database_settings(mock_env):
     """Fixture to ensure database settings are clean"""
     with patch("memory.settings") as mock_settings:
         yield mock_settings
+
 
 def test_agent_stream(mock_database_settings, mock_httpx):
     """Test that streaming from our static agent works correctly with token streaming."""

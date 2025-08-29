@@ -15,14 +15,19 @@ def workflow(chosen_model):
         prompt="You are a math expert. Always use one tool at a time.",
     ).with_config(tags=["skip_stream"])
 
-    research_agent = (create_supervisor(
-        [math_agent],
-        model=chosen_model,
-        tools=[web_search],
-        prompt="You are a world class researcher with access to web search. Do not do any math, you have a math expert for that. ",
-        supervisor_name="supervisor-research_expert",  # Identify the graph node as a supervisor to the math agent
-    ).compile(name="sub-agent-research_expert")  # Identify the graph node as a sub-agent to the main supervisor
-                      .with_config(tags=["skip_stream"]))  # Stream tokens are ignored for sub-agents in the UI
+    research_agent = (
+        create_supervisor(
+            [math_agent],
+            model=chosen_model,
+            tools=[web_search],
+            prompt="You are a world class researcher with access to web search. Do not do any math, you have a math expert for that. ",
+            supervisor_name="supervisor-research_expert",  # Identify the graph node as a supervisor to the math agent
+        )
+        .compile(
+            name="sub-agent-research_expert"
+        )  # Identify the graph node as a sub-agent to the main supervisor
+        .with_config(tags=["skip_stream"])
+    )  # Stream tokens are ignored for sub-agents in the UI
 
     # Create supervisor workflow
     return create_supervisor(
@@ -34,7 +39,7 @@ def workflow(chosen_model):
         ),
         add_handoff_back_messages=True,
         # UI now expects this to be True so we don't have to guess when a handoff back occurs
-        output_mode="full_history"  # otherwise when reloading conversations, the sub-agents' messages are not included
+        output_mode="full_history",  # otherwise when reloading conversations, the sub-agents' messages are not included
     )  # default name for supervisor is "supervisor".
 
 
