@@ -43,7 +43,7 @@ agents: dict[str, Agent] = {
         description="A langgraph supervisor agent", graph=langgraph_supervisor_agent
     ),
     "langgraph-supervisor-hierarchy-agent": Agent(
-        description="A langgraph supervisor agent with a hierarchy of agents",
+        description="A langgraph supervisor agent with a nested hierarchy of agents",
         graph=langgraph_supervisor_hierarchy_agent,
     ),
     "interrupt-agent": Agent(description="An agent the uses interrupts.", graph=interrupt_agent),
