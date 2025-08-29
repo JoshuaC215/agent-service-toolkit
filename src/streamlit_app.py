@@ -326,7 +326,7 @@ async def draw_messages(
                         call_results = {}
                         for tool_call in msg.tool_calls:
                             # Use different labels for transfer vs regular tool calls
-                            if "transfer_to" in tool_call["name"] or "delegate_to" in tool_call["name"]:
+                            if "transfer_to" in tool_call["name"]:
                                 label = f"""💼 Sub Agent: {tool_call["name"]}"""
                             else:
                                 label = f"""🛠️ Tool Call: {tool_call["name"]}"""
