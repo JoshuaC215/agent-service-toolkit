@@ -134,7 +134,7 @@ async def test_app_streaming(mock_agent_client):
     response = at.chat_message[1]
     tool_status = response.status[0]
     assert response.avatar == "assistant"
-    assert tool_status.label == "Tool Call: calculator"
+    assert tool_status.label == "🛠️ Tool Call: calculator"
     assert tool_status.icon == ":material/check:"
     assert tool_status.markdown[0].value == "Input:"
     assert tool_status.json[0].value == '{"expression": "6 * 7"}'

@@ -35,7 +35,7 @@ def mock_settings(mock_env):
 @pytest.fixture
 def mock_httpx():
     """Patch httpx.stream and httpx.get to use our test client."""
-    # Import here so we can patch in the service
+    # Import here so we can patch things in the service before being imported
     from service import app
     with TestClient(app) as client:
 
