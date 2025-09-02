@@ -6,10 +6,11 @@ trigger:
 - main
 
 resources:
-- repo: self
-- repository: devops-pipeline-templates
-  type: git
-  name: devops-pipeline-templates
+  repositories:
+    - repository: self
+    - repository: devops-pipeline-templates
+      type: git
+      name: devops-pipeline-templates
 
 variables:
   # Container registry service connection established during pipeline creation
