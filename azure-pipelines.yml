@@ -7,6 +7,9 @@ trigger:
 
 resources:
 - repo: self
+- repository: devops-pipeline-templates
+  type: git
+  name: devops-pipeline-templates
 
 variables:
   # Container registry service connection established during pipeline creation
@@ -15,63 +18,48 @@ variables:
   imageRepositoryUi: 'astk-ui'
   containerRegistry: 'crrooaiaiosdevgwc001.azurecr.io'
   tag: '$(Build.BuildNumber)'
-  DOCKER_IMAGE_NAME: $(imageRepository)
-  DOCKER_IMAGE_NAME_UI: $(imageRepositoryUi)
-  DOCKERFILE_PATH: $(Build.SourcesDirectory)/docker/Dockerfile.backend
-  DOCKERFILE_PATH_UI: $(Build.SourcesDirectory)/docker/Dockerfile.app
+  dockerFilePath: $(Build.SourcesDirectory)/docker/Dockerfile.backend
+  dockerFilePathUi: $(Build.SourcesDirectory)/docker/Dockerfile.app
   # Agent VM image name
-  vmImageName: 'ubuntu-latest'
+  poolName: 'pool-vla-001'
+
 
 
 stages:
-- stage: Build
+- stage: BuildAndPush
   displayName: Build and push stage
   jobs:
-  - job: Build
-    displayName: Build
-    pool:
-      vmImage: $(vmImageName)
+  - job: BuildAndPushBackend
+    displayName: Build and push backend
+    pool: $(poolName)
     steps:
-
-    - task: CmdLine@2
-      displayName: Build $(DOCKER_IMAGE_NAME) Docker Image
-      inputs:
-        script: |
-
-          echo 'docker build --build-arg -t $(containerRegistry)/$(DOCKER_IMAGE_NAME):$(tag) -f $(DOCKERFILE_PATH) .'
-          docker build -t $(containerRegistry)/$(DOCKER_IMAGE_NAME):$(tag) -f $(DOCKERFILE_PATH) .
-
-    - task: Docker@2
-      displayName: push image to the container registry
-      inputs:
-        command: push
-        repository: $(imageRepository)
-        containerRegistry: $(dockerRegistryServiceConnection)
-        tags: |
-          $(tag)
-  - job: Build_UI
-    displayName: Build-UI
-    pool:
-      vmImage: $(vmImageName)
+    - template: build_and_push_docker.yml@devops-pipeline-templates
+      parameters: 
+        dockerRegistryServiceConnection: $(dockerRegistryServiceConnection)
+        imageRepository: $(imageRepository)
+        containerRegistry: $(containerRegistry)
+        tag: $(tag)
+        dockerImageName: $(imageRepository)
+        dockerFilePath: $(dockerFilePath)
+  - job: BuildAndPushFrontend
+    displayName: Build and push frontend
+    pool: $(poolName)
     steps:
-    - task: Docker@2
-      displayName: Login to ACR
-      inputs:
-        command: login
-        containerRegistry: $(dockerRegistryServiceConnection)
+    - template: build_and_push_docker.yml@devops-pipeline-templates
+      parameters: 
+        dockerRegistryServiceConnection: $(dockerRegistryServiceConnection)
+        imageRepository: $(imageRepositoryUi)
+        containerRegistry: $(containerRegistry)
+        tag: $(tag)
+        dockerImageName: $(imageRepositoryUi)
+        dockerFilePath: $(dockerFilePathUi)
 
-    - task: CmdLine@2
-      displayName: Build Docker Images for UI
-      inputs:
-        script: |
-          echo 'docker build --build-arg -t $(containerRegistry)/$(DOCKER_IMAGE_NAME_UI):$(tag) -f $(DOCKERFILE_PATH_UI) .'
-          docker build -t $(containerRegistry)/$(DOCKER_IMAGE_NAME_UI):$(tag) -f $(DOCKERFILE_PATH_UI) .
-
-    - task: Docker@2
-      displayName: push image to the container registry
-      inputs:
-        command: push
-        repository: $(imageRepositoryUi)
-        containerRegistry: $(dockerRegistryServiceConnection)
-        tags: |
-          $(tag)
+- stage: Cleanup
+  displayName: Cleanup Job Runner
+  dependsOn: BuildAndPush
+  jobs:
+  - job: Cleanup
+    displayName: Cleanup
+    pool: $(poolName)
+    steps:
+    - template: cleanup_private_build_server.yml@devops-pipeline-templates
