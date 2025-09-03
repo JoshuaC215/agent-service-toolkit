@@ -31,14 +31,14 @@ def web_search(query: str) -> str:
 math_agent = create_react_agent(
     model=model,
     tools=[add, multiply],
-    name="math_expert",
+    name="sub-agent-math_expert",
     prompt="You are a math expert. Always use one tool at a time.",
 ).with_config(tags=["skip_stream"])
 
 research_agent = create_react_agent(
     model=model,
     tools=[web_search],
-    name="research_expert",
+    name="sub-agent-research_expert",
     prompt="You are a world class researcher with access to web search. Do not do any math.",
 ).with_config(tags=["skip_stream"])
 
@@ -51,7 +51,9 @@ workflow = create_supervisor(
         "For current events, use research_agent. "
         "For math problems, use math_agent."
     ),
-    add_handoff_back_messages=False,
+    add_handoff_back_messages=True,
+    # UI now expects this to be True so we don't have to guess when a handoff back occurs
+    output_mode="full_history",  # otherwise when reloading conversations, the sub-agents' messages are not included
 )
 
 langgraph_supervisor_agent = workflow.compile()

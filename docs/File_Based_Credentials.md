@@ -1,4 +1,4 @@
-# File Based Crendentials 
+# File Based Crendentials
 
 As you develop your agents, you might discover that you have credentials that you need to store on disk that you don't want stored in your Git Repo or baked into your container image.
 
@@ -7,13 +7,13 @@ Examples:
 - Certificates or private keys needed for communication with external APIs
 
 
-The `privatecredentials/` folder give you a quick place to put these files in development. 
+The `privatecredentials/` folder give you a quick place to put these files in development.
 
 
 ## How it works
 
 *Protection*
-- The .dockerignore file excludes the entire folder to keep it out of the build process.  
+- The .dockerignore file excludes the entire folder to keep it out of the build process.
 - The .gitignore files only allows the `.gitkeep` file -- since git doesn't track empty folders.
 
 
@@ -34,7 +34,7 @@ The syncing feature of Docker Watch isn't used for these reasons:
 
 For each file based credential, do the following:
 1. Put the file (e.g. `example-creds.txt`) into the `privatecredentials/` folder
-2. In your `.env` file, create an environment variable for the credential (e.g `EXAMPLE_CREDENTIAL=/privatecredentials/example-creds.txt`) that your agent will use to reference the location at runtime 
+2. In your `.env` file, create an environment variable for the credential (e.g `EXAMPLE_CREDENTIAL=/privatecredentials/example-creds.txt`) that your agent will use to reference the location at runtime
 3. In your agent, use the environment variable wherever you need the path to the credential
 
 
@@ -72,5 +72,3 @@ There are a number of approaches:
 - Use the secrets management feature of your cloud hosting environment (Google Cloud Secrets, AWS Secrets Manager, etc)
 - Use a 3rd party secrets management platform
 - Manually place the credentials on your Docker hosts and mount volumes to map the credentials to the container (Less secure)
-
-

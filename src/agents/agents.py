@@ -9,6 +9,7 @@ from agents.command_agent import command_agent
 from agents.interrupt_agent import interrupt_agent
 from agents.knowledge_base_agent import kb_agent
 from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
+from agents.langgraph_supervisor_hierarchy_agent import langgraph_supervisor_hierarchy_agent
 from agents.rag_assistant import rag_assistant
 from agents.research_assistant import research_assistant
 from schema import AgentInfo
@@ -39,6 +40,10 @@ agents: dict[str, Agent] = {
     "bg-task-agent": Agent(description="A background task agent.", graph=bg_task_agent),
     "langgraph-supervisor-agent": Agent(
         description="A langgraph supervisor agent", graph=langgraph_supervisor_agent
+    ),
+    "langgraph-supervisor-hierarchy-agent": Agent(
+        description="A langgraph supervisor agent with a nested hierarchy of agents",
+        graph=langgraph_supervisor_hierarchy_agent,
     ),
     "interrupt-agent": Agent(description="An agent the uses interrupts.", graph=interrupt_agent),
     "knowledge-base-agent": Agent(

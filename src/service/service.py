@@ -233,17 +233,17 @@ async def message_generator(
                     updates = updates or {}
                     update_messages = updates.get("messages", [])
                     # special cases for using langgraph-supervisor library
-                    if node == "supervisor":
-                        # Get only the last ToolMessage since is it added by the
-                        # langgraph lib and not actual AI output so it won't be an
-                        # independent event
+                    if "supervisor" in node or "sub-agent" in node:
+                        # the only tools that come from the actual agent are the handoff and handback tools
                         if isinstance(update_messages[-1], ToolMessage):
-                            update_messages = [update_messages[-1]]
+                            if "sub-agent" in node and len(update_messages) > 1:
+                                # If this is a sub-agent, we want to keep the last 2 messages - the handback tool, and it's result
+                                update_messages = update_messages[-2:]
+                            else:
+                                # If this is a supervisor, we want to keep the last message only - the handoff result. The tool comes from the 'agent' node.
+                                update_messages = [update_messages[-1]]
                         else:
                             update_messages = []
-
-                    if node in ("research_expert", "math_expert"):
-                        update_messages = []
                     new_messages.extend(update_messages)
 
             if stream_mode == "custom":

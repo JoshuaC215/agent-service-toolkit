@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+import pytest
 from langchain_core.messages import AIMessage, ToolCall, ToolMessage
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, MessagesState, StateGraph
@@ -79,7 +80,14 @@ agent.add_edge("static_messages", END)
 static_agent = agent.compile(checkpointer=MemorySaver())
 
 
-def test_agent_stream(mock_httpx):
+@pytest.fixture
+def mock_database_settings(mock_env):
+    """Fixture to ensure database settings are clean"""
+    with patch("memory.settings") as mock_settings:
+        yield mock_settings
+
+
+def test_agent_stream(mock_database_settings, mock_httpx):
     """Test that streaming from our static agent works correctly with token streaming."""
     agent_meta = Agent(description="A static agent.", graph=static_agent)
     with patch.dict("agents.agents.agents", {"static-agent": agent_meta}, clear=True):
