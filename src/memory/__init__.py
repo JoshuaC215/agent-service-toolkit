@@ -1,8 +1,10 @@
 from contextlib import AbstractAsyncContextManager
+from typing import Optional
 
 from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.store.base import IndexConfig
 
 from core.settings import DatabaseType, settings
 from memory.mongodb import get_mongo_saver
@@ -25,16 +27,19 @@ def initialize_database() -> AbstractAsyncContextManager[
         return get_sqlite_saver()
 
 
-def initialize_store():
+def initialize_store(index_config: Optional[IndexConfig]=None):
     """
-    Initialize the appropriate store based on configuration.
+    Args:
+        index_config: An embedding configuration used for indexing documents for semantic search in the store.
+
+    Initialize the appropriate store based on configuration
     Returns an async context manager for the initialized store.
     """
     if settings.DATABASE_TYPE == DatabaseType.POSTGRES:
-        return get_postgres_store()
+        return get_postgres_store(index_config)
     # TODO: Add Mongo store - https://pypi.org/project/langgraph-store-mongodb/
     else:  # Default to SQLite
-        return get_sqlite_store()
+        return get_sqlite_store(index_config)
 
 
 __all__ = ["initialize_database", "initialize_store"]
