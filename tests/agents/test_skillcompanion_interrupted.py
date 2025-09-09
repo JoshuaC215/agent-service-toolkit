@@ -1,7 +1,7 @@
-import os
 import pytest
-from langchain_core.messages import AIMessage
-from agents.skillcompanion_interrupted import finish_skill_check, AgentState
+
+from agents.skillcompanion_interrupted import AgentState, finish_skill_check
+
 
 @pytest.mark.asyncio
 async def test_finish_skill_check_without_url_parameters(monkeypatch):
@@ -14,6 +14,7 @@ async def test_finish_skill_check_without_url_parameters(monkeypatch):
     msg = result["messages"][0].content
     assert "https://bento.roosi.ai/?kiskill=Advanced" in msg
     assert "hubspot_id" not in msg
+
 
 @pytest.mark.asyncio
 async def test_finish_skill_check_with_hubspot_id(monkeypatch):

@@ -173,10 +173,12 @@ def test_app_new_chat_btn(mock_agent_client):
     assert at.session_state.thread_id != thread_id_a
     assert not at.exception
 
+
 @pytest.mark.asyncio
 async def test_skill_check_link_bento(monkeypatch, mock_agent_client):
     """Skill-Check-Abschluss ohne hubspot_id: Link zu Bento mit kiskill"""
     from agents.skillcompanion_interrupted import AgentState, finish_skill_check
+
     state = AgentState(category="Beginner")
     config = {"configurable": {}}
     result = await finish_skill_check(state, config)
@@ -184,10 +186,12 @@ async def test_skill_check_link_bento(monkeypatch, mock_agent_client):
     assert "https://bento.roosi.ai/?kiskill=Beginner" in msg
     assert "hubspot_id" not in msg
 
+
 @pytest.mark.asyncio
 async def test_skill_check_link_hubspot(monkeypatch, mock_agent_client):
     """Skill-Check-Abschluss mit hubspot_id: Link zu Hubspot-Basis-URL"""
     from agents.skillcompanion_interrupted import AgentState, finish_skill_check
+
     state = AgentState(category="Expert")
     config = {"configurable": {"url_parameters": {"hubspot_id": "abc123"}}}
     monkeypatch.setenv("HUBSPOT_URL", "https://hubspot.example.com")

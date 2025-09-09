@@ -1,149 +1,188 @@
-from datetime import datetime, timedelta, timezone
-from os import environ, getenv
-import json
-import requests
-from langfuse import Langfuse
-from pandas import concat, DataFrame
-from pandas import to_datetime, read_parquet
+from os import getenv
+
 import matplotlib
 import matplotlib.pyplot as plt
+import requests
+from dotenv import load_dotenv
+from pandas import DataFrame
 
-def langfuse_trace_call(public_key, secret_key, lf_url, page,name,fromTimestamp,toTimestamp):
-
-        response = requests.get(
-            f"{lf_url}/api/public/traces",
-            auth=(
-                f"{public_key}",
-                f"{secret_key}",
-            ),
-            params={"page": f"{page}",
-                    "name": f"{name}",
-                    "fromTimestamp": f"{fromTimestamp}",
-                    "toTimestamp": f"{toTimestamp}"}
-        )
-        try:
-            response.raise_for_status()
-            return response
-        except requests.HTTPError as err:
-            raise Exception(f"HTTP error occurred: {err}")
-        except Exception as err:
-            raise Exception(f"Other error occurred: {err}")
-
-def get_users(tenant):
-    token = tenant['token']
-    base_url = tenant['owuiurl']
-    headers = {
-            "Authorization": f"Bearer {token}",
-            "accept": "application/json",
-        }
-    response = requests.get(f"{base_url}/api/v1/users/", headers=headers)
-
-    return response.json()
-
-def get_LF_traces(public_key, secret_key, lfurl, name_agent,fromTimestamp,toTimestamp,start=0, end=-1,):
-    
-        n = 1
-        l = 1
-
-        traces = []
-        while l > 0:
-            trace = langfuse_trace_call(public_key, secret_key, lfurl, page=n,name=name_agent,fromTimestamp=fromTimestamp,toTimestamp=toTimestamp)
-            traces = traces + trace.json()["data"]
-            n = n + 1
-            l = len(trace.json()["data"])
-
-        return traces
-
-tenants = [
-    {
-        "user": "demo",
-        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjQwNDA5NTRmLWUzN2UtNGFkYy04N2VlLWFhZTUwMmNjY2FmZiJ9.62OPYfEWJjURaDCmpvT21GRYtmRByHm-OPSffDjgJno",
-        "lfsk": "sk-lf-9be92eb2-0000-434c-8c1b-efecd2d50ff4",
-        "lfpk": "pk-lf-7de86adb-d32f-403e-8ce0-c4998701efea",
-        "owuiurl": 'https://demo.roosi.ai',
-        "lfurl":  "https://langfuse.roosi.ai",
-        "name" : "skillcompanion_interrupted",
-        "fromTimestamp":"2025-08-25T11:00:00Z",
-        "toTimestamp":"2025-08-25T13:00:00Z"
-    },
-    ]
+# Load .env so subprocess can pick up environment configuration
+load_dotenv()
 
 
-trace_dataframe = DataFrame()
-extracted = {}
-for tenant in tenants:
-    if tenant['user'] not in ["akdb"]:
-        print(f"Extracting {tenant['user']} traces")
-        # print(datetime.now())
-        langfuse = Langfuse(public_key= tenant['lfpk'], secret_key= tenant['lfsk'], host=tenant['lfurl'])
-
-        # Allow overrides via environment variables passed from Taskfile
-        from_env = getenv("FROM_TIMESTAMP")
-        to_env = getenv("TO_TIMESTAMP")
-        name_env = getenv("AGENT_NAME")
-
-        name = name_env if name_env else tenant['name']
-        from_ts = from_env if from_env else tenant['fromTimestamp']
-        to_ts = to_env if to_env else tenant['toTimestamp']
-
-        traces = get_LF_traces(
-            tenant['lfpk'],
-            tenant['lfsk'],
-            tenant['lfurl'],
-            name_agent=name,
-            fromTimestamp=from_ts,
-            toTimestamp=to_ts
-        )
-        extracted[tenant['user']] = traces
-
-rows = []
-for entry in extracted[tenants[0]['user']]:
+def langfuse_trace_call(
+    public_key: str,
+    secret_key: str,
+    lf_url: str,
+    page: int,
+    name: str,
+    fromTimestamp: str,
+    toTimestamp: str,
+):
+    response = requests.get(
+        f"{lf_url}/api/public/traces",
+        auth=(f"{public_key}", f"{secret_key}"),
+        params={
+            "page": f"{page}",
+            "name": f"{name}",
+            "fromTimestamp": f"{fromTimestamp}",
+            "toTimestamp": f"{toTimestamp}",
+        },
+    )
     try:
-        row = {
-            'id': entry.get('id'),
-            'timestamp': entry.get('timestamp'),
-            'userId': entry.get('userId'),
-            'sessionId': entry.get('sessionId'),
-            'username': entry.get('input', {}).get('varables', {}).get('{{USER_NAME}}'),
-            'output': entry.get('output'),
-            'category': entry['output'].get('category')
-        }
-        rows.append(row)
-    except AttributeError as e:
-         print(f"Exception: {e}")
+        response.raise_for_status()
+        return response
+    except requests.HTTPError as err:
+        raise Exception(f"HTTP error occurred: {err}")
+    except Exception as err:
+        raise Exception(f"Other error occurred: {err}")
 
-df = DataFrame(rows)
 
-beginner_count = df['category'].str.contains(r'Beginner', case=False, na=False).sum()
-advanced_count = df['category'].str.contains(r'Advanced', case=False, na=False).sum()
-expert_count = df['category'].str.contains(r'Expert', case=False, na=False).sum()
+def get_LF_traces(
+    public_key: str,
+    secret_key: str,
+    lfurl: str,
+    name_agent: str,
+    fromTimestamp: str,
+    toTimestamp: str,
+    start: int = 0,
+    end: int = -1,
+) -> list[dict]:
+    page_num = 1
+    batch_len = 1
+    traces: list[dict] = []
+    while batch_len > 0:
+        trace = langfuse_trace_call(
+            public_key,
+            secret_key,
+            lfurl,
+            page=page_num,
+            name=name_agent,
+            fromTimestamp=fromTimestamp,
+            toTimestamp=toTimestamp,
+        )
+        data = trace.json().get("data", [])
+        traces += data
+        page_num += 1
+        batch_len = len(data)
+    return traces
 
-# Create bar chart for skill categories
-try:
-    
-    matplotlib.use("Agg")  # Use non-interactive backend suitable for headless environments
-    
 
-    labels = ["Beginner", "Advanced", "Expert"]
-    values = [int(beginner_count), int(advanced_count), int(expert_count)]
+def generate_skillcompanion_png(
+    from_timestamp: str,
+    to_timestamp: str,
+    agent_name: str = "skillcompanion_interrupted",
+    output_path: str | None = None,
+) -> str:
+    """
+    Generate the Skill Companion bar chart PNG for the given time range.
 
-    fig, ax = plt.subplots(figsize=(6, 4.5))
-    bars = ax.bar(labels, values, color=["#4CAF50", "#2196F3", "#9C27B0"])
-    ax.set_title("Skill Check Ergebnisse", pad=16)
-    ax.set_ylabel("Anzahl")
-    upper = max(values) if max(values) > 0 else 1
-    ax.set_ylim(0, upper * 1.3)  # add headroom above bars
-    from matplotlib.ticker import MaxNLocator
-    ax.yaxis.set_major_locator(MaxNLocator(integer=True))  # integer-only ticks
-    ax.grid(True, axis='y', linestyle='--', alpha=0.5)  # add grid on y-axis
-    ax.bar_label(bars, labels=[str(v) for v in values], padding=3)
+    Args:
+        from_timestamp: ISO8601 timestamp (e.g. 2025-08-25T00:00:00Z)
+        to_timestamp: ISO8601 timestamp (e.g. 2025-08-25T23:59:59Z)
+        agent_name: Langfuse trace name to filter on
+        output_path: If provided, save PNG to this path; otherwise use OUTPUT_PATH env var or default file name
 
-    fig.tight_layout()
-    output_path = "skill_levels_bar_chart.png"
-    fig.savefig(output_path, dpi=150, bbox_inches="tight")
-    print(f"Saved bar chart to {output_path}")
-except ImportError:
-    print("matplotlib is not installed. Install with: 'uv add matplotlib' or 'pip install matplotlib' to generate the chart.")
-except Exception as e:
-    print(f"Chart generation failed: {e}")
+    Returns:
+        The file system path where the PNG was written.
+    """
+    # Read configuration from environment (.env)
+    lf_public_key = getenv("LANGFUSE_PUBLIC_KEY")
+    lf_secret_key = getenv("LANGFUSE_SECRET_KEY")
+    lf_url = getenv("LANGFUSE_HOST")
+    # Optional: present for completeness if needed later
 
+    if not lf_public_key or not lf_secret_key or not lf_url:
+        raise RuntimeError(
+            "Missing required env vars: LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, and LANGFUSE_HOST must be set."
+        )
+
+    traces = get_LF_traces(
+        lf_public_key,
+        lf_secret_key,
+        lf_url,
+        name_agent=agent_name,
+        fromTimestamp=from_timestamp,
+        toTimestamp=to_timestamp,
+    )
+
+    # Build DataFrame rows
+    rows: list[dict] = []
+    for entry in traces:
+        try:
+            row = {
+                "id": entry.get("id"),
+                "timestamp": entry.get("timestamp"),
+                "userId": entry.get("userId"),
+                "sessionId": entry.get("sessionId"),
+                "username": entry.get("input", {}).get("variables", {}).get("{{USER_NAME}}"),
+                "output": entry.get("output"),
+                "category": (entry.get("output") or {}).get("category")
+                if isinstance(entry.get("output"), dict)
+                else None,
+            }
+            rows.append(row)
+        except Exception:
+            # Ignore malformed entries
+            pass
+
+    df = DataFrame(rows)
+
+    # Counts
+    if not df.empty and "category" in df.columns:
+        beginner_count = df["category"].str.contains(r"Beginner", case=False, na=False).sum()
+        advanced_count = df["category"].str.contains(r"Advanced", case=False, na=False).sum()
+        expert_count = df["category"].str.contains(r"Expert", case=False, na=False).sum()
+    else:
+        beginner_count = 0
+        advanced_count = 0
+        expert_count = 0
+
+    # Plot
+    try:
+        matplotlib.use("Agg")  # Non-interactive backend
+        labels = ["Beginner", "Advanced", "Expert"]
+        values = [int(beginner_count), int(advanced_count), int(expert_count)]
+        fig, ax = plt.subplots(figsize=(6, 4.5))
+        bars = ax.bar(labels, values, color=["#4CAF50", "#2196F3", "#9C27B0"])
+        ax.set_title("Skill Check Ergebnisse", pad=16)
+        ax.set_ylabel("Anzahl")
+        upper = max(values) if max(values) > 0 else 1
+        ax.set_ylim(0, upper * 1.3)
+        from matplotlib.ticker import MaxNLocator
+
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+        ax.grid(True, axis="y", linestyle="--", alpha=0.5)
+        ax.bar_label(bars, labels=[str(v) for v in values], padding=3)
+        fig.tight_layout()
+        # Resolve output path
+        out_path = output_path or getenv("OUTPUT_PATH") or "skill_levels_bar_chart.png"
+        fig.savefig(out_path, dpi=150, bbox_inches="tight")
+        return out_path
+    except ImportError:
+        raise RuntimeError(
+            "matplotlib is not installed. Install with: 'uv add matplotlib' or 'pip install matplotlib'."
+        )
+    except Exception as e:
+        raise RuntimeError(f"Chart generation failed: {e}")
+
+
+if __name__ == "__main__":
+    # CLI entry: use env vars with sensible defaults matching previous script behavior
+    default_from = "2025-08-25T11:00:00Z"
+    default_to = "2025-08-25T13:00:00Z"
+    default_agent = "skillcompanion_interrupted"
+    from_env = getenv("FROM_TIMESTAMP") or default_from
+    to_env = getenv("TO_TIMESTAMP") or default_to
+    out_env = getenv("OUTPUT_PATH")
+    try:
+        saved = generate_skillcompanion_png(
+            from_env, to_env, agent_name=default_agent, output_path=out_env
+        )
+        print(f"Saved bar chart to {saved}")
+    except Exception as e:
+        # Print error and exit non-zero
+        import sys
+
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)

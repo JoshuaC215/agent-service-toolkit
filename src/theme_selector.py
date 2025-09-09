@@ -3,8 +3,8 @@ import logging
 import os
 import shutil
 
-from variants.variant_config import VariantConfig
 from schema import VariantIdentifier
+from variants.variant_config import VariantConfig
 
 logging.basicConfig(level="INFO", format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)

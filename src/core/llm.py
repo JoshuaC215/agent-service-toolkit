@@ -73,9 +73,6 @@ def get_model(model_name: AllModelEnum, owui_api_key: str = "") -> ModelT:
     # NOTE: models with streaming=True will send tokens as they are generated
     # if the /stream endpoint is called with stream_tokens=True (the default)
     api_model_name = _MODEL_TABLE.get(model_name)
-    if not api_model_name:
-        if os.getenv("OWUI_BASE_URL") is None:
-                raise ValueError(f"Unsupported model: {model_name}")
     if model_name in OpenAIModelName:
         return ChatOpenAI(model_name=api_model_name, temperature=0.5, streaming=True)
     if model_name in OpenAICompatibleName:
@@ -146,11 +143,10 @@ def get_model(model_name: AllModelEnum, owui_api_key: str = "") -> ModelT:
     #     )
     if model_name in FakeModelName:
         return FakeToolModel(responses=["This is a test response from the fake model."])
-    
 
     if not api_model_name:
         if os.getenv("OWUI_BASE_URL") is None:
-                raise ValueError(f"Unsupported model: {model_name}")
+            raise ValueError(f"Unsupported model: {model_name}")
         else:
             base_url = os.getenv("OWUI_CHAT_API_URL")
         return ChatOpenAI(
@@ -160,5 +156,3 @@ def get_model(model_name: AllModelEnum, owui_api_key: str = "") -> ModelT:
             openai_api_base=base_url,
             openai_api_key=SecretStr(owui_api_key),
         )
-
-    

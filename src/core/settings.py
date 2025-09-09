@@ -1,7 +1,6 @@
 from enum import StrEnum
 from json import loads
 from typing import Annotated, Any
-import os
 
 from dotenv import find_dotenv
 from pydantic import (
@@ -27,9 +26,9 @@ from schema.models import (
     OpenAICompatibleName,
     OpenAIModelName,
     OpenRouterModelName,
+    OpenwebuiModelName,
     Provider,
     VertexAIModelName,
-    OpenwebuiModelName,
 )
 
 
@@ -141,7 +140,7 @@ class Settings(BaseSettings):
             Provider.FAKE: self.USE_FAKE_MODEL,
             Provider.AZURE_OPENAI: self.AZURE_OPENAI_API_KEY,
             Provider.OPENROUTER: self.OPENROUTER_API_KEY,
-            Provider.OPENWEBUI: self.OWUI_BASE_URL, # Key will be provided through FrontEnd - just URL necessary at this point
+            Provider.OPENWEBUI: self.OWUI_BASE_URL,  # Key will be provided through FrontEnd - just URL necessary at this point
         }
         active_keys = [k for k, v in api_keys.items() if v]
         if not active_keys:

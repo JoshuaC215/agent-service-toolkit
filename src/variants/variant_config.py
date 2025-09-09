@@ -1,11 +1,14 @@
 import os
-import yaml
 from typing import Any
+
+import yaml
+
 from schema import VariantIdentifier
 
 
 class VariantConfig:
-    config: dict[str, Any] | None  = None
+    config: dict[str, Any] | None = None
+
     def __init__(self, identifier: VariantIdentifier):
         self.identifier = identifier
         self.config = self.get_config()
@@ -14,28 +17,30 @@ class VariantConfig:
         """Returns a config value by key or default value provided"""
         config = self.get_config()
         return config.get(key, default)
-    
+
     def get_or_fail(self, key: str) -> Any:
         """Returns a config value by key or fails if key not provided"""
         # TODO: may be expanded with type definition
         config = self.get_config()
 
         if key not in config:
-            raise ValueError(f"Configuration {key} missing in {self.identifier['streamlit_app_name']}/{self.identifier['variant']}")
+            raise ValueError(
+                f"Configuration {key} missing in {self.identifier['streamlit_app_name']}/{self.identifier['variant']}"
+            )
 
-        return config[key] 
+        return config[key]
 
     def get_config(self) -> dict[str, Any]:
         if self.config is not None:
             return self.config
 
-        identifer = self.identifier
-        base_path = f"{os.path.dirname(os.path.abspath(__file__))}/{identifer['streamlit_app_name'].lower()}"
-        
-        identifer['variant'] = "" if identifer['variant'] is None else identifer['variant']
-        
-        if os.path.exists(f"{base_path}/{identifer['variant']}.yml"):
-            filename = identifer['variant']
+        identifier = self.identifier
+        base_path = f"{os.path.dirname(os.path.abspath(__file__))}/{identifier['streamlit_app_name'].lower()}"
+
+        identifier["variant"] = "" if identifier["variant"] is None else identifier["variant"]
+
+        if os.path.exists(f"{base_path}/{identifier['variant']}.yml"):
+            filename = identifier["variant"]
         elif os.path.exists(f"{base_path}/default.yml"):
             filename = "default"
         else:

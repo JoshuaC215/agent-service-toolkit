@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 from langchain.prompts import SystemMessagePromptTemplate
 from langchain_core.language_models.base import LanguageModelInput
@@ -67,13 +67,13 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
     question_count = variant_config.get_or_fail("question_limit")
     promptfile = variant_config.get_or_fail("ask_question_prompt_filename")
 
-
     answers_json = json.dumps(answers, ensure_ascii=False)
     model = state.get("llm_model", None)
     if model is None:
         state["llm_model"] = get_model(
             config["metadata"]["model"], config["metadata"]["owui_token"]
         )
+    llm = cast(BaseChatModel | Runnable[LanguageModelInput, Any], state.get("llm_model"))
     # Use prompts directory instead of agents_questions
     prompt_template = load_prompt(
         f"../prompts/{promptfile}",
@@ -90,7 +90,7 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
     ):
         messages = [SystemMessage(content=str(system_prompt))] + messages
     try:
-        model_runnable = wrap_model(state.get("llm_model", None), messages)
+        model_runnable = wrap_model(llm, str(system_prompt))
         llm_response = await model_runnable.ainvoke(state, config)
     except Exception as e:
         logger.error(f"Exception: {e}")
@@ -154,8 +154,9 @@ async def categorize_user(state: AgentState, config: RunnableConfig):
                 and str(prompt) in getattr(messages[0], "content", "")
             ):
                 messages = [SystemMessage(content=str(prompt))] + messages
+            llm = cast(BaseChatModel | Runnable[LanguageModelInput, Any], state.get("llm_model"))
             try:
-                model_runnable = wrap_model(state.get("llm_model", None), messages)
+                model_runnable = wrap_model(llm, str(prompt))
                 llm_response = await model_runnable.ainvoke(state, config)
             except Exception as e:
                 logger.error(f"Exception: {e}")
@@ -174,14 +175,21 @@ async def finish_skill_check(state: AgentState, config: RunnableConfig) -> dict:
     Returns:
         dict: Contains the final AIMessage with the result and resource link.
     """
-    category = state.get("category", "Beginner")
+    # Normalize category: treat None or empty as 'Beginner'
+    cat_raw = state.get("category")
+    if isinstance(cat_raw, str):
+        category = cat_raw.strip() or "Beginner"
+    else:
+        category = "Beginner"
 
-    url_parameters = config["configurable"].get("url_parameters")
+    url_parameters = config.get("configurable", {}).get("url_parameters")
     url = f"https://bento.roosi.ai/?kiskill={category}"
-    if url_parameters and "hubspot_id" in url_parameters:
-        hubspot_url = os.getenv("HUBSPOT_URL", "https://hubspot.de")
-        hubspot_id = url_parameters["hubspot_id"]
-        url = f"{hubspot_url.rstrip('/')}/?hubspot_id={hubspot_id}"
+    if isinstance(url_parameters, dict):
+        hubspot_id = url_parameters.get("hubspot_id")
+        hubspot_id = str(hubspot_id).strip() if hubspot_id is not None else ""
+        if hubspot_id:
+            hubspot_url = os.getenv("HUBSPOT_URL", "https://hubspot.de")
+            url = f"{hubspot_url.rstrip('/')}/?hubspot_id={hubspot_id}"
     md_link = f"[Weitere Informationen]({url})"
 
     msg = (
@@ -190,11 +198,7 @@ async def finish_skill_check(state: AgentState, config: RunnableConfig) -> dict:
         f"Diese Information wird nun an unser System weitergeleitet, um Ihnen passende Ressourcen bereitzustellen.\n\n"
     )
 
-
-    teaser_message = (
-        f"{md_link}\n\n"
-        f"Es folgen entsprechende nächste Schritte."
-    )
+    teaser_message = f"{md_link}\n\nEs folgen entsprechende nächste Schritte."
 
     variant_config = VariantConfig(config["configurable"].get("variant", None))
     msg = msg + teaser_message if (variant_config.get("teaser_active", True)) else msg

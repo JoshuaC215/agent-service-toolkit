@@ -11,11 +11,45 @@ from pydantic import ValidationError
 
 from client import AgentClient, AgentClientError
 from client.auth import Auth
-from variants.variant_config import VariantConfig
 from schema import ChatHistory, ChatMessage, VariantIdentifier
 from schema.task_data import TaskData, TaskDataStatus
+from variants.variant_config import VariantConfig
 
 logger = logging.getLogger(__name__)
+
+
+# Helper: determine if current user has admin privileges
+def _is_admin_user(user: dict) -> bool:
+    try:
+        if not isinstance(user, dict):
+            return False
+
+        # Direct role string
+        role = str(user.get("role") or "").strip().lower()
+        if role == "admin":
+            return True
+
+        # Common boolean flags
+        for k in ("is_admin", "isAdmin", "admin"):
+            if bool(user.get(k)):
+                return True
+
+        # Roles collection (safe to iterate)
+        roles_seq = list(user.get("roles") or [])
+        if any(str(r).strip().lower() == "admin" for r in roles_seq):
+            return True
+
+        # Permissions/scopes/authorities collection (safe to iterate)
+        perms_seq = list(
+            (user.get("permissions") or user.get("scopes") or user.get("authorities")) or []
+        )
+        if any(str(p).strip().lower() == "admin" for p in perms_seq):
+            return True
+
+    except Exception:
+        # Be conservative on unexpected shapes
+        pass
+    return False
 
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
@@ -30,6 +64,7 @@ logger = logging.getLogger(__name__)
 
 
 HIDE_SIDEBAR = True
+
 
 # TODO: maybe hide input when check finished?
 async def main(config: VariantConfig) -> None:
@@ -79,6 +114,438 @@ async def main(config: VariantConfig) -> None:
     if "url_parameters" not in st.session_state:
         st.session_state.url_parameters = st.query_params.to_dict()
 
+    # Evaluation dialog/session defaults and trigger button (always visible)
+    if "evaluation_dialog_open" not in st.session_state:
+        st.session_state.evaluation_dialog_open = False
+    if "eval_from_date" not in st.session_state:
+        st.session_state.eval_from_date = None
+    if "eval_to_date" not in st.session_state:
+        st.session_state.eval_to_date = None
+    if "eval_running" not in st.session_state:
+        st.session_state.eval_running = False
+    if "eval_image_path" not in st.session_state:
+        st.session_state.eval_image_path = None
+    if "eval_error" not in st.session_state:
+        st.session_state.eval_error = None
+    # Evaluation requires explicit login inside the modal
+    if "eval_require_login" not in st.session_state:
+        st.session_state.eval_require_login = False
+    # Initialize time inputs defaults (UTC)
+    from datetime import time as _time
+
+    if "eval_from_time" not in st.session_state:
+        st.session_state.eval_from_time = _time(hour=0, minute=0)
+    if "eval_to_time" not in st.session_state:
+        st.session_state.eval_to_time = _time(hour=23, minute=59, second=59)
+
+    # Persistent "Evaluation" button (hide after starting Skill-Companion)
+    # Hide also when chat input is active
+    if st.session_state.get("show_start_button", True) and not st.session_state.get(
+        "show_chat_input", False
+    ):
+        col_eval_a, col_eval_b = st.columns([4, 1])
+        with col_eval_b:
+            if st.button("Evaluation", key="open_evaluation"):
+                st.session_state.evaluation_dialog_open = True
+                # Force login flow inside modal before showing date/time
+                st.session_state.eval_require_login = True
+                # clear previous results/errors
+                st.session_state.eval_image_path = None
+                st.session_state.eval_error = None
+
+    # Modal evaluation dialog (true modal overlay if Streamlit supports st.dialog)
+    if st.session_state.evaluation_dialog_open:
+        _dialog_callable = getattr(st, "dialog", None)
+        # Ensure login/admin is required before showing evaluation UI
+        if "owui-token" not in st.session_state or (
+            "user" in st.session_state and not _is_admin_user(st.session_state.get("user", {}))
+        ):
+            st.session_state.eval_require_login = True
+        if callable(_dialog_callable):
+
+            @st.dialog("Evaluation")
+            def _eval_dialog():
+                # Require explicit login inside modal before evaluation (inline form using Auth.login)
+                if (
+                    st.session_state.get("eval_require_login", False)
+                    or "owui-token" not in st.session_state
+                ):
+                    st.caption("Bitte melden Sie sich an, um die Auswertung zu starten.")
+                    eval_username = st.text_input("Username", key="eval_username_modal2")
+                    eval_password = st.text_input(
+                        "Password", type="password", key="eval_password_modal2"
+                    )
+                    col_login_a, col_login_b = st.columns([1, 1])
+                    with col_login_a:
+                        if st.button("Login", key="eval_login_btn_modal2"):
+                            try:
+                                from client.auth import Auth as _Auth
+
+                                user = _Auth(default_login=True).login(eval_username, eval_password)
+                                if user:
+                                    st.session_state["owui-token"] = user["token"]
+                                    st.session_state["user"] = user
+                                    st.session_state["run_id"] = str(uuid.uuid4())
+                                    if _is_admin_user(user):
+                                        st.session_state.eval_require_login = False
+                                        st.rerun()
+                                    else:
+                                        st.error(
+                                            "Nur Admins dürfen die Auswertung verwenden. Bitte mit einem Admin-Account anmelden."
+                                        )
+                                else:
+                                    st.error("Login fehlgeschlagen")
+                            except Exception as e:
+                                st.error(f"Login Fehler: {e}")
+                    with col_login_b:
+                        if st.button("Schließen", key="eval_close_notlogged2"):
+                            st.session_state.evaluation_dialog_open = False
+                            st.session_state.eval_image_path = None
+                            st.session_state.eval_error = None
+                            st.session_state.eval_require_login = False
+                            st.rerun()
+                else:
+                    # Logged in flow: date-only inputs (UTC boundaries)
+                    from datetime import datetime as _dt
+
+                    today_date = _dt.utcnow().date()
+                    if st.session_state.eval_from_date is None:
+                        st.session_state.eval_from_date = today_date
+                    if st.session_state.eval_to_date is None:
+                        st.session_state.eval_to_date = today_date
+
+                    # Date and time inputs (UTC) shown together
+                    from datetime import time as _time
+
+                    if (
+                        "eval_from_time" not in st.session_state
+                        or st.session_state.eval_from_time is None
+                    ):
+                        st.session_state.eval_from_time = _time(hour=0, minute=0, second=0)
+                    if (
+                        "eval_to_time" not in st.session_state
+                        or st.session_state.eval_to_time is None
+                    ):
+                        st.session_state.eval_to_time = _time(hour=23, minute=59, second=59)
+
+                    col_from_date, col_from_time = st.columns([2, 1])
+                    with col_from_date:
+                        st.session_state.eval_from_date = st.date_input(
+                            "Von (Datum, UTC)",
+                            value=st.session_state.eval_from_date,
+                            key="eval_from_date_input",
+                        )
+                    with col_from_time:
+                        st.session_state.eval_from_time = st.time_input(
+                            "Von (Uhrzeit, UTC)",
+                            value=st.session_state.eval_from_time,
+                            key="eval_from_time_input",
+                            step=60,
+                        )
+
+                    col_to_date, col_to_time = st.columns([2, 1])
+                    with col_to_date:
+                        st.session_state.eval_to_date = st.date_input(
+                            "Bis (Datum, UTC)",
+                            value=st.session_state.eval_to_date,
+                            key="eval_to_date_input",
+                        )
+                    with col_to_time:
+                        st.session_state.eval_to_time = st.time_input(
+                            "Bis (Uhrzeit, UTC)",
+                            value=st.session_state.eval_to_time,
+                            key="eval_to_time_input",
+                            step=60,
+                        )
+
+                    col_gen, col_close = st.columns([1, 1])
+                    with col_gen:
+                        if st.button("Generieren", key="eval_generate_btn"):
+                            # Validate range with date and time together
+                            from_dt = _dt.combine(
+                                st.session_state.eval_from_date, st.session_state.eval_from_time
+                            )
+                            to_dt = _dt.combine(
+                                st.session_state.eval_to_date, st.session_state.eval_to_time
+                            )
+                            if from_dt > to_dt:
+                                st.error("Ungültiger Zeitraum: Von ist nach Bis.")
+                            else:
+                                st.session_state.eval_running = True
+                                st.session_state.eval_error = None
+                                st.session_state.eval_image_path = None
+
+                                from_ts = from_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                                to_ts = to_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+                                import subprocess as _subprocess
+                                import sys as _sys
+                                import tempfile as _tempfile
+
+                                with _tempfile.NamedTemporaryFile(
+                                    delete=False, suffix=".png"
+                                ) as _tmp:
+                                    output_path = _tmp.name
+
+                                env = os.environ.copy()
+                                env["FROM_TIMESTAMP"] = from_ts
+                                env["TO_TIMESTAMP"] = to_ts
+                                env["AGENT_NAME"] = os.getenv(
+                                    "AGENT_NAME", "skillcompanion_interrupted"
+                                )
+                                env["OUTPUT_PATH"] = output_path
+
+                                script_path = "src/langfuse_evaluation/skillcompanion_evaluation.py"
+                                with st.spinner("Erstelle Auswertung..."):
+                                    result = _subprocess.run(
+                                        [_sys.executable, script_path],
+                                        env=env,
+                                        capture_output=True,
+                                        text=True,
+                                    )
+
+                                st.session_state.eval_running = False
+                                if result.returncode != 0:
+                                    st.session_state.eval_error = (
+                                        result.stderr or ""
+                                    ).strip() or "Fehler beim Erstellen der Auswertung."
+                                else:
+                                    st.session_state.eval_image_path = output_path
+                                st.rerun()
+
+                    with col_close:
+                        if st.button("Schließen", key="eval_close_btn"):
+                            st.session_state.evaluation_dialog_open = False
+                            st.session_state.eval_image_path = None
+                            st.session_state.eval_error = None
+                            st.rerun()
+
+                    # Show results/errors if present
+                    if st.session_state.eval_error:
+                        st.error(st.session_state.eval_error)
+                    if st.session_state.eval_image_path:
+                        st.image(st.session_state.eval_image_path, caption="Skill Check Ergebnisse")
+                        try:
+                            with open(st.session_state.eval_image_path, "rb") as _f:
+                                st.download_button(
+                                    "Download PNG",
+                                    data=_f,
+                                    file_name="skill_levels_bar_chart.png",
+                                    mime="image/png",
+                                    key="eval_download_btn",
+                                )
+                        except Exception:
+                            pass
+
+            _eval_dialog()
+        else:
+            with st.container():  # fallback for older Streamlit versions
+                # Require explicit login inside modal before evaluation (inline form using Auth.login)
+                if (
+                    st.session_state.get("eval_require_login", False)
+                    or "owui-token" not in st.session_state
+                ):
+                    st.caption("Bitte melden Sie sich an, um die Auswertung zu starten.")
+                    eval_username = st.text_input("Username", key="eval_username_modal_fb2")
+                    eval_password = st.text_input(
+                        "Password", type="password", key="eval_password_modal_fb2"
+                    )
+                    col_login_a, col_login_b = st.columns([1, 1])
+                    with col_login_a:
+                        if st.button("Login", key="eval_login_btn_modal_fb2"):
+                            try:
+                                from client.auth import Auth as _Auth
+
+                                user = _Auth(default_login=True).login(eval_username, eval_password)
+                                if user:
+                                    st.session_state["owui-token"] = user["token"]
+                                    st.session_state["user"] = user
+                                    st.session_state["run_id"] = str(uuid.uuid4())
+                                    if _is_admin_user(user):
+                                        st.session_state.eval_require_login = False
+                                        st.rerun()
+                                    else:
+                                        st.error(
+                                            "Nur Admins dürfen die Auswertung verwenden. Bitte mit einem Admin-Account anmelden."
+                                        )
+                                else:
+                                    st.error("Login fehlgeschlagen")
+                            except Exception as e:
+                                st.error(f"Login Fehler: {e}")
+                    with col_login_b:
+                        if st.button("Schließen", key="eval_close_notlogged_fb2"):
+                            st.session_state.evaluation_dialog_open = False
+                            st.session_state.eval_image_path = None
+                            st.session_state.eval_error = None
+                            st.session_state.eval_require_login = False
+                            st.rerun()
+                else:
+                    # Logged in flow: date-only inputs (UTC boundaries)
+                    from datetime import datetime as _dt
+
+                    today_date = _dt.utcnow().date()
+                    if st.session_state.eval_from_date is None:
+                        st.session_state.eval_from_date = today_date
+                    if st.session_state.eval_to_date is None:
+                        st.session_state.eval_to_date = today_date
+
+                    # Combined Datum+Zeit Eingabe auch im Fallback: st.datetime_input falls verfügbar, sonst date+time
+                    _dt_input = getattr(st, "datetime_input", None)
+                    if callable(_dt_input):
+                        if st.session_state.eval_from_date is None:
+                            st.session_state.eval_from_date = _dt.utcnow().date()
+                        if st.session_state.eval_to_date is None:
+                            st.session_state.eval_to_date = _dt.utcnow().date()
+                        if st.session_state.get("eval_from_dt") is None:
+                            st.session_state.eval_from_dt = _dt.utcnow().replace(
+                                hour=0, minute=0, second=0, microsecond=0
+                            )
+                        if st.session_state.get("eval_to_dt") is None:
+                            st.session_state.eval_to_dt = _dt.utcnow().replace(
+                                hour=23, minute=59, second=59, microsecond=0
+                            )
+
+                        st.session_state.eval_from_dt = _dt_input(
+                            "Von (Datum und Uhrzeit, UTC)",
+                            value=st.session_state.eval_from_dt,
+                            key="eval_from_dt_input_fb",
+                        )
+                        st.session_state.eval_to_dt = _dt_input(
+                            "Bis (Datum und Uhrzeit, UTC)",
+                            value=st.session_state.eval_to_dt,
+                            key="eval_to_dt_input_fb",
+                        )
+                    else:
+                        from datetime import time as _time
+
+                        if (
+                            "eval_from_time" not in st.session_state
+                            or st.session_state.eval_from_time is None
+                        ):
+                            st.session_state.eval_from_time = _time(hour=0, minute=0, second=0)
+                        if (
+                            "eval_to_time" not in st.session_state
+                            or st.session_state.eval_to_time is None
+                        ):
+                            st.session_state.eval_to_time = _time(hour=23, minute=59, second=59)
+
+                        col_from_date, col_from_time = st.columns([2, 1])
+                        with col_from_date:
+                            st.session_state.eval_from_date = st.date_input(
+                                "Von (Datum, UTC)",
+                                value=st.session_state.eval_from_date,
+                                key="eval_from_date_input",
+                            )
+                        with col_from_time:
+                            st.session_state.eval_from_time = st.time_input(
+                                "Von (Uhrzeit, UTC)",
+                                value=st.session_state.eval_from_time,
+                                key="eval_from_time_input",
+                                step=60,
+                            )
+
+                        col_to_date, col_to_time = st.columns([2, 1])
+                        with col_to_date:
+                            st.session_state.eval_to_date = st.date_input(
+                                "Bis (Datum, UTC)",
+                                value=st.session_state.eval_to_date,
+                                key="eval_to_date_input",
+                            )
+                        with col_to_time:
+                            st.session_state.eval_to_time = st.time_input(
+                                "Bis (Uhrzeit, UTC)",
+                                value=st.session_state.eval_to_time,
+                                key="eval_to_time_input",
+                                step=60,
+                            )
+
+                    col_gen, col_close = st.columns([1, 1])
+                    with col_gen:
+                        if st.button("Generieren", key="eval_generate_btn"):
+                            # Validate range using preferred datetime inputs
+                            if (
+                                hasattr(st, "datetime_input")
+                                and st.session_state.get("eval_from_dt") is not None
+                                and st.session_state.get("eval_to_dt") is not None
+                            ):
+                                from_dt = st.session_state.eval_from_dt
+                                to_dt = st.session_state.eval_to_dt
+                            else:
+                                from_dt = _dt.combine(
+                                    st.session_state.eval_from_date, st.session_state.eval_from_time
+                                )
+                                to_dt = _dt.combine(
+                                    st.session_state.eval_to_date, st.session_state.eval_to_time
+                                )
+
+                            if from_dt > to_dt:
+                                st.error("Ungültiger Zeitraum: Von ist nach Bis.")
+                            else:
+                                st.session_state.eval_running = True
+                                st.session_state.eval_error = None
+                                st.session_state.eval_image_path = None
+
+                                from_ts = from_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+                                to_ts = to_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+                                import subprocess as _subprocess
+                                import sys as _sys
+                                import tempfile as _tempfile
+
+                                with _tempfile.NamedTemporaryFile(
+                                    delete=False, suffix=".png"
+                                ) as _tmp:
+                                    output_path = _tmp.name
+
+                                env = os.environ.copy()
+                                env["FROM_TIMESTAMP"] = from_ts
+                                env["TO_TIMESTAMP"] = to_ts
+                                env["AGENT_NAME"] = os.getenv(
+                                    "AGENT_NAME", "skillcompanion_interrupted"
+                                )
+                                env["OUTPUT_PATH"] = output_path
+
+                                script_path = "src/langfuse_evaluation/skillcompanion_evaluation.py"
+                                with st.spinner("Erstelle Auswertung..."):
+                                    result = _subprocess.run(
+                                        [_sys.executable, script_path],
+                                        env=env,
+                                        capture_output=True,
+                                        text=True,
+                                    )
+
+                                st.session_state.eval_running = False
+                                if result.returncode != 0:
+                                    st.session_state.eval_error = (
+                                        result.stderr or ""
+                                    ).strip() or "Fehler beim Erstellen der Auswertung."
+                                else:
+                                    st.session_state.eval_image_path = output_path
+                                st.rerun()
+
+                    with col_close:
+                        if st.button("Schließen", key="eval_close_btn"):
+                            st.session_state.evaluation_dialog_open = False
+                            st.session_state.eval_image_path = None
+                            st.session_state.eval_error = None
+                            st.rerun()
+
+                    # Show results/errors if present
+                    if st.session_state.eval_error:
+                        st.error(st.session_state.eval_error)
+                    if st.session_state.eval_image_path:
+                        st.image(st.session_state.eval_image_path, caption="Skill Check Ergebnisse")
+                        try:
+                            with open(st.session_state.eval_image_path, "rb") as _f:
+                                st.download_button(
+                                    "Download PNG",
+                                    data=_f,
+                                    file_name="skill_levels_bar_chart.png",
+                                    mime="image/png",
+                                    key="eval_download_btn",
+                                )
+                        except Exception:
+                            pass
     if not st.session_state.show_title:
         skill_bar = st.progress(
             st.session_state.skill_progress, text="Fortschritt im Skill-Companion"
@@ -167,7 +634,9 @@ async def main(config: VariantConfig) -> None:
             value=3,
         )
         company_size = st.select_slider(
-            "Wie viele Mitarbeiter hat ihre Firma?", options=["1-10", "11-50", "51-250", "251-1000", ">1000"], value="51-250"
+            "Wie viele Mitarbeiter hat ihre Firma?",
+            options=["1-10", "11-50", "51-250", "251-1000", ">1000"],
+            value="51-250",
         )
         st.session_state["company_size"] = company_size
         date_of_skill_check = datetime.now().strftime("%Y-%m-%d")
@@ -175,6 +644,12 @@ async def main(config: VariantConfig) -> None:
     run_id = st.session_state["run_id"]
     if st.session_state.show_start_button:
         if st.button("Mit dem Skill-Companion beginnen"):
+            # Ensure Evaluation UI is fully closed and its trigger is hidden
+            st.session_state.evaluation_dialog_open = False
+            st.session_state.eval_require_login = False
+            st.session_state.eval_image_path = None
+            st.session_state.eval_error = None
+
             toggle_chat_input()
             try:
                 response = await agent_client.ainvoke(
