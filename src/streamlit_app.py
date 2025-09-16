@@ -23,8 +23,8 @@ from schema.task_data import TaskData, TaskDataStatus
 # The app heavily uses AgentClient to interact with the agent's FastAPI endpoints.
 
 
-APP_TITLE = "Agent Service Toolkit"
-APP_ICON = "🧰"
+APP_TITLE = "魔塔AI智能助手"
+APP_ICON = "🤖"
 USER_ID_COOKIE = "user_id"
 
 
@@ -87,11 +87,11 @@ async def main() -> None:
             port = os.getenv("PORT", 8080)
             agent_url = f"http://{host}:{port}"
         try:
-            with st.spinner("Connecting to agent service..."):
+            with st.spinner("正在连接到智能助手服务..."):
                 st.session_state.agent_client = AgentClient(base_url=agent_url)
         except AgentClientError as e:
-            st.error(f"Error connecting to agent service at {agent_url}: {e}")
-            st.markdown("The service might be booting up. Try again in a few seconds.")
+            st.error(f"连接智能助手服务失败 {agent_url}: {e}")
+            st.markdown("服务可能正在启动中，请稍等几秒后重试。")
             st.stop()
     agent_client: AgentClient = st.session_state.agent_client
 
@@ -104,7 +104,7 @@ async def main() -> None:
             try:
                 messages: ChatHistory = agent_client.get_history(thread_id=thread_id).messages
             except AgentClientError:
-                st.error("No message history found for this Thread ID.")
+                st.error("未找到此对话ID的历史记录。")
                 messages = []
         st.session_state.messages = messages
         st.session_state.thread_id = thread_id
@@ -114,48 +114,62 @@ async def main() -> None:
         st.header(f"{APP_ICON} {APP_TITLE}")
 
         ""
-        "Full toolkit for running an AI agent service built with LangGraph, FastAPI and Streamlit"
+        "基于魔塔社区的智能AI助手，支持多种对话模式和智能功能"
         ""
 
-        if st.button(":material/chat: New Chat", use_container_width=True):
+        if st.button(":material/chat: 新建对话", use_container_width=True):
             st.session_state.messages = []
             st.session_state.thread_id = str(uuid.uuid4())
             st.rerun()
 
-        with st.popover(":material/settings: Settings", use_container_width=True):
+        with st.popover(":material/settings: 设置", use_container_width=True):
             model_idx = agent_client.info.models.index(agent_client.info.default_model)
-            model = st.selectbox("LLM to use", options=agent_client.info.models, index=model_idx)
+            model = st.selectbox("选择模型", options=agent_client.info.models, index=model_idx)
             agent_list = [a.key for a in agent_client.info.agents]
             agent_idx = agent_list.index(agent_client.info.default_agent)
             agent_client.agent = st.selectbox(
-                "Agent to use",
+                "选择助手",
                 options=agent_list,
                 index=agent_idx,
             )
-            use_streaming = st.toggle("Stream results", value=True)
+            use_streaming = st.toggle("流式输出", value=True)
 
             # Display user ID (for debugging or user information)
-            st.text_input("User ID (read-only)", value=user_id, disabled=True)
+            st.text_input("用户ID（只读）", value=user_id, disabled=True)
 
-        @st.dialog("Architecture")
+        @st.dialog("系统架构")
         def architecture_dialog() -> None:
-            st.image(
-                "https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png?raw=true"
-            )
-            "[View full size on Github](https://github.com/JoshuaC215/agent-service-toolkit/blob/main/media/agent_architecture.png)"
+            # 显示魔塔社区的架构信息
+            st.markdown("""
+            ### 🤖 魔塔AI智能助手架构
+
+            **核心组件：**
+            - 🧠 **AI模型**: ZhipuAI/GLM-4.5 (魔塔社区)
+            - 🔧 **后端服务**: FastAPI + LangGraph
+            - 🎨 **前端界面**: Streamlit
+            - 💾 **数据存储**: SQLite
+
+            **技术特色：**
+            - ✅ 完全中文化界面
+            - ✅ 流式对话输出
+            - ✅ 多种智能助手模式
+            - ✅ 对话历史管理
+            - ✅ 分享和恢复功能
+            """)
+            st.markdown("[🔗 访问魔塔社区](https://modelscope.cn)")
             st.caption(
-                "App hosted on [Streamlit Cloud](https://share.streamlit.io/) with FastAPI service running in [Azure](https://learn.microsoft.com/en-us/azure/app-service/)"
+                "基于魔塔社区的AI模型服务，提供强大的中文对话能力"
             )
 
-        if st.button(":material/schema: Architecture", use_container_width=True):
+        if st.button(":material/schema: 系统架构", use_container_width=True):
             architecture_dialog()
 
-        with st.popover(":material/policy: Privacy", use_container_width=True):
+        with st.popover(":material/policy: 隐私政策", use_container_width=True):
             st.write(
-                "Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only."
+                "本应用中的对话内容仅用于改善服务质量，我们承诺保护您的隐私安全。"
             )
 
-        @st.dialog("Share/resume chat")
+        @st.dialog("分享/恢复对话")
         def share_chat_dialog() -> None:
             session = st.runtime.get_instance()._session_mgr.list_active_sessions()[0]
             st_base_url = urllib.parse.urlunparse(
@@ -168,15 +182,15 @@ async def main() -> None:
             chat_url = (
                 f"{st_base_url}?thread_id={st.session_state.thread_id}&{USER_ID_COOKIE}={user_id}"
             )
-            st.markdown(f"**Chat URL:**\n```text\n{chat_url}\n```")
-            st.info("Copy the above URL to share or revisit this chat")
+            st.markdown(f"**对话链接:**\n```text\n{chat_url}\n```")
+            st.info("复制上述链接以分享或重新访问此对话")
 
-        if st.button(":material/upload: Share/resume chat", use_container_width=True):
+        if st.button(":material/upload: 分享对话", use_container_width=True):
             share_chat_dialog()
 
-        "[View the source code](https://github.com/JoshuaC215/agent-service-toolkit)"
+        "[访问魔塔社区](https://modelscope.cn)"
         st.caption(
-            "Made with :material/favorite: by [Joshua](https://www.linkedin.com/in/joshua-k-carroll/) in Oakland"
+            "基于魔塔社区 :material/favorite: 构建的智能AI助手"
         )
 
     # Draw existing messages
@@ -185,16 +199,16 @@ async def main() -> None:
     if len(messages) == 0:
         match agent_client.agent:
             case "chatbot":
-                WELCOME = "Hello! I'm a simple chatbot. Ask me anything!"
+                WELCOME = "您好！我是一个智能聊天机器人，有什么可以帮助您的吗？"
             case "interrupt-agent":
-                WELCOME = "Hello! I'm an interrupt agent. Tell me your birthday and I will predict your personality!"
+                WELCOME = "您好！我是一个交互式智能助手，请告诉我您的生日，我来预测您的性格特点！"
             case "research-assistant":
-                WELCOME = "Hello! I'm an AI-powered research assistant with web search and a calculator. Ask me anything!"
+                WELCOME = "您好！我是一个AI研究助手，具备网络搜索和计算功能，有什么问题尽管问我！"
             case "rag-assistant":
-                WELCOME = """Hello! I'm an AI-powered Company Policy & HR assistant with access to AcmeTech's Employee Handbook.
-                I can help you find information about benefits, remote work, time-off policies, company values, and more. Ask me anything!"""
+                WELCOME = """您好！我是一个企业政策和人力资源智能助手，可以访问员工手册。
+                我可以帮您查找福利、远程工作、休假政策、公司价值观等信息，有什么问题尽管问我！"""
             case _:
-                WELCOME = "Hello! I'm an AI agent. Ask me anything!"
+                WELCOME = "您好！我是魔塔AI智能助手，有什么可以帮助您的吗？"
 
         with st.chat_message("ai"):
             st.write(WELCOME)
@@ -230,7 +244,7 @@ async def main() -> None:
                 st.chat_message("ai").write(response.content)
             st.rerun()  # Clear stale containers
         except AgentClientError as e:
-            st.error(f"Error generating response: {e}")
+            st.error(f"生成回复时出错: {e}")
             st.stop()
 
     # If messages have been generated, show feedback widget
@@ -327,9 +341,9 @@ async def draw_messages(
                         for tool_call in msg.tool_calls:
                             # Use different labels for transfer vs regular tool calls
                             if "transfer_to" in tool_call["name"]:
-                                label = f"""💼 Sub Agent: {tool_call["name"]}"""
+                                label = f"""💼 子助手: {tool_call["name"]}"""
                             else:
-                                label = f"""🛠️ Tool Call: {tool_call["name"]}"""
+                                label = f"""🛠️ 工具调用: {tool_call["name"]}"""
 
                             status = st.status(
                                 label,
@@ -393,7 +407,7 @@ async def draw_messages(
 
             # In case of an unexpected message type, log an error and stop
             case _:
-                st.error(f"Unexpected ChatMessage type: {msg.type}")
+                st.error(f"未知的消息类型: {msg.type}")
                 st.write(msg)
                 st.stop()
 
@@ -422,10 +436,10 @@ async def handle_feedback() -> None:
                 kwargs={"comment": "In-line human feedback"},
             )
         except AgentClientError as e:
-            st.error(f"Error recording feedback: {e}")
+            st.error(f"记录反馈时出错: {e}")
             st.stop()
         st.session_state.last_feedback = (latest_run_id, feedback)
-        st.toast("Feedback recorded", icon=":material/reviews:")
+        st.toast("反馈已记录", icon=":material/reviews:")
 
 
 async def handle_sub_agent_msgs(messages_agen, status, is_new):
