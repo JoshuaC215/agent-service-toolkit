@@ -139,7 +139,7 @@ celerybeat.pid
 *.sage.py
 
 # Environments
-.env
+# .env  # 注释掉.env忽略，使其可以被版本控制
 .python-version
 .venv
 env/
