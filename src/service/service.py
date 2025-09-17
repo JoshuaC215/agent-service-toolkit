@@ -372,14 +372,14 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
 
 
 @router.post("/history")
-def history(input: ChatHistoryInput) -> ChatHistory:
+async def history(input: ChatHistoryInput) -> ChatHistory:
     """
     Get chat history.
     """
     # TODO: Hard-coding DEFAULT_AGENT here is wonky
     agent: AgentGraph = get_agent(DEFAULT_AGENT)
     try:
-        state_snapshot = agent.get_state(
+        state_snapshot = await agent.aget_state(
             config=RunnableConfig(configurable={"thread_id": input.thread_id})
         )
         messages: list[AnyMessage] = state_snapshot.values["messages"]
