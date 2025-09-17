@@ -68,7 +68,7 @@ def test_invoke_custom_agent(test_client, mock_agent) -> None:
 
 
 def test_invoke_model_param(test_client, mock_agent) -> None:
-    """Test that the model parameter is correctly passed to the agent."""
+    """Test that the model parameter is correctly passed to the agent if specified."""
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is sunny."
     CUSTOM_MODEL = "claude-3.5-sonnet"
@@ -91,6 +91,26 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     INVALID_MODEL = "gpt-7-notreal"
     response = test_client.post("/invoke", json={"message": QUESTION, "model": INVALID_MODEL})
     assert response.status_code == 422
+
+
+def test_invoke_no_model_param_uses_none_default(test_client, mock_agent) -> None:
+    """Test that when no model is specified, UserInput defaults to None and isn't passed to the runnable config (not hardcoded gpt-4o-mini)."""
+    QUESTION = "What is the weather in Tokyo?"
+    ANSWER = "The weather in Tokyo is sunny."
+    mock_agent.ainvoke.return_value = [("values", {"messages": [AIMessage(content=ANSWER)]})]
+
+    # Don't specify model in the request
+    response = test_client.post("/invoke", json={"message": QUESTION})
+    assert response.status_code == 200
+
+    mock_agent.ainvoke.assert_awaited_once()
+    config = mock_agent.ainvoke.await_args.kwargs["config"]
+    assert "model" not in config["configurable"]  # Should not be present when None
+
+    # Verify the response is still correct
+    output = ChatMessage.model_validate(response.json())
+    assert output.type == "ai"
+    assert output.content == ANSWER
 
 
 def test_invoke_custom_agent_config(test_client, mock_agent) -> None:
