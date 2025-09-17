@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import sys
 
 import uvicorn
@@ -9,6 +10,14 @@ from core import settings
 load_dotenv()
 
 if __name__ == "__main__":
+    root_logger = logging.getLogger()
+    if root_logger.handlers:
+        print(
+            f"Warning: Root logger already has {len(root_logger.handlers)} handler(s) configured. "
+            f"basicConfig() will be ignored. Current level: {logging.getLevelName(root_logger.level)}"
+        )
+
+    logging.basicConfig(level=settings.LOG_LEVEL.to_logging_level())
     # Set Compatible event loop policy on Windows Systems.
     # On Windows systems, the default ProactorEventLoop can cause issues with
     # certain async database drivers like psycopg (PostgreSQL driver).
@@ -19,4 +28,10 @@ if __name__ == "__main__":
     # https://www.psycopg.org/psycopg3/docs/advanced/async.html#asynchronous-operations
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    uvicorn.run("service:app", host=settings.HOST, port=settings.PORT, reload=settings.is_dev())
+    uvicorn.run(
+        "service:app",
+        host=settings.HOST,
+        port=settings.PORT,
+        reload=settings.is_dev(),
+        timeout_graceful_shutdown=settings.GRACEFUL_SHUTDOWN_TIMEOUT,
+    )
