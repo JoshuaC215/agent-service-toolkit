@@ -1,11 +1,12 @@
 import json
+import logging
 import os
 from unittest.mock import patch
 
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from core.settings import Settings, check_str_is_http
+from core.settings import LogLevel, Settings, check_str_is_http
 from schema.models import (
     AnthropicModelName,
     AzureOpenAIModelName,
@@ -200,3 +201,34 @@ def test_settings_azure_openai():
         assert settings.AZURE_OPENAI_API_KEY.get_secret_value() == "test-key"
         assert settings.AZURE_OPENAI_ENDPOINT == "https://test.openai.azure.com"
         assert settings.AZURE_OPENAI_DEPLOYMENT_MAP == deployment_map
+
+
+def test_log_level_enum():
+    """Test LogLevel enum and its conversion to logging levels."""
+    assert LogLevel.DEBUG.to_logging_level() == logging.DEBUG
+    assert LogLevel.INFO.to_logging_level() == logging.INFO
+    assert LogLevel.WARNING.to_logging_level() == logging.WARNING
+    assert LogLevel.ERROR.to_logging_level() == logging.ERROR
+    assert LogLevel.CRITICAL.to_logging_level() == logging.CRITICAL
+
+
+def test_settings_log_level_default():
+    """Test that LOG_LEVEL defaults to WARNING."""
+    with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}, clear=True):
+        settings = Settings(_env_file=None)
+        assert settings.LOG_LEVEL == LogLevel.WARNING
+        assert settings.LOG_LEVEL.to_logging_level() == logging.WARNING
+
+
+def test_settings_log_level_from_env():
+    """Test that LOG_LEVEL can be set from environment variable."""
+    with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key", "LOG_LEVEL": "DEBUG"}, clear=True):
+        settings = Settings(_env_file=None)
+        assert settings.LOG_LEVEL == LogLevel.DEBUG
+        assert settings.LOG_LEVEL.to_logging_level() == logging.DEBUG
+
+
+def test_settings_log_level_invalid():
+    with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key", "LOG_LEVEL": "INVALID"}, clear=True):
+        with pytest.raises(ValueError, match="validation error for Settings\nLOG_LEVEL\n"):
+            Settings(_env_file=None)
