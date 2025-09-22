@@ -90,7 +90,7 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
     ):
         messages = [SystemMessage(content=str(system_prompt))] + messages
     try:
-        model_runnable = wrap_model(llm, str(system_prompt))
+        model_runnable = wrap_model(llm, messages)
         llm_response = await model_runnable.ainvoke(state, config)
     except Exception as e:
         logger.error(f"Exception: {e}")
@@ -156,7 +156,7 @@ async def categorize_user(state: AgentState, config: RunnableConfig):
                 messages = [SystemMessage(content=str(prompt))] + messages
             llm = cast(BaseChatModel | Runnable[LanguageModelInput, Any], state.get("llm_model"))
             try:
-                model_runnable = wrap_model(llm, str(prompt))
+                model_runnable = wrap_model(llm, messages)
                 llm_response = await model_runnable.ainvoke(state, config)
             except Exception as e:
                 logger.error(f"Exception: {e}")

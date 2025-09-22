@@ -18,7 +18,7 @@ services:
   agent_service:
     build:
       context: .
-      dockerfile: docker/Dockerfile.service
+      dockerfile: docker/Dockerfile.backend
     ports:
       - "8080:8080"
     env_file:
@@ -60,10 +60,12 @@ services:
     depends_on:
       - agent_service
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      test: ["CMD", "curl", "-f", "http://localhost:8501/"]
       interval: 5s
       timeout: 5s
       retries: 5
+    env_file:
+      - .env
     environment:
       - BACKEND_URL=http://agent_service:8080
     develop:

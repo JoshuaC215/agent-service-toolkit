@@ -58,6 +58,7 @@ dependencies = [
 [package.dev-dependencies]
 client = [
     { name = "httpx" },
+    { name = "matplotlib" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "streamlit" },
@@ -120,6 +121,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 client = [
     { name = "httpx", specifier = "~=0.27.2" },
+    { name = "matplotlib", specifier = ">=3.10.5" },
     { name = "pydantic", specifier = "~=2.10.1" },
     { name = "python-dotenv", specifier = "~=1.0.1" },
     { name = "streamlit", specifier = "~=1.45.1" },
