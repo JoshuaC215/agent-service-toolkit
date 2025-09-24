@@ -43,7 +43,7 @@ NOTE: You have access to GitHub MCP tools that provide direct GitHub API access.
 class GitHubMCPAgent(LazyLoadingAgent):
     """GitHub MCP Agent with async initialization."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._mcp_tools: list[BaseTool] = []
         self._mcp_client: MultiServerMCPClient | None = None

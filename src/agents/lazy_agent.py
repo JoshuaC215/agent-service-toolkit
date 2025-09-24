@@ -9,7 +9,7 @@ from langgraph.pregel import Pregel
 class LazyLoadingAgent(ABC):
     """Base class for agents that require async loading."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the agent."""
         self._loaded = False
         self._graph: CompiledStateGraph | Pregel | None = None
