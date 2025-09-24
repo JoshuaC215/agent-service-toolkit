@@ -12,11 +12,9 @@ class TestLazyLoadingAgent(LazyLoadingAgent):
 
     def __init__(self):
         super().__init__()
-        self._test_initialized = False
 
     async def load(self) -> None:
         """Test load implementation."""
-        self._test_initialized = True
         self._loaded = True
 
     def _create_graph(self):
@@ -34,6 +32,13 @@ class TestLazyLoadingAgentBase:
         agent = TestLazyLoadingAgent()
         assert not agent._loaded
         assert agent._graph is None
+
+    @pytest.mark.asyncio
+    async def test_load(self):
+        """Test that load works correctly."""
+        agent = TestLazyLoadingAgent()
+        await agent.load()
+        assert agent._loaded
 
     def test_get_graph_before_load(self):
         """Test that get_graph raises error before load."""

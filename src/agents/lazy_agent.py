@@ -25,7 +25,7 @@ class LazyLoadingAgent(ABC):
         - Any other async setup required
         - Creating the agent's graph
         """
-        pass
+        raise NotImplementedError  # pragma: no cover
 
     def get_graph(self) -> CompiledStateGraph | Pregel:
         """
