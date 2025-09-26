@@ -55,7 +55,7 @@ dependencies = [
     "streamlit ~=1.46.0",
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",
-
+    "langchain-mcp-adapters>=0.1.10",
 ]
 
 [dependency-groups]
@@ -101,3 +101,7 @@ exclude = "src/streamlit_app.py"
 [[tool.mypy.overrides]]
 module = ["numexpr.*"]
 follow_untyped_imports = true
+
+[[tool.mypy.overrides]]
+module = ["langchain_mcp_adapters.*"]
+ignore_missing_imports = true

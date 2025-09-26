@@ -18,7 +18,7 @@ from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
 
-from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
+from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info, load_agent
 from core import settings
 from memory import initialize_database, initialize_store
 from schema import (
@@ -57,8 +57,8 @@ def verify_bearer(
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
-    Configurable lifespan that initializes the appropriate database checkpointer and store
-    based on settings.
+    Configurable lifespan that initializes the appropriate database checkpointer, store,
+    and agents with async loading - for example for starting up MCP clients.
     """
     try:
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
@@ -70,9 +70,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             if hasattr(store, "setup"):  # ignore: union-attr
                 await store.setup()
 
-            # Configure agents with both memory components
+            # Configure agents with both memory components and async loading
             agents = get_all_agent_info()
             for a in agents:
+                try:
+                    await load_agent(a.key)
+                    logger.info(f"Agent loaded: {a.key}")
+                except Exception as e:
+                    logger.error(f"Failed to load agent {a.key}: {e}")
+                    # Continue with other agents rather than failing startup
+
                 agent = get_agent(a.key)
                 # Set checkpointer for thread-scoped memory (conversation history)
                 agent.checkpointer = saver
@@ -80,7 +87,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 agent.store = store
             yield
     except Exception as e:
-        logger.error(f"Error during database/store initialization: {e}")
+        logger.error(f"Error during database/store/agents initialization: {e}")
         raise
 
 
