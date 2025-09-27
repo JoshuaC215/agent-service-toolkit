@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
+from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
@@ -39,6 +40,11 @@ from service.utils import (
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
+
+
+def custom_generate_unique_id(route: APIRoute) -> str:
+    """Generate idiomatic operation IDs for OpenAPI client generation."""
+    return route.name
 
 
 def verify_bearer(
@@ -91,7 +97,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 
