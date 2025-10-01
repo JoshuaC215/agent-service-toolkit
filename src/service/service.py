@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
+from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
@@ -39,6 +40,11 @@ from service.utils import (
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
+
+
+def custom_generate_unique_id(route: APIRoute) -> str:
+    """Generate idiomatic operation IDs for OpenAPI client generation."""
+    return route.name
 
 
 def verify_bearer(
@@ -91,7 +97,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 
@@ -164,7 +170,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     return kwargs, run_id
 
 
-@router.post("/{agent_id}/invoke")
+@router.post("/{agent_id}/invoke", operation_id="invoke_with_agent_id")
 @router.post("/invoke")
 async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
     """
@@ -343,6 +349,7 @@ def _sse_response_example() -> dict[int | str, Any]:
     "/{agent_id}/stream",
     response_class=StreamingResponse,
     responses=_sse_response_example(),
+    operation_id="stream_with_agent_id",
 )
 @router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
 async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> StreamingResponse:
