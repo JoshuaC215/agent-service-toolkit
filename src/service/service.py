@@ -170,7 +170,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     return kwargs, run_id
 
 
-@router.post("/{agent_id}/invoke")
+@router.post("/{agent_id}/invoke", operation_id="invoke_with_agent_id")
 @router.post("/invoke")
 async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
     """
@@ -349,6 +349,7 @@ def _sse_response_example() -> dict[int | str, Any]:
     "/{agent_id}/stream",
     response_class=StreamingResponse,
     responses=_sse_response_example(),
+    operation_id="stream_with_agent_id",
 )
 @router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
 async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> StreamingResponse:
