@@ -3,7 +3,9 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/docker
 
 trigger:
-- main
+  tags:
+    include:
+    - '*'
 
 resources:
   repositories:
@@ -18,7 +20,7 @@ variables:
   imageRepository: 'astk-backend'
   imageRepositoryUi: 'astk-ui'
   containerRegistry: 'crrooaiaiosdevgwc001.azurecr.io'
-  tag: '$(Build.BuildNumber)'
+  tag: '$(Build.SourceBranchName)'
   dockerFilePath: $(Build.SourcesDirectory)/docker/Dockerfile.backend
   dockerFilePathUi: $(Build.SourcesDirectory)/docker/Dockerfile.app
   # Agent VM image name
