@@ -2,7 +2,7 @@
 title: "roosi SkillCompanion"
 app_icon: "🤖"
 theme: "default"
-model: "owui/gpt-4o"
+model: "owui/basismodell"
 agent: "skillcompanion_interrupted"
 
 ai_message_avatar_filename: "roosi_logo.png"

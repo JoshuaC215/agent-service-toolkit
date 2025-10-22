@@ -2,7 +2,7 @@
 title: "sdx SkillCompanion"
 app_icon: "src/static/sdx_logo.png"
 theme: "sdx"
-model: "owui/gpt-4o"
+model: "owui/basismodell"
 agent: "skillcompanion_interrupted"
 
 ai_message_avatar_filename: "sdx_logo.png"
