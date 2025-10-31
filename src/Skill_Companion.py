@@ -243,8 +243,7 @@ async def main(config: VariantConfig) -> None:
         await asyncio.sleep(0.1)
         st.rerun()
     if "question_limit" not in st.session_state:
-        questions = config.get("skill_questions", [])
-        st.session_state.question_limit = len(questions)
+        st.session_state.question_limit = config.get("question_limit", 10)
 
     auth = Auth(default_login=True)
     if not auth.is_logged_in():

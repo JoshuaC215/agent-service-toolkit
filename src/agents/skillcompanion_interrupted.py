@@ -6,7 +6,7 @@ from typing import Any, cast
 from langchain.prompts import SystemMessagePromptTemplate
 from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda, RunnableSerializable
 from langgraph.graph import END, START, MessagesState, StateGraph
 from langgraph.types import interrupt
@@ -30,20 +30,10 @@ class AgentState(MessagesState):
 
 
 def wrap_model(
-    model: BaseChatModel | Runnable[LanguageModelInput, Any], system_prompt: str
+    model: BaseChatModel | Runnable[LanguageModelInput, Any], system_prompt: BaseMessage
 ) -> RunnableSerializable[AgentState, Any]:
-    """
-    Wraps a language model with a system prompt preprocessor.
-
-    Args:
-        model: The language model or runnable to be wrapped.
-        system_prompt: The system prompt to prepend to the messages.
-
-    Returns:
-        A RunnableSerializable that applies the system prompt before invoking the model.
-    """
     preprocessor = RunnableLambda(
-        lambda state: [SystemMessage(content=str(system_prompt))] + state["messages"],
+        lambda state: [system_prompt] + state["messages"],
         name="StateModifier",
     )
     return preprocessor | model
@@ -75,22 +65,17 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
         )
     llm = cast(BaseChatModel | Runnable[LanguageModelInput, Any], state.get("llm_model"))
     # Use prompts directory instead of agents_questions
-    prompt_template = load_prompt(
-        f"../prompts/{promptfile}",
-        question_count=question_count,
-        questions_json=questions_json,
-        answers_json=answers_json,
-    )
+    prompt_template = load_prompt(f"../prompts/{promptfile}")
     system_prompt = SystemMessagePromptTemplate.from_template(prompt_template)
-    messages = state.get("messages", [])
-    if not (
-        messages
-        and isinstance(messages[0], SystemMessage)
-        and str(system_prompt) in getattr(messages[0], "content", "")
-    ):
-        messages = [SystemMessage(content=str(system_prompt))] + messages
     try:
-        model_runnable = wrap_model(llm, messages)
+        model_runnable = wrap_model(
+            llm,
+            system_prompt.format(
+                question_count=question_count,
+                questions_json=questions_json,
+                answers_json=answers_json,
+            ),
+        )
         llm_response = await model_runnable.ainvoke(state, config)
     except Exception as e:
         logger.error(f"Exception: {e}")
@@ -105,7 +90,7 @@ async def ask_question(state: AgentState, config: RunnableConfig) -> AgentState:
     answers.append(user_input)
     state["messages"].append(HumanMessage(user_input))
     return {
-        "messages": messages,
+        "messages": state.get("messages", []),
         "questions": questions,
         "answers": answers,
         "llm_model": state.get("llm_model", None),
@@ -142,21 +127,17 @@ async def categorize_user(state: AgentState, config: RunnableConfig):
             pairs_of_question_answers_json = json.dumps(
                 pairs_of_question_answers, ensure_ascii=False, indent=4
             )
-            prompt_template = load_prompt(
-                "../prompts/categorize_user_prompt.txt",
-                pairs_of_question_answers_json=pairs_of_question_answers_json,
-            )
-            prompt = prompt_template
-            messages = state.get("messages", [])
-            if not (
-                messages
-                and isinstance(messages[0], SystemMessage)
-                and str(prompt) in getattr(messages[0], "content", "")
-            ):
-                messages = [SystemMessage(content=str(prompt))] + messages
+
+            prompt_template = load_prompt("../prompts/categorize_user_prompt.txt")
+            system_prompt = SystemMessagePromptTemplate.from_template(prompt_template)
             llm = cast(BaseChatModel | Runnable[LanguageModelInput, Any], state.get("llm_model"))
             try:
-                model_runnable = wrap_model(llm, messages)
+                model_runnable = wrap_model(
+                    llm,
+                    system_prompt.format(
+                        pairs_of_question_answers_json=pairs_of_question_answers_json,
+                    ),
+                )
                 llm_response = await model_runnable.ainvoke(state, config)
             except Exception as e:
                 logger.error(f"Exception: {e}")

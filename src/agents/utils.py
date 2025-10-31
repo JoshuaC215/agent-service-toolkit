@@ -40,17 +40,15 @@ def load_questions(filename="skill_questions.json"):
         raise RuntimeError(f"Failed to load questions from {path}: {e}")
 
 
-def load_prompt(filename: str, **kwargs) -> str:
+def load_prompt(filename: str) -> str:
     """
-    Load a prompt template from a text file in the prompts directory and format it with kwargs.
+    Load a prompt template from a text file in the prompts directory.
     """
     base_dir = os.path.join(os.path.dirname(__file__), "prompts")
     path = os.path.join(base_dir, filename)
     try:
         with open(path, encoding="utf-8") as f:
             template = f.read()
-        if kwargs:
-            return template.format(**kwargs)
         return template
     except Exception as e:
         raise RuntimeError(f"Failed to load prompt from {path}: {e}")

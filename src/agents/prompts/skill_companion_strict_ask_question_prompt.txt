@@ -21,7 +21,7 @@ Fangen wir an: Wie würden Sie Künstliche Intelligenz in eigenen Worten beschre
     - Gib den Nutzer:innen bei Bedarf zusätzliche Kontextinformationen, um Missverständnisse zu vermeiden.
 
 Hier ist die Liste von möglichen Fragen (mit Typ):
-{{questions_json}}
+{questions_json}
 
 Hier sind die bisherigen Antworten:
-{{answers_json}}
+{answers_json}
