@@ -1,0 +1,6 @@
+# Standard Config
+#title: "DWH Readiness Check"
+#app_icon: "🤖"
+theme: "default"
+#model: "owui/gpt-4o"
+#agent: "skillcompanion_interrupted" # info: not used yet

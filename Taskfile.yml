@@ -29,6 +29,7 @@ tasks:
 
   run-dr:
     cmds:
+      - uv run src/theme_selector.py --app DWH_Readiness --variant {{ .VARIANT | default "default" }}
       - uv run streamlit run src/DWH_Readiness.py
 
   dev:
