@@ -11,10 +11,10 @@ from pydantic import ValidationError
 
 from client import AgentClient, AgentClientError
 from client.auth import Auth
-from schema import ChatHistory, ChatMessage, VariantIdentifier
+from schema import ChatMessage, VariantIdentifier
 from schema.task_data import TaskData, TaskDataStatus
-from variants.variant_config import VariantConfig
 from streamlit_utils.evaluation_ui import _render_evaluation_content
+from variants.variant_config import VariantConfig
 
 logger = logging.getLogger(__name__)
 
@@ -404,7 +404,7 @@ async def main(config: VariantConfig) -> None:
                 st.error(f"Unexpected error: {type(e).__name__}: {e}")
                 st.stop()
 
-
+#TODO Refactoring draw_messages wird in mehreren Dateien öfter verwendet, wahrscheinlich wegen Copy and Paste => Prüfen ob nötig und sonst refactorn
 async def draw_messages(
     messages_agen: AsyncGenerator[ChatMessage | str, None],
     is_new: bool = False,

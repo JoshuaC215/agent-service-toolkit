@@ -1,7 +1,7 @@
 import logging
 import os
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
 import streamlit as st
 
@@ -60,7 +60,8 @@ def _ensure_eval_defaults() -> None:
     """
     Ensure default values for evaluation date/time inputs exist in session_state (UTC).
     """
-    from datetime import datetime as _dt, time as _time
+    from datetime import datetime as _dt
+    from datetime import time as _time
 
     if st.session_state.get("eval_from_date") is None:
         st.session_state.eval_from_date = _dt.utcnow().date()

@@ -1,17 +1,19 @@
 from os import getenv
+
 import matplotlib
+
 matplotlib.use("Agg")  # Non-interactive backend
+import logging
+import re
+import sys
+from datetime import UTC, datetime
+from io import BytesIO
+
 import matplotlib.pyplot as plt
 import requests
 from dotenv import load_dotenv
-from pandas import DataFrame
-import logging
-from io import BytesIO
 from matplotlib.ticker import MaxNLocator
-from datetime import datetime, timezone
-import re
-import sys
-
+from pandas import DataFrame
 
 # Load .env so subprocess can pick up environment configuration
 load_dotenv()
@@ -88,8 +90,8 @@ def _safe_png_filename(agent_name: str, from_ts: str, to_ts: str) -> str:
         except Exception as e:
             raise ValueError(f"Invalid ISO8601 timestamp: {ts}") from e
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        dt = dt.astimezone(timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
+        dt = dt.astimezone(UTC)
         return dt.strftime("%Y%m%d%H%M")
 
     safe_agent = re.sub(r"[^A-Za-z0-9_-]+", "_", agent_name or "agent")
@@ -182,8 +184,8 @@ def generate_skillcompanion_png_bytes(
             except Exception as e:
                 raise ValueError(f"Invalid ISO8601 timestamp: {ts}") from e
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            dt = dt.astimezone(timezone.utc)
+                dt = dt.replace(tzinfo=UTC)
+            dt = dt.astimezone(UTC)
             return dt.strftime("%d.%m.%Y %H:%M")
 
         title_text = f"Skill Companion Ergebnis – {_fmt_utc(from_timestamp)} – {_fmt_utc(to_timestamp)} UTC"

@@ -1,5 +1,4 @@
-import types
-from datetime import datetime, time
+from datetime import datetime
 
 import pytest
 import streamlit as st

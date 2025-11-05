@@ -1,0 +1,12 @@
+[
+  {"text": "Erhalten Sie aus Ihren aktuellen BI- und Analysewerkzeugen schnell verwertbare Erkenntnisse?", "type": "closed"},
+  {"text": "Sind Ihre Datenpipelines und ETL-Prozesse automatisiert und effizient?", "type": "closed"},
+  {"text": "Können Fachabteilungen ohne IT-Unterstützung relevante Daten abrufen?", "type": "closed"},
+  {"text": "Haben Sie eine klare Governance- und Datenstrategie definiert?", "type": "closed"},
+  {"text": "Sind alle relevanten internen und externen Datenquellen in Ihre Analysen integriert?", "type": "closed"},
+  {"text": "Unterstützt Ihre aktuelle Architektur eine datengetriebene Entscheidungsfindung?", "type": "closed"},
+  {"text": "Ist Ihr System skalierbar genug, um mit wachsenden Datenmengen mitzuhalten?", "type": "closed"},
+  {"text": "Verfügen Sie über eine Cloud- oder Hybrid-Datenstrategie für mehr Flexibilität?", "type": "closed"},
+  {"text": "Sind Ihre Systeme gegen Ausfälle und Datenverluste ausreichend abgesichert?", "type": "closed"},
+  {"text": "Sind Ihre Datenlandschaft und -prozesse an moderne Technologien (KI, ML, Self-Service-Analytics) anpassbar?", "type": "closed"}
+]

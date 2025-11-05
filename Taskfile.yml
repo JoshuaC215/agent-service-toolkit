@@ -27,6 +27,10 @@ tasks:
       - uv run src/theme_selector.py --app Skill_Companion --variant {{ .VARIANT | default "default" }}
       - uv run streamlit run src/Skill_Companion.py
 
+  run-dr:
+    cmds:
+      - uv run streamlit run src/DWH_Readiness.py
+
   dev:
     desc: "Run Ruff for code quality and formatting"
     cmds:
