@@ -20,6 +20,8 @@ COPY src/schema/ ./schema/
 # Include evaluation logic and Streamlit evaluation UI
 COPY src/langfuse_evaluation/ ./langfuse_evaluation/
 COPY src/streamlit_utils/ ./streamlit_utils/
+# Include the questionnaire JSON files used by dwh_helpers.py
+COPY src/agents/agents_questions/ ./agents/agents_questions/
 COPY src/static ./src/static/
 COPY src/variants ./variants/
 COPY .streamlit/ ./.streamlit/
