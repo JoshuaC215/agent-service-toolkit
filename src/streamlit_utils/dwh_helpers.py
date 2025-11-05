@@ -79,8 +79,10 @@ def compute_and_show_results(score: int, eval_map: dict[tuple[int, int], tuple[s
     """
     st.markdown("---")
     st.write(f"### Ihre Gesamtpunktzahl: {score}")
+    selected_msg = None
     for (low, high), (msg_type, msg) in eval_map.items():
         if low <= score <= high:
+            selected_msg = msg
             if msg_type == "warning":
                 st.warning(msg)
             elif msg_type == "info":
@@ -92,10 +94,11 @@ def compute_and_show_results(score: int, eval_map: dict[tuple[int, int], tuple[s
             break
     else:
         st.write("Punktzahl außerhalb des erwarteten Bereichs")
-    if "Dateninfrastruktur" in msg:
-        st.session_state["satisfaction_final_result"]= msg
-    else:
-        st.session_state["challenge_final_result"] = msg
+    if selected_msg is not None:
+        if "Dateninfrastruktur" in selected_msg:
+            st.session_state["satisfaction_final_result"]= selected_msg
+        else:
+            st.session_state["challenge_final_result"] = selected_msg
 
 def render_slider_section() -> None:
     """
@@ -140,6 +143,9 @@ def render_questionnaire(
     Returns:
         None
     """
+    if not questions:
+        st.warning("Keine Fragen gefunden. Bitte laden Sie die Seite neu oder wenden Sie sich an den Administrator.")
+        return
     if answer_options is None:
         answer_options = ["Ja", "Teilweise", "Nein"]
     if points_dict is None:

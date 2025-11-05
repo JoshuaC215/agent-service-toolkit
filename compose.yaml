@@ -79,6 +79,9 @@ services:
         - path: src/streamlit_app.py
           action: sync+restart
           target: /app/streamlit_app.py
+        - path: src/agents/agents_questions/
+          action: sync+restart
+          target: /app/agents/agents_questions/
 
 volumes:
   postgres_data:
