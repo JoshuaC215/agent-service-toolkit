@@ -1,41 +1,131 @@
-# --- Load question lists from JSON files ---
 import json
+import logging
 import os
 from collections.abc import Callable
+from dataclasses import dataclass, field
+from typing import Literal
 
 import streamlit as st
 
+# Modulkonstante für die allgemeine Fehleranzeige beim Laden der Fragen
+ERROR_LOADING_QUESTIONS_MSG = "Beim Laden der Fragen ist ein unerwarteter Fehler aufgetreten."
 
-def load_questions_from_json(json_filename: str) -> list[str]:
+# Set up module-level logger
+logger = logging.getLogger(__name__)
+if not logger.hasHandlers():
+    logging.basicConfig(level=logging.INFO)
+
+# Question limit for questionnaires (configurable via environment variable)
+QUESTION_LIMIT = int(os.environ.get("DWH_QUESTION_LIMIT", 10))
+
+
+@dataclass
+class DWHQuestion:
     """
-    Load a list of questions from a JSON file.
+    Represents a single DWH readiness question.
+
+    Args:
+        text (str): The question text.
+    """
+    text: str
+
+    @staticmethod
+    def from_dict(obj: dict) -> "DWHQuestion":
+        """
+        Create a DWHQuestion instance from a dictionary.
+
+        Args:
+            obj (dict): Dictionary with a 'text' field.
+
+        Returns:
+            DWHQuestion: The created question object.
+
+        Raises:
+            ValueError: If the input is not valid.
+        """
+        if not isinstance(obj, dict) or "text" not in obj or not isinstance(obj["text"], str):
+            raise ValueError("Each question must be a dict with a 'text' field of type str.")
+        return DWHQuestion(text=obj["text"])
+
+@dataclass
+class DWHReadinessCheckObject:
+    """
+    Represents a DWH readiness check object with title, scale, and questions.
+
+    Args:
+        title (str): The title of the check.
+        description (str): The description of the check.
+        scale (Literal["normal", "inverse"]): The scoring scale.
+        questions (list[DWHQuestion]): List of questions.
+    """
+    title: str
+    description: str
+    scale: Literal["normal", "inverse"]
+    questions: list[DWHQuestion] = field(default_factory=list)
+
+    @staticmethod
+    def from_dict(obj: dict) -> "DWHReadinessCheckObject":
+        """
+        Create a DWHReadinessCheckObject from a dictionary.
+
+        Args:
+            obj (dict): Dictionary with keys 'title', 'description', 'scale', and 'questions'.
+
+        Returns:
+            DWHReadinessCheckObject: The created readiness check object.
+
+        Raises:
+            ValueError: If the input is not valid.
+        """
+        if not isinstance(obj, dict):
+            raise ValueError("Root object must be a dict.")
+        title = obj.get("title", "")
+        description = obj.get("description","")
+        if not isinstance(title, str):
+            title = ""
+        scale = obj.get("scale", "normal")
+        if scale not in ("normal", "inverse"):
+            scale = "normal"
+        questions = obj.get("questions", [])
+        if not isinstance(questions, list):
+            raise ValueError("questions must be a list.")
+        if len(questions) != QUESTION_LIMIT:
+            raise ValueError(f"questions must have {QUESTION_LIMIT} items, got {len(questions)}")
+        question_objs = [DWHQuestion.from_dict(q) for q in questions]
+        return DWHReadinessCheckObject(title=title, description=description,scale=scale, questions=question_objs)
+
+def load_questions_from_json(json_filename: str) -> DWHReadinessCheckObject | None:
+    """
+    Load a DWHReadinessCheckObject from a JSON file.
 
     Args:
         json_filename (str): The filename of the JSON file containing questions.
 
     Returns:
-        list[str]: A list of question texts. Returns an empty list if loading fails.
+        DWHReadinessCheckObject or None: The questionnaire object, or None if loading/validation fails.
     """
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     questions_path = os.path.join(base_dir, "agents", "agents_questions", json_filename)
     try:
         with open(questions_path, encoding="utf-8") as f:
             data = json.load(f)
-        questions = [q["text"] for q in data]
-        if len(questions) != 10:
-            error_msg = f"Die Fragenliste in {json_filename} enthält {len(questions)} Elemente, erwartet werden 10."
-            st.error(error_msg)
-            raise ValueError(error_msg)
-        return questions
+        logger.info(f"Loaded questions from {questions_path}")
+        return DWHReadinessCheckObject.from_dict(data)
     except ValueError as ve:
-        st.error(f"Verwendetes Json-File enthält zu wenige Fragen: {json_filename}: {ve}")
-        return []
+        logger.error(f"Invalid JSON in {json_filename}: {ve}")
+        st.error(
+            ERROR_LOADING_QUESTIONS_MSG
+        )
+        return None
     except Exception as e:
-        st.error(f"Fehler beim Laden der Fragen aus {json_filename}: {e}")
-        return []
+        logger.error(f"Error loading questions from {json_filename}: {e}")
+        st.error(
+            ERROR_LOADING_QUESTIONS_MSG
+        )
+        return None
 
-questions_for_dwh_readiness_challenge = load_questions_from_json("dwh_readiness_challenge_questions.json")
-questions_for_dwh_readiness_satisfaction = load_questions_from_json("dwh_readiness_satisfaction_questions.json")
+questions_for_dwh_readiness_challenge: DWHReadinessCheckObject | None = load_questions_from_json("dwh_readiness_challenge_questions.json")
+questions_for_dwh_readiness_satisfaction: DWHReadinessCheckObject | None = load_questions_from_json("dwh_readiness_satisfaction_questions.json")
 
 challenge_eval_map:dict[tuple[int,int],tuple[str,str]] = {
     (0, 7): (
@@ -66,7 +156,10 @@ satisfaction_eval_map:dict[tuple[int,int],tuple[str,str]] = {
     ),
 }
 
-def compute_and_show_results(score: int, eval_map: dict[tuple[int, int], tuple[str, str]]) -> None:
+def compute_and_show_results(
+    score: int,
+    eval_map: dict[tuple[int, int], tuple[str, str]]
+) -> None:
     """
     Compute the evaluation result based on the score and show the result using Streamlit.
 
@@ -119,58 +212,124 @@ def render_slider_section() -> None:
     st.session_state["tech_affinity"] = tech_affinity
     st.session_state["company_size"] = company_size
 
-def render_questionnaire(
-    questions: list[str],
-    prefix: str,
-    toggle_next: Callable[..., None] | None = None,
-    eval_map: dict | None = None,
-    next_label: str | None = None,
-    answer_options: list[str] | None = None,
-    points_dict: dict[str, int] | None = None,
-) -> None:
+def validate_and_extract_questions(
+    dwhReadinessCheckObject: DWHReadinessCheckObject | None,
+) -> tuple[str, str, str, list[str]]:
     """
-    Render a questionnaire in the Streamlit UI.
+    Validate the questionnaire object and extract title, description, scale, and question texts.
 
     Args:
-        questions (list[str]): List of questions to display.
-        prefix (str): Prefix for session state keys.
-        toggle_next (Callable[..., None] | None, optional): Function to call when moving to the next section.
-        eval_map (dict | None, optional): Evaluation map for scoring.
-        next_label (str | None, optional): Label for the next button.
-        answer_options (list[str] | None, optional): List of answer options.
-        points_dict (dict[str, int] | None, optional): Mapping of answers to points.
+        dwhReadinessCheckObject (DWHReadinessCheckObject | None): The questionnaire object to display.
 
     Returns:
-        None
+        tuple: (title, description, scale, question_texts)
+
+    Raises:
+        ValueError: If the questionnaire object is invalid.
     """
-    if not questions:
-        st.warning("Keine Fragen gefunden. Bitte laden Sie die Seite neu oder wenden Sie sich an den Administrator.")
-        return
-    if answer_options is None:
-        answer_options = ["Ja", "Teilweise", "Nein"]
-    if points_dict is None:
-        points_dict = {"Ja": 2, "Teilweise": 1, "Nein": 0}
-    index_key = f"frage_index_{prefix}"
-    if index_key not in st.session_state:
-        st.session_state[index_key] = 0
-    for i in range(len(questions)):
+    if not isinstance(dwhReadinessCheckObject, DWHReadinessCheckObject):
+        logger.error("Ungültiges Fragenformat übergeben. Erwartet: DWHReadinessCheckObject.")
+        st.warning(ERROR_LOADING_QUESTIONS_MSG)
+        raise ValueError("Invalid questionnaire object.")
+
+    title = dwhReadinessCheckObject.title
+    description = dwhReadinessCheckObject.description
+    scale = dwhReadinessCheckObject.scale
+    question_objs = dwhReadinessCheckObject.questions
+    question_texts = [q.text for q in question_objs]
+
+    if not question_texts or len(question_texts) != QUESTION_LIMIT:
+        logger.error(
+            f"Ungültige Anzahl an Fragen: Erwartet {QUESTION_LIMIT}, erhalten: {len(question_texts) if question_texts else 0}."
+        )
+        st.warning(
+            f"Ungültige Anzahl an Fragen gefunden. Erwartet: {QUESTION_LIMIT}, erhalten: {len(question_texts) if question_texts else 0}. "
+            "Bitte laden Sie die Seite neu oder wenden Sie sich an den Administrator."
+        )
+        raise ValueError("Invalid number of questions.")
+
+    return title, description, scale, question_texts
+
+def show_questionnaire_title_and_description(title: str, description: str) -> None:
+    """
+    Show the questionnaire title and description in Streamlit.
+
+    Args:
+        title (str): The questionnaire title.
+        description (str): The questionnaire description.
+    """
+    if title:
+        st.title(title)
+        st.write(description)
+
+def invert_points_dict_if_needed(scale: str, points_dict: dict[str, int]) -> dict[str, int]:
+    """
+    Invert the points dictionary if the scale is 'inverse'.
+
+    Args:
+        scale (str): The scoring scale.
+        points_dict (dict[str, int]): The points mapping.
+
+    Returns:
+        dict[str, int]: The (possibly inverted) points mapping.
+    """
+    if scale == "inverse":
+        return {k: 2 - v for k, v in points_dict.items()}
+    return points_dict
+
+def initialize_session_state(prefix: str, question_texts: list[str]) -> str:
+    """
+    Initialize session state for the questionnaire.
+
+    Args:
+        prefix (str): Prefix for session state keys.
+        question_texts (list[str]): List of question texts.
+
+    Returns:
+        str: The question index key.
+    """
+    question_index_key = f"question_index_{prefix}"
+    if question_index_key not in st.session_state:
+        st.session_state[question_index_key] = 0
+    for i in range(len(question_texts)):
         key = f"{prefix}_{i}"
         if key not in st.session_state:
             st.session_state[key] = None
+    return question_index_key
 
-    def advance_index() -> None:
-        """
-        Advance the current question index if the current question is answered.
-        """
-        i = st.session_state.current_radio_key
-        if st.session_state[f"{prefix}_{i}"] is not None:
-            if st.session_state[index_key] < len(questions) - 1:
-                st.session_state[index_key] += 1
+def advance_index(prefix: str, question_index_key: str, question_texts: list[str]) -> None:
+    """
+    Advance the current question index if the current question is answered.
 
-    for i in range(st.session_state[index_key] + 1):
+    Args:
+        prefix (str): Prefix for session state keys.
+        question_index_key (str): The session state key for the question index.
+        question_texts (list[str]): List of question texts.
+    """
+    i = st.session_state.current_radio_key
+    if st.session_state[f"{prefix}_{i}"] is not None:
+        if st.session_state[question_index_key] < len(question_texts) - 1:
+            st.session_state[question_index_key] += 1
+
+def render_questions(
+    prefix: str,
+    question_index_key: str,
+    question_texts: list[str],
+    answer_options: list[str],
+) -> None:
+    """
+    Render the questions and answer options in Streamlit.
+
+    Args:
+        prefix (str): Prefix for session state keys.
+        question_index_key (str): The session state key for the question index.
+        question_texts (list[str]): List of question texts.
+        answer_options (list[str]): List of answer options.
+    """
+    for i in range(st.session_state[question_index_key] + 1):
         col1, col2 = st.columns([5, 4])
         with col1:
-            st.write(questions[i])
+            st.write(question_texts[i])
         with col2:
             st.session_state.current_radio_key = i
             st.radio(
@@ -179,18 +338,81 @@ def render_questionnaire(
                 horizontal=True,
                 key=f"{prefix}_{i}",
                 label_visibility="collapsed",
-                on_change=advance_index,
+                on_change=lambda: advance_index(prefix, question_index_key, question_texts),
             )
-    alle_beantwortet = all(
-        st.session_state[f"{prefix}_{i}"] is not None for i in range(len(questions))
+
+def all_questions_answered(prefix: str, question_texts: list[str]) -> bool:
+    """
+    Check if all questions have been answered.
+
+    Args:
+        prefix (str): Prefix for session state keys.
+        question_texts (list[str]): List of question texts.
+
+    Returns:
+        bool: True if all questions are answered, False otherwise.
+    """
+    return all(
+        st.session_state[f"{prefix}_{i}"] is not None for i in range(len(question_texts))
     )
-    if alle_beantwortet:
-        gesamtpunkte = sum(
-            points_dict.get(st.session_state[f"{prefix}_{i}"], 0)
-            for i in range(len(questions))
+
+def calculate_total_points(prefix: str, question_texts: list[str], points_dict: dict[str, int]) -> int:
+    """
+    Calculate the total points for the questionnaire.
+
+    Args:
+        prefix (str): Prefix for session state keys.
+        question_texts (list[str]): List of question texts.
+        points_dict (dict[str, int]): Mapping of answers to points.
+
+    Returns:
+        int: The total points.
+    """
+    return sum(
+        points_dict.get(st.session_state[f"{prefix}_{i}"], 0)
+        for i in range(len(question_texts))
+    )
+
+def render_questionnaire(
+    dwhReadinessCheckObject: DWHReadinessCheckObject | None,
+    prefix: str,
+    toggle_next: Callable[..., None] = lambda: None,
+    eval_map: dict = {},
+    next_label: str = "",
+    answer_options: list[str] = ["Ja", "Teilweise", "Nein"],
+    points_dict: dict[str, int] = {"Ja": 2, "Teilweise": 1, "Nein": 0},
+) -> None:
+    """
+    Render a questionnaire in the Streamlit UI.
+
+    Args:
+        dwhReadinessCheckObject (DWHReadinessCheckObject | None): The questionnaire object to display.
+        prefix (str): Prefix for session state keys.
+        toggle_next (Callable[..., None], optional): Function to call when moving to the next section.
+        eval_map (dict, optional): Evaluation map for scoring.
+        next_label (str, optional): Label for the next button.
+        answer_options (list[str], optional): List of answer options.
+        points_dict (dict[str, int], optional): Mapping of answers to points.
+
+    Returns:
+        None
+    """
+    try:
+        title, description, scale, question_texts = validate_and_extract_questions(
+            dwhReadinessCheckObject
         )
+    except ValueError:
+        return
+
+    show_questionnaire_title_and_description(title, description)
+    points_dict = invert_points_dict_if_needed(scale, points_dict)
+    question_index_key = initialize_session_state(prefix, question_texts)
+    render_questions(prefix, question_index_key, question_texts, answer_options)
+
+    if all_questions_answered(prefix, question_texts):
+        total_points = calculate_total_points(prefix, question_texts, points_dict)
         if eval_map:
-            compute_and_show_results(gesamtpunkte, eval_map,)
+            compute_and_show_results(total_points, eval_map)
         if toggle_next and next_label:
             if st.button(next_label):
                 toggle_next()

@@ -1,12 +1,17 @@
-[
-  {"text": "Haben Sie Schwierigkeiten, konsistente und zuverlässige Daten für Analysen bereitzustellen?", "type": "closed"},
-  {"text": "Bestehen aktuell Engpässe bei der Datenintegration aus verschiedenen Systemen?", "type": "closed"},
-  {"text": "Gibt es häufige manuelle Aufwände zur Datenbereinigung und -Aufbereitung?", "type": "closed"},
-  {"text": "Erleben Sie Probleme bei der Skalierbarkeit Ihrer aktuellen Dateninfrastruktur?", "type": "closed"},
-  {"text": "Haben verschiedene Abteilungen unterschiedliche, widersprüchliche Datensätze?", "type": "closed"},
-  {"text": "Fehlt Ihnen eine zentrale Datenstrategie für Reporting & Analytics?", "type": "closed"},
-  {"text": "Gibt es Performance-Probleme in Ihrem aktuellen BI- oder DWH-System?", "type": "closed"},
-  {"text": "Ist Ihre Datenhaltung nicht optimal für Echtzeit-Analysen geeignet?", "type": "closed"},
-  {"text": "Gibt es Compliance- oder Sicherheitsrisiken durch unkontrollierte Datennutzung?", "type": "closed"},
-  {"text": "Verlieren Sie durch unzureichende Datenqualität oder -verfügbarkeit Umsatz- oder Geschäftschancen?", "type": "closed"}
-]
+{
+  "title" : "Herausforderungen & Schmerzpunkte identifizieren",
+  "description" : "Bewerten Sie die aktuellen Herausforderungen in Ihrem Datenmanagement:",
+  "scale" : "inverse",
+  "questions" : [
+    {"text": "Haben Sie Schwierigkeiten, konsistente und zuverlässige Daten für Analysen bereitzustellen?"},
+    {"text": "Bestehen aktuell Engpässe bei der Datenintegration aus verschiedenen Systemen?"},
+    {"text": "Gibt es häufige manuelle Aufwände zur Datenbereinigung und -Aufbereitung?"},
+    {"text": "Erleben Sie Probleme bei der Skalierbarkeit Ihrer aktuellen Dateninfrastruktur?"},
+    {"text": "Haben verschiedene Abteilungen unterschiedliche, widersprüchliche Datensätze?"},
+    {"text": "Fehlt Ihnen eine zentrale Datenstrategie für Reporting & Analytics?"},
+    {"text": "Gibt es Performance-Probleme in Ihrem aktuellen BI- oder DWH-System?"},
+    {"text": "Ist Ihre Datenhaltung nicht optimal für Echtzeit-Analysen geeignet?"},
+    {"text": "Gibt es Compliance- oder Sicherheitsrisiken durch unkontrollierte Datennutzung?"},
+    {"text": "Verlieren Sie durch unzureichende Datenqualität oder -verfügbarkeit Umsatz- oder Geschäftschancen?"}
+  ]
+}

@@ -76,13 +76,7 @@ async def main() -> None:
         st.session_state.tech_affinity = 0
     if "satisfaction_final_result" not in st.session_state:
         st.session_state.satisfaction_final_result = ""
-    if st.session_state.show_title:
-        if st.session_state.show_dwh_readiness_check_challenge:
-            st.session_state.title = "Herausforderungen & Schmerzpunkte identifizieren"
-        if st.session_state.show_dwh_readiness_check_satisfaction:
-            st.session_state.title = "Zufriedenheit mit bestehenden Lösungen"
         st.title(st.session_state.title)
-
     if st.get_option("client.toolbarMode") != "minimal":
         st.set_option("client.toolbarMode", "minimal")
         await asyncio.sleep(0.1)
@@ -111,7 +105,7 @@ async def main() -> None:
         # Wenn Slider geschlossen wurde, direkt die Fragen anzeigen
         if not st.session_state.show_slider:
             st.session_state.show_dwh_readiness_check_challenge = True
-            st.session_state.show_title = True
+            st.session_state.show_title = False
             st.rerun()
 
     if st.session_state.show_additional_infos:
@@ -135,27 +129,31 @@ async def main() -> None:
             st.write(st.session_state.satisfaction_final_result)
 
     if st.session_state.show_dwh_readiness_check_challenge:
-        st.write("Bewerten Sie die aktuellen Herausforderungen in Ihrem Datenmanagement.")
         # Streamlit runs in an event loop, so we must use await instead of asyncio.run
         questions = questions_for_dwh_readiness_challenge
-        render_questionnaire(
-            questions,
-            prefix="challenge",
-            toggle_next=toggle_dwh_readiness_check_satisfaction,
-            eval_map=challenge_eval_map,
-            next_label="Bewerten Sie ihre bestehende Lösung",
-        )
+        if questions is not None:
+            render_questionnaire(
+                questions,
+                prefix="challenge",
+                toggle_next=toggle_dwh_readiness_check_satisfaction,
+                eval_map=challenge_eval_map,
+                next_label="Bewerten Sie ihre bestehende Lösung",
+            )
+        else:
+            st.warning("Fragen für den DWH Readiness Challenge-Check konnten nicht geladen werden.")
 
     if st.session_state.show_dwh_readiness_check_satisfaction:
-        st.write("Bewerten Sie die Effizienz und Leistungsfähigkeit Ihrer aktuellen Dateninfrastruktur:")
         questions = questions_for_dwh_readiness_satisfaction
-        render_questionnaire(
-            questions,
-            prefix="satisfaction",
-            toggle_next=toggle_dwh_final_check,
-            eval_map=satisfaction_eval_map,
-            next_label="Zur finalen Auswertung",
-        )
+        if questions is not None:
+            render_questionnaire(
+                questions,
+                prefix="satisfaction",
+                toggle_next=toggle_dwh_final_check,
+                eval_map=satisfaction_eval_map,
+                next_label="Zur finalen Auswertung",
+            )
+        else:
+            st.warning("Fragen für den DWH Readiness Zufriedenheits-Check konnten nicht geladen werden.")
 
 def toggle_slider():
     st.session_state.show_slider = True
