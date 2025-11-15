@@ -15,7 +15,7 @@ from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langfuse import Langfuse  # type: ignore[import-untyped]
-from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
+from langfuse.langchain import CallbackHandler  # type: ignore[import-untyped] | updated as part of langchain v1 upgrade
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
 

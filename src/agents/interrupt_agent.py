@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from langchain.prompts import SystemMessagePromptTemplate
+from langchain_core.prompts import SystemMessagePromptTemplate
 from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage

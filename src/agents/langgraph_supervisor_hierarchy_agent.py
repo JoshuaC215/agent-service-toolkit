@@ -1,46 +1,86 @@
-from langgraph.prebuilt import create_react_agent
-from langgraph_supervisor import create_supervisor
+# LANGCHAIN V1 MIGRATION: Updated imports and agent creation
+# from langgraph.prebuilt import create_react_agent --> deprecated in v1, use create_agent instead
+# from langgraph_supervisor import create_supervisor --> not used in v1
+from langchain.agents import create_agent
+from langchain_core.tools import tool
+from agents.langgraph_supervisor_agent import add, web_search, multiply
 
-from agents.langgraph_supervisor_agent import add, multiply, web_search
+# IMPORTANT: Import only the base tools needed for nested agents
+# Keep them in the function scope, not module scope, to prevent tool leakage
 from core import get_model, settings
 
 model = get_model(settings.DEFAULT_MODEL)
 
 
 def workflow(chosen_model):
-    math_agent = create_react_agent(
+    math_agent = create_agent(
         model=chosen_model,
         tools=[add, multiply],
         name="sub-agent-math_expert",  # Identify the graph node as a sub-agent
-        prompt="You are a math expert. Always use one tool at a time.",
+        system_prompt="You are a math expert. Always use one tool at a time.",
     ).with_config(tags=["skip_stream"])
 
-    research_agent = (
-        create_supervisor(
-            [math_agent],
-            model=chosen_model,
-            tools=[web_search],
-            prompt="You are a world class researcher with access to web search. Do not do any math, you have a math expert for that. ",
-            supervisor_name="supervisor-research_expert",  # Identify the graph node as a supervisor to the math agent
+    @tool
+    def delegate_to_math_expert(request: str) -> str:
+        """Use this for any math operations like addition, multiplication, or calculations.
+
+        Input: Natural language math request (e.g., 'multiply 5 and 10')
+        """
+        # LANGCHAIN V1 MIGRATION: invoke() pattern consistent across all agent calls
+        
+        result = math_agent.invoke({"messages": [{"role": "user", "content": request}]})
+        # Extract the text content from the last message
+        last_message = result["messages"][-1]
+        return (
+            last_message.content
+            if hasattr(last_message, "content")
+            else str(last_message)
         )
-        .compile(
-            name="sub-agent-research_expert"
-        )  # Identify the graph node as a sub-agent to the main supervisor
-        .with_config(tags=["skip_stream"])
-    )  # Stream tokens are ignored for sub-agents in the UI
+
+    research_supervisor = create_agent(
+        model=chosen_model,
+        tools=[web_search, delegate_to_math_expert],
+        system_prompt=(
+            "You are a world class researcher with access to web search. "
+            "When you need to do math, use delegate_to_math_expert. "
+            "For research and information lookup, use web_search directly."
+        ),
+    )
+
+    @tool
+    def delegate_to_research_expert(request: str) -> str:
+        """Use this for research tasks, information lookup, and math operations.
+
+        The research expert has access to web search and can delegate to a math expert.
+
+        Input: Natural language request (e.g., 'find FAANG headcounts and calculate the average')
+        """
+        # LANGCHAIN V1 MIGRATION: invoke() pattern consistent across all agent calls
+
+        result = research_supervisor.invoke(
+            {"messages": [{"role": "user", "content": request}]}
+        )
+        # Extract the text content from the last message
+        last_message = result["messages"][-1]
+        return (
+            last_message.content
+            if hasattr(last_message, "content")
+            else str(last_message)
+        )
 
     # Create supervisor workflow
-    return create_supervisor(
-        [research_agent],
+    main_supervisor = create_agent(
         model=chosen_model,
-        prompt=(
-            "You are a team supervisor managing a research expert with math capabilities."
-            "For current events, use research_agent. "
+        tools=[delegate_to_research_expert],
+        system_prompt=(
+            "You are a team supervisor managing a research expert with math capabilities. "
+            "For current events, research, or any tasks requiring information lookup, "
+            "use delegate_to_research_expert."
         ),
-        add_handoff_back_messages=True,
-        # UI now expects this to be True so we don't have to guess when a handoff back occurs
-        output_mode="full_history",  # otherwise when reloading conversations, the sub-agents' messages are not included
-    )  # default name for supervisor is "supervisor".
+    )
+    return main_supervisor
 
 
-langgraph_supervisor_hierarchy_agent = workflow(model).compile()
+# LANGCHAIN V1 MIGRATION: Module-level agent instance for importing
+# Note: When used in service, a checkpointer must be attached for state operations
+langgraph_supervisor_hierarchy_agent = workflow(model)
