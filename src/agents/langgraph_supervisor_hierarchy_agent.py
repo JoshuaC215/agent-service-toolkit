@@ -3,7 +3,8 @@
 # from langgraph_supervisor import create_supervisor --> not used in v1
 from langchain.agents import create_agent
 from langchain_core.tools import tool
-from agents.langgraph_supervisor_agent import add, web_search, multiply
+
+from agents.langgraph_supervisor_agent import add, multiply, web_search
 
 # IMPORTANT: Import only the base tools needed for nested agents
 # Keep them in the function scope, not module scope, to prevent tool leakage
@@ -27,15 +28,11 @@ def workflow(chosen_model):
         Input: Natural language math request (e.g., 'multiply 5 and 10')
         """
         # LANGCHAIN V1 MIGRATION: invoke() pattern consistent across all agent calls
-        
+
         result = math_agent.invoke({"messages": [{"role": "user", "content": request}]})
         # Extract the text content from the last message
         last_message = result["messages"][-1]
-        return (
-            last_message.content
-            if hasattr(last_message, "content")
-            else str(last_message)
-        )
+        return last_message.content if hasattr(last_message, "content") else str(last_message)
 
     research_supervisor = create_agent(
         model=chosen_model,
@@ -57,16 +54,10 @@ def workflow(chosen_model):
         """
         # LANGCHAIN V1 MIGRATION: invoke() pattern consistent across all agent calls
 
-        result = research_supervisor.invoke(
-            {"messages": [{"role": "user", "content": request}]}
-        )
+        result = research_supervisor.invoke({"messages": [{"role": "user", "content": request}]})
         # Extract the text content from the last message
         last_message = result["messages"][-1]
-        return (
-            last_message.content
-            if hasattr(last_message, "content")
-            else str(last_message)
-        )
+        return last_message.content if hasattr(last_message, "content") else str(last_message)
 
     # Create supervisor workflow
     main_supervisor = create_agent(

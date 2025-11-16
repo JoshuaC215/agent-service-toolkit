@@ -73,7 +73,7 @@ async def test_three_layer_supervisor_hierarchy_agent_with_fake_model():
         # The workflow now uses delegate_to_research_expert and delegate_to_math_expert.
         # These simplified assertions verify the message flow works correctly without
         # depending on internal implementation details.
-        # 
+        #
         # The workflow will attempt to call the mocked tools in sequence
         # based on the FakeToolModel responses provided
         assert len(messages) > 0

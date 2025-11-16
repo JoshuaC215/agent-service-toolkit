@@ -1,5 +1,6 @@
 import pytest
 from langchain_core.messages import AIMessage
+
 # LANGCHAIN V1 MIGRATION: Import ValidationError from pydantic_core
 # In langchain v1, AIMessage uses Pydantic v2 for validation, which raises
 # pydantic_core.ValidationError instead of TypeError for missing required fields.
@@ -49,7 +50,7 @@ def test_create_ai_message_missing_required_content_raises():
     """
     AIMessage requires 'content'; if missing, _create_ai_message should
     raise a pydantic ValidationError from the constructor.
-    
+
     LANGCHAIN V1 MIGRATION NOTE:
     - Previously raised TypeError for missing required arguments
     - In langchain v1 with Pydantic v2, validation errors are now pydantic_core.ValidationError
@@ -63,7 +64,7 @@ def test_create_ai_message_empty_dict_raises():
     """
     Completely empty parts should also fail to construct an AIMessage,
     raising a pydantic ValidationError.
-    
+
     LANGCHAIN V1 MIGRATION NOTE:
     - Exception type changed from TypeError to pydantic_core.ValidationError
     - Reflects the shift to Pydantic v2 for model validation in langchain_core

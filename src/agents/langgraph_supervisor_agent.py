@@ -1,5 +1,7 @@
 # from langgraph.prebuilt import create_react_agent --> deprecated
 # from langgraph_supervisor import create_supervisor
+from typing import Any
+
 from langchain.agents import create_agent
 from langchain_core.tools import tool
 
@@ -30,14 +32,14 @@ def web_search(query: str) -> str:
     )
 
 
-math_agent = create_agent(
+math_agent: Any = create_agent(
     model=model,
     tools=[add, multiply],
     name="sub-agent-math_expert",
     system_prompt="You are a math expert. Always use one tool at a time.",
 ).with_config(tags=["skip_stream"])
 
-research_agent = create_agent(
+research_agent: Any = create_agent(
     model=model,
     tools=[web_search],
     name="sub-agent-research_expert",
@@ -48,30 +50,27 @@ research_agent = create_agent(
 @tool
 def delegate_to_math_expert(request: str) -> str:
     """Use this for any math operations like addition, multiplication, or calculations.
-    
+
     Input: Natural language math request (e.g., 'add 5 and 10')
     """
-    result = math_agent.invoke({
-        "messages": [{"role": "user", "content": request}]
-    })
+    result = math_agent.invoke({"messages": [{"role": "user", "content": request}]})
     last_message = result["messages"][-1]
-    return last_message.content if hasattr(last_message, 'content') else str(last_message)
+    return last_message.content if hasattr(last_message, "content") else str(last_message)
 
 
 @tool
 def delegate_to_research_expert(request: str) -> str:
     """Use this for research tasks and information lookup.
-    
+
     Input: Natural language research request (e.g., 'find information about companies')
     """
-    result = research_agent.invoke({
-        "messages": [{"role": "user", "content": request}]
-    })
+    result = research_agent.invoke({"messages": [{"role": "user", "content": request}]})
     last_message = result["messages"][-1]
-    return last_message.content if hasattr(last_message, 'content') else str(last_message)
+    return last_message.content if hasattr(last_message, "content") else str(last_message)
+
 
 # Create supervisor workflow
-supervisor_agent = create_agent(
+supervisor_agent: Any = create_agent(
     model=model,
     tools=[delegate_to_math_expert, delegate_to_research_expert],
     system_prompt=(

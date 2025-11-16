@@ -101,9 +101,7 @@ class TestGitHubMCPAgent:
             # LANGCHAIN V1 MIGRATION: Updated from 'create_react_agent' to 'create_agent'
             # In langchain v1, create_react_agent was deprecated and replaced with create_agent
             # from langchain.agents. The new API provides better type safety and consistency.
-            patch(
-                "agents.github_mcp_agent.github_mcp_agent.create_agent"
-            ) as mock_create_agent,
+            patch("agents.github_mcp_agent.github_mcp_agent.create_agent") as mock_create_agent,
         ):
             mock_model = Mock()
             mock_get_model.return_value = mock_model
@@ -117,7 +115,10 @@ class TestGitHubMCPAgent:
             # In langchain v1, create_agent uses 'system_prompt' instead of 'prompt' parameter
             # for consistency with other agent creation utilities.
             mock_create_agent.assert_called_once_with(
-                model=mock_model, tools=agent._mcp_tools, name="github-mcp-agent", system_prompt=prompt
+                model=mock_model,
+                tools=agent._mcp_tools,
+                name="github-mcp-agent",
+                system_prompt=prompt,
             )
 
     def test_get_graph_not_loaded(self):
