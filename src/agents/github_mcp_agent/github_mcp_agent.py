@@ -3,7 +3,6 @@
 import logging
 from datetime import datetime
 
-# from langgraph.prebuilt import create_react_agent --> deprecated in v1, use create_agent instead
 from langchain.agents import create_agent
 from langchain_core.tools import BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient

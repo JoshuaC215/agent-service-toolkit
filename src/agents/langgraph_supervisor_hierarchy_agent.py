@@ -1,5 +1,3 @@
-# LANGCHAIN V1 MIGRATION: Updated imports and agent creation
-# from langgraph.prebuilt import create_react_agent --> deprecated in v1, use create_agent instead
 # from langgraph_supervisor import create_supervisor --> not used in v1
 from langchain.agents import create_agent
 from langchain_core.tools import tool
@@ -27,7 +25,6 @@ def workflow(chosen_model):
 
         Input: Natural language math request (e.g., 'multiply 5 and 10')
         """
-        # LANGCHAIN V1 MIGRATION: invoke() pattern consistent across all agent calls
 
         result = math_agent.invoke({"messages": [{"role": "user", "content": request}]})
         # Extract the text content from the last message
@@ -52,8 +49,6 @@ def workflow(chosen_model):
 
         Input: Natural language request (e.g., 'find FAANG headcounts and calculate the average')
         """
-        # LANGCHAIN V1 MIGRATION: invoke() pattern consistent across all agent calls
-
         result = research_supervisor.invoke({"messages": [{"role": "user", "content": request}]})
         # Extract the text content from the last message
         last_message = result["messages"][-1]
@@ -72,6 +67,5 @@ def workflow(chosen_model):
     return main_supervisor
 
 
-# LANGCHAIN V1 MIGRATION: Module-level agent instance for importing
 # Note: When used in service, a checkpointer must be attached for state operations
 langgraph_supervisor_hierarchy_agent = workflow(model)
