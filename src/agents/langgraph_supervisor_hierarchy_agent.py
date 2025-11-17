@@ -2,9 +2,6 @@ from langchain.agents import create_agent
 from langchain_core.tools import tool
 
 from agents.langgraph_supervisor_agent import add, multiply, web_search
-
-# IMPORTANT: Import only the base tools needed for nested agents
-# Keep them in the function scope, not module scope, to prevent tool leakage
 from core import get_model, settings
 
 model = get_model(settings.DEFAULT_MODEL)
