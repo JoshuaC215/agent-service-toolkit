@@ -98,7 +98,6 @@ class TestGitHubMCPAgent:
 
         with (
             patch("agents.github_mcp_agent.github_mcp_agent.get_model") as mock_get_model,
-            # LANGCHAIN V1 MIGRATION: Updated from 'create_react_agent' to 'create_agent'
             patch("agents.github_mcp_agent.github_mcp_agent.create_agent") as mock_create_agent,
         ):
             mock_model = Mock()
@@ -109,7 +108,6 @@ class TestGitHubMCPAgent:
             graph = agent._create_graph()
 
             assert graph == mock_graph
-            # LANGCHAIN V1 MIGRATION: Updated parameter from 'prompt' to 'system_prompt'
             mock_create_agent.assert_called_once_with(
                 model=mock_model,
                 tools=agent._mcp_tools,

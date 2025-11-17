@@ -1,9 +1,5 @@
 import pytest
 from langchain_core.messages import AIMessage
-
-# LANGCHAIN V1 MIGRATION: Import ValidationError from pydantic_core
-# In langchain v1, AIMessage uses Pydantic v2 for validation, which raises
-# pydantic_core.ValidationError instead of TypeError for missing required fields.
 from pydantic_core import ValidationError
 
 from service.service import _create_ai_message
