@@ -15,7 +15,9 @@ from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langfuse import Langfuse  # type: ignore[import-untyped]
-from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
+from langfuse.langchain import (
+    CallbackHandler,  # type: ignore[import-untyped]
+)
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
 
@@ -126,7 +128,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     if user_input.model is not None:
         configurable["model"] = user_input.model
 
-    callbacks = []
+    callbacks: list[Any] = []
     if settings.LANGFUSE_TRACING:
         # Initialize Langfuse CallbackHandler for Langchain (tracing)
         langfuse_handler = CallbackHandler()

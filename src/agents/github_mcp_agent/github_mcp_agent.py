@@ -3,11 +3,11 @@
 import logging
 from datetime import datetime
 
+from langchain.agents import create_agent
 from langchain_core.tools import BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.sessions import StreamableHttpConnection
 from langgraph.graph.state import CompiledStateGraph
-from langgraph.prebuilt import create_react_agent
 
 from agents.lazy_agent import LazyLoadingAgent
 from core import get_model, settings
@@ -90,11 +90,11 @@ class GitHubMCPAgent(LazyLoadingAgent):
         """Create the GitHub MCP agent graph."""
         model = get_model(settings.DEFAULT_MODEL)
 
-        return create_react_agent(
+        return create_agent(
             model=model,
             tools=self._mcp_tools,
             name="github-mcp-agent",
-            prompt=prompt,
+            system_prompt=prompt,
         )
 
 

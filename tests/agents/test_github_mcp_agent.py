@@ -98,9 +98,7 @@ class TestGitHubMCPAgent:
 
         with (
             patch("agents.github_mcp_agent.github_mcp_agent.get_model") as mock_get_model,
-            patch(
-                "agents.github_mcp_agent.github_mcp_agent.create_react_agent"
-            ) as mock_create_agent,
+            patch("agents.github_mcp_agent.github_mcp_agent.create_agent") as mock_create_agent,
         ):
             mock_model = Mock()
             mock_get_model.return_value = mock_model
@@ -111,7 +109,10 @@ class TestGitHubMCPAgent:
 
             assert graph == mock_graph
             mock_create_agent.assert_called_once_with(
-                model=mock_model, tools=agent._mcp_tools, name="github-mcp-agent", prompt=prompt
+                model=mock_model,
+                tools=agent._mcp_tools,
+                name="github-mcp-agent",
+                system_prompt=prompt,
             )
 
     def test_get_graph_not_loaded(self):
