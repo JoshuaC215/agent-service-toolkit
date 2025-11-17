@@ -1,3 +1,5 @@
+# TODO: Update back to using langgraph-supervisor once it is compatible with langgraph 1.0
+# Ref: https://github.com/langchain-ai/langgraph-supervisor-py/issues/242
 from typing import Any
 
 from langchain.agents import create_agent

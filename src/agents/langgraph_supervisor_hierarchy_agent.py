@@ -1,3 +1,5 @@
+# TODO: Update back to using langgraph-supervisor once it is compatible with langgraph 1.0
+# Ref: https://github.com/langchain-ai/langgraph-supervisor-py/issues/242
 from langchain.agents import create_agent
 from langchain_core.tools import tool
 
@@ -63,5 +65,4 @@ def workflow(chosen_model):
     return main_supervisor
 
 
-# Note: When used in service, a checkpointer must be attached for state operations
 langgraph_supervisor_hierarchy_agent = workflow(model)
