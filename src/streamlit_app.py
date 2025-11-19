@@ -331,10 +331,7 @@ async def draw_messages(
                             else:
                                 label = f"""🛠️ Tool Call: {tool_call["name"]}"""
 
-                            status = st.status(
-                                label,
-                                state="running" if is_new else "complete",
-                            )
+                            status = st.status(label, state="running" if is_new else "complete")
                             call_results[tool_call["id"]] = status
 
                         # Expect one ToolMessage for each tool call.
@@ -343,28 +340,37 @@ async def draw_messages(
                                 status = call_results[tool_call["id"]]
                                 status.update(expanded=True)
                                 await handle_sub_agent_msgs(messages_agen, status, is_new)
-                                break
 
-                            # Only non-transfer tool calls reach this point
+                                continue  # Move to next tool call
                             status = call_results[tool_call["id"]]
                             status.write("Input:")
                             status.write(tool_call["args"])
-                            tool_result: ChatMessage = await anext(messages_agen)
 
-                            if tool_result.type != "tool":
-                                st.error(f"Unexpected ChatMessage type: {tool_result.type}")
-                                st.write(tool_result)
+                            # Safely find the tool result (skipping tokens, handling stream end)
+                            tool_result = None
+                            while True:
+                                next_msg = await anext(messages_agen, None)
+                                if next_msg is None:  # Stream ended unexpectedly
+                                    break
+                                if isinstance(next_msg, str):  # Skip tokens
+                                    continue
+                                tool_result = next_msg
+                                break
+
+                            if tool_result and tool_result.type == "tool":
+                                if is_new:
+                                    st.session_state.messages.append(tool_result)
+                                if tool_result.tool_call_id in call_results:
+                                    status = call_results[tool_result.tool_call_id]
+                                status.write("Output:")
+                                status.write(tool_result.content)
+                                status.update(state="complete")
+                            else:
+                                # Graceful fallback if no result found
+                                if tool_result:
+                                    st.error(f"Expected tool result, got {type(tool_result)}")
+                                status.update(state="error")
                                 st.stop()
-
-                            # Record the message if it's new, and update the correct
-                            # status container with the result
-                            if is_new:
-                                st.session_state.messages.append(tool_result)
-                            if tool_result.tool_call_id:
-                                status = call_results[tool_result.tool_call_id]
-                            status.write("Output:")
-                            status.write(tool_result.content)
-                            status.update(state="complete")
 
             case "custom":
                 # CustomData example used by the bg-task-agent
@@ -441,59 +447,50 @@ async def handle_sub_agent_msgs(messages_agen, status, is_new):
         status: the status container for the current agent
         is_new: Whether messages are new or replayed
     """
+    # Track IDs of tools called internally by sub-agent
+    internal_tool_ids = set()
     nested_popovers = {}
 
-    # looking for the transfer Success tool call message
-    first_msg = await anext(messages_agen)
-    if is_new:
-        st.session_state.messages.append(first_msg)
-
-    # Continue reading until we get an explicit handoff back
     while True:
-        # Read next message
-        sub_msg = await anext(messages_agen)
+        # Safely get next message; return None if stream ends
+        sub_msg = await anext(messages_agen, None)
 
-        # this should only happen is skip_stream flag is removed
-        # if isinstance(sub_msg, str):
-        #     continue
+        if sub_msg is None:
+            break
 
+        # Skip streaming tokens
+        if isinstance(sub_msg, str):
+            continue
+
+        if sub_msg.type == "tool":
+            if sub_msg.tool_call_id in internal_tool_ids:
+                if is_new:
+                    st.session_state.messages.append(sub_msg)
+                if sub_msg.tool_call_id in nested_popovers:
+                    popover = nested_popovers[sub_msg.tool_call_id]
+                    popover.write("**Output:**")
+                    popover.write(sub_msg.content)
+                continue
+            else:
+                if is_new:
+                    st.session_state.messages.append(sub_msg)
+                if status:
+                    status.update(state="complete")
+                return
+
+        # Store other messages in history
         if is_new:
             st.session_state.messages.append(sub_msg)
 
         # Handle tool results with nested popovers
-        if sub_msg.type == "tool" and sub_msg.tool_call_id in nested_popovers:
-            popover = nested_popovers[sub_msg.tool_call_id]
-            popover.write("**Output:**")
-            popover.write(sub_msg.content)
-            continue
-
-        # Handle transfer_back_to tool calls - these indicate a sub-agent is returning control
-        if (
-            hasattr(sub_msg, "tool_calls")
-            and sub_msg.tool_calls
-            and any("transfer_back_to" in tc.get("name", "") for tc in sub_msg.tool_calls)
-        ):
-            # Process transfer_back_to tool calls
-            for tc in sub_msg.tool_calls:
-                if "transfer_back_to" in tc.get("name", ""):
-                    # Read the corresponding tool result
-                    transfer_result = await anext(messages_agen)
-                    if is_new:
-                        st.session_state.messages.append(transfer_result)
-
-            # After processing transfer back, we're done with this agent
-            if status:
-                status.update(state="complete")
-            break
-
-        # Display content and tool calls in the same nested status
-        if status:
-            if sub_msg.content:
+        if sub_msg.type == "ai":
+            if sub_msg.content and status:
                 status.write(sub_msg.content)
 
             if hasattr(sub_msg, "tool_calls") and sub_msg.tool_calls:
                 for tc in sub_msg.tool_calls:
-                    # Check if this is a nested transfer/delegate
+                    # Register ID as internal tool call
+                    internal_tool_ids.add(tc["id"])
                     if "transfer_to" in tc["name"]:
                         # Create a nested status container for the sub-agent
                         nested_status = status.status(
@@ -510,7 +507,6 @@ async def handle_sub_agent_msgs(messages_agen, status, is_new):
                         popover.write(f"**Tool:** {tc['name']}")
                         popover.write("**Input:**")
                         popover.write(tc["args"])
-                        # Store the popover reference using the tool call ID
                         nested_popovers[tc["id"]] = popover
 
 

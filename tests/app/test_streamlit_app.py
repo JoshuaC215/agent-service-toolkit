@@ -328,13 +328,13 @@ async def test_app_streaming_single_sub_agent(mock_agent_client, multi_agent_mes
     async def amessage_iter():
         for msg in [
             messages["transfer_a"],
-            messages["transfer_a_success"],
             messages["tool_1"],
             messages["tool_1_result"],
             messages["tool_2"],
             messages["tool_2_result"],
             messages["transfer_back_a"],
             messages["transfer_back_a_success"],
+            messages["transfer_a_success"],
             messages["supervisor_final"],
         ]:
             yield msg
@@ -397,17 +397,17 @@ async def test_app_streaming_sequential_sub_agents(mock_agent_client, multi_agen
     async def amessage_iter():
         for msg in [
             messages["transfer_a"],
-            messages["transfer_a_success"],
             messages["tool_1"],
             messages["tool_1_result"],
             messages["transfer_back_a"],
             messages["transfer_back_a_success"],
+            messages["transfer_a_success"],
             messages["supervisor_continues"],
-            messages["transfer_c_success"],
             messages["tool_2"],
             messages["tool_2_result"],
             messages["transfer_back_c"],
             messages["transfer_back_c_success"],
+            messages["transfer_c_success"],
             messages["supervisor_final"],
         ]:
             yield msg
@@ -487,17 +487,17 @@ async def test_app_streaming_nested_sub_agents(mock_agent_client, multi_agent_me
     async def amessage_iter():
         for msg in [
             messages["transfer_a"],
-            messages["transfer_a_success"],
             messages["tool_1"],
             messages["tool_1_result"],
             messages["transfer_b_from_a"],
-            messages["transfer_b_success"],
             messages["tool_2"],
             messages["tool_2_result"],
             messages["transfer_back_b"],
             messages["transfer_back_b_success"],
+            messages["transfer_b_success"],
             messages["transfer_back_a"],
             messages["transfer_back_a_success"],
+            messages["transfer_a_success"],
             messages["supervisor_final"],
         ]:
             yield msg

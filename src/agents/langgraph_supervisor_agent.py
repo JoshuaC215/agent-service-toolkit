@@ -48,35 +48,33 @@ research_agent: Any = create_agent(
 
 
 @tool
-def delegate_to_math_expert(request: str) -> str:
+def transfer_to_math_expert(request: str) -> str:
     """Use this for any math operations like addition, multiplication, or calculations.
 
     Input: Natural language math request (e.g., 'add 5 and 10')
     """
     result = math_agent.invoke({"messages": [{"role": "user", "content": request}]})
-    last_message = result["messages"][-1]
-    return last_message.content if hasattr(last_message, "content") else str(last_message)
+    return result["messages"][-1].text
 
 
 @tool
-def delegate_to_research_expert(request: str) -> str:
+def transfer_to_research_expert(request: str) -> str:
     """Use this for research tasks and information lookup.
 
     Input: Natural language research request (e.g., 'find information about companies')
     """
     result = research_agent.invoke({"messages": [{"role": "user", "content": request}]})
-    last_message = result["messages"][-1]
-    return last_message.content if hasattr(last_message, "content") else str(last_message)
+    return result["messages"][-1].text
 
 
 # Create supervisor workflow
 supervisor_agent: Any = create_agent(
     model=model,
-    tools=[delegate_to_math_expert, delegate_to_research_expert],
+    tools=[transfer_to_math_expert, transfer_to_research_expert],
     system_prompt=(
         "You are a team supervisor managing a research expert and a math expert. "
-        "For current events and information lookup, use delegate_to_research_expert. "
-        "For math problems and calculations, use delegate_to_math_expert. "
+        "For current events and information lookup, use transfer_to_research_expert. "
+        "For math problems and calculations, use transfer_to_math_expert. "
         "Break down user requests into appropriate tool calls and coordinate the results."
     ),
 )
