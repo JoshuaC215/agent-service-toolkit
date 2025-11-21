@@ -44,8 +44,7 @@ async def test_three_layer_supervisor_hierarchy_agent_with_fake_model():
 
     from agents.langgraph_supervisor_hierarchy_agent import workflow
 
-    agent = workflow(FakeToolModel(responses))
-    agent.checkpointer = MemorySaver()
+    agent = workflow(FakeToolModel(responses)).compile(checkpointer=MemorySaver())
 
     with patch("service.service.get_agent", return_value=agent):
         from service.service import message_generator
@@ -61,10 +60,16 @@ async def test_three_layer_supervisor_hierarchy_agent_with_fake_model():
         for msg in messages:
             print(msg)
 
-        assert len(messages) > 0
-        assert messages[0].type == "ai"
-        assert len(messages[0].tool_calls) > 0
-        assert messages[1].type == "tool"
-        assert messages[2].type == "ai"
-        assert messages[-1].type == "ai"
-        assert "2+3 is 5" in messages[-1].content
+        assert messages[0].tool_calls[0]["name"] == "transfer_to_sub-agent-research_expert"
+        assert messages[1].content == "Successfully transferred to sub-agent-research_expert"
+        assert messages[2].tool_calls[0]["name"] == "transfer_to_sub-agent-math_expert"
+        assert messages[3].content == "Successfully transferred to sub-agent-math_expert"
+        assert messages[4].tool_calls[0]["name"] == "add"
+        assert messages[5].content == "5.0"
+        assert messages[6].content == "2+3 is 5"
+        assert messages[7].tool_calls[0]["name"] == "transfer_back_to_supervisor-research_expert"
+        assert messages[8].content == "Successfully transferred back to supervisor-research_expert"
+        assert messages[9].content == "The Maths Expert says the answer is 5."
+        assert messages[10].tool_calls[0]["name"] == "transfer_back_to_supervisor"
+        assert messages[11].content == "Successfully transferred back to supervisor"
+        assert messages[12].content == "The result is 5."
