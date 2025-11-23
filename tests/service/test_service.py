@@ -71,7 +71,7 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     """Test that the model parameter is correctly passed to the agent if specified."""
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is sunny."
-    CUSTOM_MODEL = "claude-3.5-sonnet"
+    CUSTOM_MODEL = "claude-sonnet-4-5"
     mock_agent.ainvoke.return_value = [("values", {"messages": [AIMessage(content=ANSWER)]})]
 
     response = test_client.post("/invoke", json={"message": QUESTION, "model": CUSTOM_MODEL})
@@ -94,7 +94,7 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
 
 
 def test_invoke_no_model_param_uses_none_default(test_client, mock_agent) -> None:
-    """Test that when no model is specified, UserInput defaults to None and isn't passed to the runnable config (not hardcoded gpt-4o-mini)."""
+    """Test that when no model is specified, UserInput defaults to None and isn't passed to the runnable config (not hardcoded gpt-5-nano)."""
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is sunny."
     mock_agent.ainvoke.return_value = [("values", {"messages": [AIMessage(content=ANSWER)]})]
@@ -138,7 +138,7 @@ def test_invoke_custom_agent_config(test_client, mock_agent) -> None:
     assert output.content == ANSWER
 
     # Verify a reserved key in agent_config throws a validation error
-    INVALID_CONFIG = {"model": "gpt-4o"}
+    INVALID_CONFIG = {"model": "gpt-5-nano"}
     response = test_client.post(
         "/invoke", json={"message": QUESTION, "agent_config": INVALID_CONFIG}
     )
@@ -361,8 +361,8 @@ def test_info(test_client, mock_settings) -> None:
 
     base_agent = Agent(description="A base agent.", graph_like=None)
     mock_settings.AUTH_SECRET = None
-    mock_settings.DEFAULT_MODEL = OpenAIModelName.GPT_4O_MINI
-    mock_settings.AVAILABLE_MODELS = {OpenAIModelName.GPT_4O_MINI, OpenAIModelName.GPT_4O}
+    mock_settings.DEFAULT_MODEL = OpenAIModelName.GPT_5_NANO
+    mock_settings.AVAILABLE_MODELS = {OpenAIModelName.GPT_5_NANO, OpenAIModelName.GPT_5_MINI}
     with patch.dict("agents.agents.agents", {"base-agent": base_agent}, clear=True):
         response = test_client.get("/info")
         assert response.status_code == 200
@@ -373,5 +373,5 @@ def test_info(test_client, mock_settings) -> None:
     assert output.agents[0].key == "base-agent"
     assert output.agents[0].description == "A base agent."
 
-    assert output.default_model == OpenAIModelName.GPT_4O_MINI
-    assert output.models == [OpenAIModelName.GPT_4O, OpenAIModelName.GPT_4O_MINI]
+    assert output.default_model == OpenAIModelName.GPT_5_NANO
+    assert output.models == [OpenAIModelName.GPT_5_MINI, OpenAIModelName.GPT_5_NANO]

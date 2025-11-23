@@ -46,7 +46,7 @@ def test_settings_with_openai_key():
     with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}, clear=True):
         settings = Settings(_env_file=None)
         assert settings.OPENAI_API_KEY == SecretStr("test_key")
-        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_4O_MINI
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_5_NANO
         assert settings.AVAILABLE_MODELS == set(OpenAIModelName)
 
 
@@ -54,7 +54,7 @@ def test_settings_with_anthropic_key():
     with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test_key"}, clear=True):
         settings = Settings(_env_file=None)
         assert settings.ANTHROPIC_API_KEY == SecretStr("test_key")
-        assert settings.DEFAULT_MODEL == AnthropicModelName.HAIKU_3
+        assert settings.DEFAULT_MODEL == AnthropicModelName.HAIKU_45
         assert settings.AVAILABLE_MODELS == set(AnthropicModelName)
 
 
@@ -79,7 +79,7 @@ def test_settings_with_multiple_api_keys():
         assert settings.OPENAI_API_KEY == SecretStr("test_openai_key")
         assert settings.ANTHROPIC_API_KEY == SecretStr("test_anthropic_key")
         # When multiple providers are available, OpenAI should be the default
-        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_4O_MINI
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_5_NANO
         # Available models should include exactly all OpenAI and Anthropic models
         expected_models = set(OpenAIModelName)
         expected_models.update(set(AnthropicModelName))
@@ -130,7 +130,7 @@ def test_settings_with_both_openai_and_azure():
         assert settings.OPENAI_API_KEY == SecretStr("test_openai_key")
         assert settings.AZURE_OPENAI_API_KEY == SecretStr("test_azure_key")
         # When multiple providers are available, OpenAI should be the default
-        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_4O_MINI
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_5_NANO
         # Available models should include both OpenAI and Azure OpenAI models
         expected_models = set(OpenAIModelName)
         expected_models.update(set(AzureOpenAIModelName))

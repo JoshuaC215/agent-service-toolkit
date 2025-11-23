@@ -174,7 +174,7 @@ class Settings(BaseSettings):
             match provider:
                 case Provider.OPENAI:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = OpenAIModelName.GPT_4O_MINI
+                        self.DEFAULT_MODEL = OpenAIModelName.GPT_5_NANO
                     self.AVAILABLE_MODELS.update(set(OpenAIModelName))
                 case Provider.OPENAI_COMPATIBLE:
                     if self.DEFAULT_MODEL is None:
@@ -186,7 +186,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(DeepseekModelName))
                 case Provider.ANTHROPIC:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = AnthropicModelName.HAIKU_3
+                        self.DEFAULT_MODEL = AnthropicModelName.HAIKU_45
                     self.AVAILABLE_MODELS.update(set(AnthropicModelName))
                 case Provider.GOOGLE:
                     if self.DEFAULT_MODEL is None:
