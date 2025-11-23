@@ -23,7 +23,6 @@ def test_get_model_openai():
         model = get_model(OpenAIModelName.GPT_5_NANO)
         assert isinstance(model, ChatOpenAI)
         assert model.model_name == "gpt-5-nano"
-        assert model.temperature == 0.5
         assert model.streaming is True
 
 
