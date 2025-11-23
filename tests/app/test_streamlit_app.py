@@ -48,9 +48,9 @@ def test_app_settings(mock_agent_client):
     )
 
     at.sidebar.toggle[0].set_value(False)  # Use Streaming = False
-    assert at.sidebar.selectbox[0].value == "gpt-4o"
+    assert at.sidebar.selectbox[0].value == "gpt-5-nano"
     assert mock_agent_client.agent == "test-agent"
-    at.sidebar.selectbox[0].set_value("gpt-4o-mini")
+    at.sidebar.selectbox[0].set_value("gpt-5-mini")
     at.sidebar.selectbox[1].set_value("chatbot")
     at.chat_input[0].set_value(PROMPT).run()
     print(at)
@@ -65,7 +65,7 @@ def test_app_settings(mock_agent_client):
     assert mock_agent_client.agent == "chatbot"
     mock_agent_client.ainvoke.assert_called_with(
         message=PROMPT,
-        model=OpenAIModelName.GPT_4O_MINI,
+        model=OpenAIModelName.GPT_5_MINI,
         thread_id=at.session_state.thread_id,
         user_id="1234",
     )

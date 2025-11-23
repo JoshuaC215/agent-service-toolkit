@@ -63,14 +63,14 @@ def test_invoke(agent_client):
     with patch("httpx.post", return_value=mock_response) as mock_post:
         response = agent_client.invoke(
             QUESTION,
-            model="gpt-4o",
+            model="gpt-5-nano",
             thread_id="test-thread",
         )
         assert isinstance(response, ChatMessage)
         # Verify request
         args, kwargs = mock_post.call_args
         assert kwargs["json"]["message"] == QUESTION
-        assert kwargs["json"]["model"] == "gpt-4o"
+        assert kwargs["json"]["model"] == "gpt-5-nano"
         assert kwargs["json"]["thread_id"] == "test-thread"
 
     # Test error response
@@ -100,7 +100,7 @@ async def test_ainvoke(agent_client):
     with patch("httpx.AsyncClient.post", return_value=mock_response) as mock_post:
         response = await agent_client.ainvoke(
             QUESTION,
-            model="gpt-4o",
+            model="gpt-5-nano",
             thread_id="test-thread",
         )
         assert isinstance(response, ChatMessage)
@@ -109,7 +109,7 @@ async def test_ainvoke(agent_client):
         # Verify request
         args, kwargs = mock_post.call_args
         assert kwargs["json"]["message"] == QUESTION
-        assert kwargs["json"]["model"] == "gpt-4o"
+        assert kwargs["json"]["model"] == "gpt-5-nano"
         assert kwargs["json"]["thread_id"] == "test-thread"
 
     # Test error response
@@ -302,8 +302,8 @@ def test_info(agent_client):
     test_info = ServiceMetadata(
         default_agent="custom-agent",
         agents=[AgentInfo(key="custom-agent", description="Custom agent")],
-        default_model=OpenAIModelName.GPT_4O,
-        models=[OpenAIModelName.GPT_4O, OpenAIModelName.GPT_4O_MINI],
+        default_model=OpenAIModelName.GPT_5_NANO,
+        models=[OpenAIModelName.GPT_5_NANO, OpenAIModelName.GPT_5_MINI],
     )
     test_response = Response(
         200, json=test_info.model_dump(), request=Request("GET", "http://test/info")
