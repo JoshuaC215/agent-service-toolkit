@@ -9,16 +9,19 @@ from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
 from fastapi.responses import StreamingResponse
+from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langfuse import Langfuse  # type: ignore[import-untyped]
-from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
+from langfuse.langchain import (
+    CallbackHandler,  # type: ignore[import-untyped]
+)
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
 
-from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info
+from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info, load_agent
 from core import settings
 from memory import initialize_database, initialize_store
 from schema import (
@@ -41,6 +44,11 @@ warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
 
 
+def custom_generate_unique_id(route: APIRoute) -> str:
+    """Generate idiomatic operation IDs for OpenAPI client generation."""
+    return route.name
+
+
 def verify_bearer(
     http_auth: Annotated[
         HTTPAuthorizationCredentials | None,
@@ -57,8 +65,8 @@ def verify_bearer(
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
-    Configurable lifespan that initializes the appropriate database checkpointer and store
-    based on settings.
+    Configurable lifespan that initializes the appropriate database checkpointer, store,
+    and agents with async loading - for example for starting up MCP clients.
     """
     try:
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
@@ -70,9 +78,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             if hasattr(store, "setup"):  # ignore: union-attr
                 await store.setup()
 
-            # Configure agents with both memory components
+            # Configure agents with both memory components and async loading
             agents = get_all_agent_info()
             for a in agents:
+                try:
+                    await load_agent(a.key)
+                    logger.info(f"Agent loaded: {a.key}")
+                except Exception as e:
+                    logger.error(f"Failed to load agent {a.key}: {e}")
+                    # Continue with other agents rather than failing startup
+
                 agent = get_agent(a.key)
                 # Set checkpointer for thread-scoped memory (conversation history)
                 agent.checkpointer = saver
@@ -80,11 +95,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 agent.store = store
             yield
     except Exception as e:
-        logger.error(f"Error during database/store initialization: {e}")
+        logger.error(f"Error during database/store/agents initialization: {e}")
         raise
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
 
 
@@ -109,9 +124,11 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     thread_id = user_input.thread_id or str(uuid4())
     user_id = user_input.user_id or str(uuid4())
 
-    configurable = {"thread_id": thread_id, "model": user_input.model, "user_id": user_id}
+    configurable = {"thread_id": thread_id, "user_id": user_id}
+    if user_input.model is not None:
+        configurable["model"] = user_input.model
 
-    callbacks = []
+    callbacks: list[Any] = []
     if settings.LANGFUSE_TRACING:
         # Initialize Langfuse CallbackHandler for Langchain (tracing)
         langfuse_handler = CallbackHandler()
@@ -119,7 +136,9 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
         callbacks.append(langfuse_handler)
 
     if user_input.agent_config:
-        if overlap := configurable.keys() & user_input.agent_config.keys():
+        # Check for reserved keys (including 'model' even if not in configurable)
+        reserved_keys = {"thread_id", "user_id", "model"}
+        if overlap := reserved_keys & user_input.agent_config.keys():
             raise HTTPException(
                 status_code=422,
                 detail=f"agent_config contains reserved keys: {overlap}",
@@ -153,7 +172,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     return kwargs, run_id
 
 
-@router.post("/{agent_id}/invoke")
+@router.post("/{agent_id}/invoke", operation_id="invoke_with_agent_id")
 @router.post("/invoke")
 async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
     """
@@ -332,6 +351,7 @@ def _sse_response_example() -> dict[int | str, Any]:
     "/{agent_id}/stream",
     response_class=StreamingResponse,
     responses=_sse_response_example(),
+    operation_id="stream_with_agent_id",
 )
 @router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
 async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> StreamingResponse:
@@ -372,14 +392,14 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
 
 
 @router.post("/history")
-def history(input: ChatHistoryInput) -> ChatHistory:
+async def history(input: ChatHistoryInput) -> ChatHistory:
     """
     Get chat history.
     """
     # TODO: Hard-coding DEFAULT_AGENT here is wonky
     agent: AgentGraph = get_agent(DEFAULT_AGENT)
     try:
-        state_snapshot = agent.get_state(
+        state_snapshot = await agent.aget_state(
             config=RunnableConfig(configurable={"thread_id": input.thread_id})
         )
         messages: list[AnyMessage] = state_snapshot.values["messages"]

@@ -20,8 +20,9 @@ class Provider(StrEnum):
 class OpenAIModelName(StrEnum):
     """https://platform.openai.com/docs/models/gpt-4o"""
 
-    GPT_4O_MINI = "gpt-4o-mini"
-    GPT_4O = "gpt-4o"
+    GPT_5_NANO = "gpt-5-nano"
+    GPT_5_MINI = "gpt-5-mini"
+    GPT_5_1 = "gpt-5.1"
 
 
 class AzureOpenAIModelName(StrEnum):
@@ -40,9 +41,8 @@ class DeepseekModelName(StrEnum):
 class AnthropicModelName(StrEnum):
     """https://docs.anthropic.com/en/docs/about-claude/models#model-names"""
 
-    HAIKU_3 = "claude-3-haiku"
-    HAIKU_35 = "claude-3.5-haiku"
-    SONNET_35 = "claude-3.5-sonnet"
+    HAIKU_45 = "claude-haiku-4-5"
+    SONNET_45 = "claude-sonnet-4-5"
 
 
 class GoogleModelName(StrEnum):
@@ -53,6 +53,7 @@ class GoogleModelName(StrEnum):
     GEMINI_20_FLASH_LITE = "gemini-2.0-flash-lite"
     GEMINI_25_FLASH = "gemini-2.5-flash"
     GEMINI_25_PRO = "gemini-2.5-pro"
+    GEMINI_30_PRO = "gemini-3-pro-preview"
 
 
 class VertexAIModelName(StrEnum):
@@ -63,6 +64,7 @@ class VertexAIModelName(StrEnum):
     GEMINI_20_FLASH_LITE = "models/gemini-2.0-flash-lite"
     GEMINI_25_FLASH = "models/gemini-2.5-flash"
     GEMINI_25_PRO = "gemini-2.5-pro"
+    GEMINI_30_PRO = "gemini-3-pro-preview"
 
 
 class GroqModelName(StrEnum):

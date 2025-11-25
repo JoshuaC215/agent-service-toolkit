@@ -46,9 +46,9 @@ class UserInput(BaseModel):
     )
     model: SerializeAsAny[AllModelEnum] | None = Field(
         title="Model",
-        description="LLM Model to use for the agent.",
-        default=OpenAIModelName.GPT_4O_MINI,
-        examples=[OpenAIModelName.GPT_4O_MINI, AnthropicModelName.HAIKU_35],
+        description="LLM Model to use for the agent. Defaults to the default model set in the settings of the service.",
+        default=None,
+        examples=[OpenAIModelName.GPT_5_NANO, AnthropicModelName.HAIKU_45],
     )
     thread_id: str | None = Field(
         description="Thread ID to persist and continue a multi-turn conversation.",

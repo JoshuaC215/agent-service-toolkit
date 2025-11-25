@@ -89,7 +89,7 @@ def mock_database_settings(mock_env):
 
 def test_agent_stream(mock_database_settings, mock_httpx):
     """Test that streaming from our static agent works correctly with token streaming."""
-    agent_meta = Agent(description="A static agent.", graph=static_agent)
+    agent_meta = Agent(description="A static agent.", graph_like=static_agent)
     with patch.dict("agents.agents.agents", {"static-agent": agent_meta}, clear=True):
         client = AgentClient(agent="static-agent")
 

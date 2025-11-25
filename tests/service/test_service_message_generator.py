@@ -15,7 +15,7 @@ class FakeToolModel(FakeMessagesListChatModel):
     def __init__(self, responses: list[BaseMessage]):
         super().__init__(responses=responses)
 
-    def bind_tools(self, tools):
+    def bind_tools(self, tools, **kwargs):
         return self
 
 

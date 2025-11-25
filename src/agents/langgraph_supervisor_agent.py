@@ -1,4 +1,6 @@
-from langgraph.prebuilt import create_react_agent
+from typing import Any
+
+from langchain.agents import create_agent
 from langgraph_supervisor import create_supervisor
 
 from core import get_model, settings
@@ -28,19 +30,20 @@ def web_search(query: str) -> str:
     )
 
 
-math_agent = create_react_agent(
+math_agent: Any = create_agent(
     model=model,
     tools=[add, multiply],
     name="sub-agent-math_expert",
-    prompt="You are a math expert. Always use one tool at a time.",
+    system_prompt="You are a math expert. Always use one tool at a time.",
 ).with_config(tags=["skip_stream"])
 
-research_agent = create_react_agent(
+research_agent: Any = create_agent(
     model=model,
     tools=[web_search],
     name="sub-agent-research_expert",
-    prompt="You are a world class researcher with access to web search. Do not do any math.",
+    system_prompt="You are a world class researcher with access to web search. Do not do any math.",
 ).with_config(tags=["skip_stream"])
+
 
 # Create supervisor workflow
 workflow = create_supervisor(

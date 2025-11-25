@@ -1,4 +1,4 @@
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from langgraph_supervisor import create_supervisor
 
 from agents.langgraph_supervisor_agent import add, multiply, web_search
@@ -8,11 +8,11 @@ model = get_model(settings.DEFAULT_MODEL)
 
 
 def workflow(chosen_model):
-    math_agent = create_react_agent(
+    math_agent = create_agent(
         model=chosen_model,
         tools=[add, multiply],
         name="sub-agent-math_expert",  # Identify the graph node as a sub-agent
-        prompt="You are a math expert. Always use one tool at a time.",
+        system_prompt="You are a math expert. Always use one tool at a time.",
     ).with_config(tags=["skip_stream"])
 
     research_agent = (
