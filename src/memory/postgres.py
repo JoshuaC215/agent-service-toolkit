@@ -1,7 +1,9 @@
 import logging
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+from langgraph.store.base import IndexConfig
 from langgraph.store.postgres import AsyncPostgresStore
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
@@ -74,7 +76,7 @@ async def get_postgres_saver():
 
 
 @asynccontextmanager
-async def get_postgres_store():
+async def get_postgres_store(index_config: Optional[IndexConfig] = None) -> AsyncPostgresStore:
     """
     Get a PostgreSQL store instance based on a connection pool for more resilent connections.
 
@@ -95,7 +97,7 @@ async def get_postgres_store():
         check=AsyncConnectionPool.check_connection,
     ) as pool:
         try:
-            store = AsyncPostgresStore(pool)
+            store = AsyncPostgresStore(pool, index=index_config)
             await store.setup()
             yield store
         finally:
