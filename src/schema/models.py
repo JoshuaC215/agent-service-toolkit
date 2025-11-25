@@ -64,6 +64,7 @@ class VertexAIModelName(StrEnum):
     GEMINI_20_FLASH_LITE = "models/gemini-2.0-flash-lite"
     GEMINI_25_FLASH = "models/gemini-2.5-flash"
     GEMINI_25_PRO = "gemini-2.5-pro"
+    GEMINI_30_PRO = "gemini-3-pro-preview"
 
 
 class GroqModelName(StrEnum):
