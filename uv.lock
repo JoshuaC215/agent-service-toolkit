@@ -113,7 +113,7 @@ requires-dist = [
     { name = "pypdf", specifier = "~=5.3.0" },
     { name = "python-dotenv", specifier = "~=1.0.1" },
     { name = "setuptools", specifier = "~=75.6.0" },
-    { name = "streamlit", specifier = "~=1.46.0" },
+    { name = "streamlit", specifier = "~=1.52.0" },
     { name = "tiktoken", specifier = ">=0.8.0" },
     { name = "uvicorn", specifier = "~=0.32.1" },
 ]
@@ -123,7 +123,7 @@ client = [
     { name = "httpx", specifier = "~=0.28.0" },
     { name = "pydantic", specifier = "~=2.10.1" },
     { name = "python-dotenv", specifier = "~=1.0.1" },
-    { name = "streamlit", specifier = "~=1.46.0" },
+    { name = "streamlit", specifier = "~=1.52.0" },
 ]
 dev = [
     { name = "langgraph-cli", extras = ["inmem"] },
@@ -4431,7 +4431,7 @@ wheels = [
 
 [[package]]
 name = "streamlit"
-version = "1.46.1"
+version = "1.52.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "altair" },
@@ -4453,9 +4453,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "watchdog", marker = "sys_platform != 'darwin'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bd/7e/c7499c447b7021657fa5c851091072c1c7a26f1dda0369c21c0243fc35e7/streamlit-1.46.1.tar.gz", hash = "sha256:2cc4ad01cfeded9ad953a21829eb879b90aa77af4068c68397411c2d5c8862cf", size = 9651018, upload-time = "2025-06-26T16:03:05.66Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6f/ec/66ca1578587bbaaea5757a7f074d3f762fff8d782ffb4497a83c5722aa44/streamlit-1.52.1.tar.gz", hash = "sha256:b036a71866b893c97fdebaa2a2ebd21ebf2af7daea4b3abe783a57b26f55b3ca", size = 8582829, upload-time = "2025-12-05T18:55:42.006Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/84/3b/35400175788cdd6a43c90dce1e7f567eb6843a3ba0612508c0f19ee31f5f/streamlit-1.46.1-py3-none-any.whl", hash = "sha256:dffa373230965f87ccc156abaff848d7d731920cf14106f3b99b1ea18076f728", size = 10051346, upload-time = "2025-06-26T16:03:02.934Z" },
+    { url = "https://files.pythonhosted.org/packages/d0/d4/cdafd4cc940937410f465ca7a77dd34237182c2ddece624e08db959496f8/streamlit-1.52.1-py3-none-any.whl", hash = "sha256:97fee2c3421d350fd65548e45a20f506ec1b651d78f95ecacbc0c2f9f838081c", size = 9024748, upload-time = "2025-12-05T18:55:39.713Z" },
 ]
 
 [[package]]
