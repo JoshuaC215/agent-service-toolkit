@@ -32,7 +32,7 @@ class VoiceManager:
         ...             voice.render_message("Hello!")
     """
 
-    def __init__(self, stt: Optional[SpeechToText] = None, tts: Optional[TextToSpeech] = None):
+    def __init__(self, stt: SpeechToText | None = None, tts: TextToSpeech | None = None):
         """Initialize VoiceManager.
 
         Args:
@@ -76,7 +76,7 @@ class VoiceManager:
 
         return cls(stt=stt, tts=tts)
 
-    def _transcribe_audio(self, audio) -> Optional[str]:
+    def _transcribe_audio(self, audio) -> str | None:
         """Transcribe audio with UI feedback.
 
         Shows spinner during transcription and error message on failure.
@@ -98,7 +98,7 @@ class VoiceManager:
 
         return transcribed
 
-    def get_chat_input(self, placeholder: str = "Your message") -> Optional[str]:
+    def get_chat_input(self, placeholder: str = "Your message") -> str | None:
         """Get chat input with optional voice transcription.
 
         Handles Streamlit UI including audio input widget and transcription
@@ -154,6 +154,7 @@ class VoiceManager:
         """Render message with optional TTS audio.
 
         Handles Streamlit UI including text display and audio player.
+        Saves generated audio in session state so it persists across reruns.
 
         Args:
             content: Message content to display
@@ -176,6 +177,11 @@ class VoiceManager:
 
             # Generate TTS audio
             audio = self.tts.generate(content)
+
+            # Save audio in session state for the last AI message
+            # This allows it to persist across st.rerun() calls
+            if audio:
+                st.session_state.last_audio = {"data": audio, "format": self.tts.get_format()}
 
             # Replace placeholder with audio player or error message
             if audio:

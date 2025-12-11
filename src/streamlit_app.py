@@ -126,6 +126,9 @@ async def main() -> None:
         if st.button(":material/chat: New Chat", use_container_width=True):
             st.session_state.messages = []
             st.session_state.thread_id = str(uuid.uuid4())
+            # Clear saved audio when starting new chat
+            if "last_audio" in st.session_state:
+                del st.session_state.last_audio
             st.rerun()
 
         with st.popover(":material/settings: Settings", use_container_width=True):
@@ -212,6 +215,19 @@ async def main() -> None:
 
     await draw_messages(amessage_iter())
 
+    # Render saved audio for the last AI message (if it exists)
+    # This ensures audio persists across st.rerun() calls
+    if (
+        voice
+        and "last_audio" in st.session_state
+        and st.session_state.last_message
+        and len(messages) > 0
+        and messages[-1].type == "ai"
+    ):
+        with st.session_state.last_message:
+            audio_data = st.session_state.last_audio
+            st.audio(audio_data["data"], format=audio_data["format"])
+
     # Generate new message if the user provided new input
     # Use voice manager if available, otherwise fall back to regular input
     if voice:
@@ -242,7 +258,7 @@ async def main() -> None:
                         voice.render_message(
                             last_msg.content,
                             container=st.session_state.last_message,
-                            audio_only=True
+                            audio_only=True,
                         )
             else:
                 response = await agent_client.ainvoke(
@@ -258,6 +274,7 @@ async def main() -> None:
                         voice.render_message(response.content)
                     else:
                         st.write(response.content)
+            st.rerun()  # Clear stale containers
         except AgentClientError as e:
             st.error(f"Error generating response: {e}")
             st.stop()
