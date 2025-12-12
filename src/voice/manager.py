@@ -87,6 +87,11 @@ class VoiceManager:
         Returns:
             Transcribed text, or None if transcription failed
         """
+        # Defensive check (should not happen if called correctly)
+        if not self.stt:
+            st.error("⚠️ Speech-to-text not configured.")
+            return None
+
         # Show spinner while transcribing
         with st.spinner("🎤 Transcribing audio..."):
             transcribed = self.stt.transcribe(audio)

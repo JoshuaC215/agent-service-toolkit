@@ -6,7 +6,7 @@ based on configuration.
 
 import logging
 import os
-from typing import BinaryIO, Literal
+from typing import BinaryIO, Literal, cast
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +137,8 @@ class SpeechToText:
 
         try:
             # Create instance with provider from environment
-            return cls(provider=provider)
+            # Validates provider and raises ValueError if invalid
+            return cls(provider=cast(Provider, provider))
         except Exception as e:
             # Log error but don't crash - allow app to continue without voice
             logger.error(f"Failed to create STT provider: {e}", exc_info=True)
