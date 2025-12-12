@@ -142,6 +142,19 @@ async def main() -> None:
                 index=agent_idx,
             )
             use_streaming = st.toggle("Stream results", value=True)
+            # Audio toggle with callback: clears cached audio when toggled off
+            enable_audio = st.toggle(
+                "Enable audio generation",
+                value=True,
+                disabled=not voice or not voice.tts,
+                help="Configure VOICE_TTS_PROVIDER in .env to enable"
+                if not voice or not voice.tts
+                else None,
+                on_change=lambda: st.session_state.pop("last_audio", None)
+                if not st.session_state.get("enable_audio", True)
+                else None,
+                key="enable_audio",
+            )
 
             # Display user ID (for debugging or user information)
             st.text_input("User ID (read-only)", value=user_id, disabled=True)
@@ -219,6 +232,7 @@ async def main() -> None:
     # This ensures audio persists across st.rerun() calls
     if (
         voice
+        and enable_audio
         and "last_audio" in st.session_state
         and st.session_state.last_message
         and len(messages) > 0
@@ -250,7 +264,7 @@ async def main() -> None:
                 # Generate TTS audio for streaming response
                 # Note: draw_messages() stores the final message in st.session_state.messages
                 # and the container reference in st.session_state.last_message
-                if voice and st.session_state.messages:
+                if voice and enable_audio and st.session_state.messages:
                     last_msg = st.session_state.messages[-1]
                     # Only generate audio for AI responses with content
                     if last_msg.type == "ai" and last_msg.content:
@@ -270,7 +284,7 @@ async def main() -> None:
                 messages.append(response)
                 # Render AI response with optional voice
                 with st.chat_message("ai"):
-                    if voice:
+                    if voice and enable_audio:
                         voice.render_message(response.content)
                     else:
                         st.write(response.content)
