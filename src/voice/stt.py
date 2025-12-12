@@ -101,9 +101,7 @@ class SpeechToText:
 
             case _:
                 # Catch-all for unknown providers
-                raise ValueError(
-                    f"Unknown STT provider: {provider}. " f"Available providers: openai"
-                )
+                raise ValueError(f"Unknown STT provider: {provider}. Available providers: openai")
 
     @property
     def provider(self) -> str:
