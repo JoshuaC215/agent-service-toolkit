@@ -244,6 +244,8 @@ async def main() -> None:
 
     # Generate new message if the user provided new input
     # Use voice manager if available, otherwise fall back to regular input
+    # REQUIRED: Set VOICE_STT_PROVIDER, VOICE_TTS_PROVIDER, OPENAI_API_KEY
+    # in app .env (NOT service .env) to enable voice features.
     if voice:
         user_input = voice.get_chat_input()
     else:
