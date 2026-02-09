@@ -177,6 +177,25 @@ async def main() -> None:
                 "Prompts, responses and feedback in this app are anonymously recorded and saved to LangSmith for product evaluation and improvement purposes only."
             )
 
+        # Skill system status display
+        with st.popover(":material/extension: Skills", use_container_width=True):
+            try:
+                from skills.toolkit import get_skill_system
+
+                skill_system = get_skill_system()
+                if skill_system:
+                    skills = skill_system.registry.list_all()
+                    if skills:
+                        for s in skills:
+                            status = "✅" if s.loaded else "○"
+                            st.text(f"{status} {s.id}")
+                    else:
+                        st.caption("No skills available")
+                else:
+                    st.caption("Skill system not initialized")
+            except ImportError:
+                st.caption("Skill module not available")
+
         @st.dialog("Share/resume chat")
         def share_chat_dialog() -> None:
             session = st.runtime.get_instance()._session_mgr.list_active_sessions()[0]
