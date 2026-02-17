@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from client import AgentClient, AgentClientError
 from schema import ChatHistory, ChatMessage
 from schema.task_data import TaskData, TaskDataStatus
+from voice import VoiceManager
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:
@@ -95,6 +96,11 @@ async def main() -> None:
             st.stop()
     agent_client: AgentClient = st.session_state.agent_client
 
+    # Initialize voice manager (once per session)
+    if "voice_manager" not in st.session_state:
+        st.session_state.voice_manager = VoiceManager.from_env()
+    voice = st.session_state.voice_manager
+
     if "thread_id" not in st.session_state:
         thread_id = st.query_params.get("thread_id")
         if not thread_id:
@@ -120,6 +126,9 @@ async def main() -> None:
         if st.button(":material/chat: New Chat", use_container_width=True):
             st.session_state.messages = []
             st.session_state.thread_id = str(uuid.uuid4())
+            # Clear saved audio when starting new chat
+            if "last_audio" in st.session_state:
+                del st.session_state.last_audio
             st.rerun()
 
         with st.popover(":material/settings: Settings", use_container_width=True):
@@ -133,6 +142,19 @@ async def main() -> None:
                 index=agent_idx,
             )
             use_streaming = st.toggle("Stream results", value=True)
+            # Audio toggle with callback: clears cached audio when toggled off
+            enable_audio = st.toggle(
+                "Enable audio generation",
+                value=True,
+                disabled=not voice or not voice.tts,
+                help="Configure VOICE_TTS_PROVIDER in .env to enable"
+                if not voice or not voice.tts
+                else None,
+                on_change=lambda: st.session_state.pop("last_audio", None)
+                if not st.session_state.get("enable_audio", True)
+                else None,
+                key="enable_audio",
+            )
 
             # Display user ID (for debugging or user information)
             st.text_input("User ID (read-only)", value=user_id, disabled=True)
@@ -206,8 +228,30 @@ async def main() -> None:
 
     await draw_messages(amessage_iter())
 
+    # Render saved audio for the last AI message (if it exists)
+    # This ensures audio persists across st.rerun() calls
+    if (
+        voice
+        and enable_audio
+        and "last_audio" in st.session_state
+        and st.session_state.last_message
+        and len(messages) > 0
+        and messages[-1].type == "ai"
+    ):
+        with st.session_state.last_message:
+            audio_data = st.session_state.last_audio
+            st.audio(audio_data["data"], format=audio_data["format"])
+
     # Generate new message if the user provided new input
-    if user_input := st.chat_input():
+    # Use voice manager if available, otherwise fall back to regular input
+    # REQUIRED: Set VOICE_STT_PROVIDER, VOICE_TTS_PROVIDER, OPENAI_API_KEY
+    # in app .env (NOT service .env) to enable voice features.
+    if voice:
+        user_input = voice.get_chat_input()
+    else:
+        user_input = st.chat_input()
+
+    if user_input:
         messages.append(ChatMessage(type="human", content=user_input))
         st.chat_message("human").write(user_input)
         try:
@@ -219,6 +263,19 @@ async def main() -> None:
                     user_id=user_id,
                 )
                 await draw_messages(stream, is_new=True)
+                # Generate TTS audio for streaming response
+                # Note: draw_messages() stores the final message in st.session_state.messages
+                # and the container reference in st.session_state.last_message
+                if voice and enable_audio and st.session_state.messages:
+                    last_msg = st.session_state.messages[-1]
+                    # Only generate audio for AI responses with content
+                    if last_msg.type == "ai" and last_msg.content:
+                        # Use audio_only=True since text was already streamed by draw_messages()
+                        voice.render_message(
+                            last_msg.content,
+                            container=st.session_state.last_message,
+                            audio_only=True,
+                        )
             else:
                 response = await agent_client.ainvoke(
                     message=user_input,
@@ -227,7 +284,12 @@ async def main() -> None:
                     user_id=user_id,
                 )
                 messages.append(response)
-                st.chat_message("ai").write(response.content)
+                # Render AI response with optional voice
+                with st.chat_message("ai"):
+                    if voice and enable_audio:
+                        voice.render_message(response.content)
+                    else:
+                        st.write(response.content)
             st.rerun()  # Clear stale containers
         except AgentClientError as e:
             st.error(f"Error generating response: {e}")

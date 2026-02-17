@@ -52,7 +52,7 @@ dependencies = [
     "pyowm ~=3.3.0",
     "python-dotenv ~=1.0.1",
     "setuptools ~=75.6.0",
-    "streamlit ~=1.46.0",
+    "streamlit ~=1.52.0",
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",
     "langchain-mcp-adapters>=0.1.10",
@@ -78,7 +78,7 @@ client = [
     "httpx~=0.28.0",
     "pydantic ~=2.10.1",
     "python-dotenv ~=1.0.1",
-    "streamlit~=1.46.0",
+    "streamlit~=1.52.0",
 ]
 
 [tool.ruff]
