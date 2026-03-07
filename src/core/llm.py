@@ -113,7 +113,7 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
     if model_name in VertexAIModelName:
         return ChatVertexAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in GroqModelName:
-        if model_name == GroqModelName.LLAMA_GUARD_4_12B:
+        if model_name == GroqModelName.GPT_OSS_SAFEGUARD_20B:
             return ChatGroq(model=api_model_name, temperature=0.0)  # type: ignore[call-arg]
         return ChatGroq(model=api_model_name, temperature=0.5)  # type: ignore[call-arg]
     if model_name in AWSModelName:
