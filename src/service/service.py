@@ -20,6 +20,7 @@ from langfuse.langchain import (
 )
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
+from langsmith import uuid7
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info, load_agent
 from core import settings
@@ -120,7 +121,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     Parse user input and handle any required interrupt resumption.
     Returns kwargs for agent invocation and the run_id.
     """
-    run_id = uuid4()
+    run_id = uuid7()
     thread_id = user_input.thread_id or str(uuid4())
     user_id = user_input.user_id or str(uuid4())
 
