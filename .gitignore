@@ -191,3 +191,7 @@ cython_debug/
 # Private Credentials, ignore everything in the folder but the .gitkeep file
 privatecredentials/*
 !privatecredentials/.gitkeep
+
+# Generated evaluation images
+skill_levels_*.png
+bandit_report.txt

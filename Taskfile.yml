@@ -1,7 +1,6 @@
 # https://taskfile.dev
 
 version: '3'
-dotenv: ['.env']
 
 vars:
   GREETING: Hello, World!
@@ -15,19 +14,22 @@ tasks:
   init:
     cmds:
       - uv sync --frozen
-      - source .venv/bin/activate
+
   
   run:
+    dotenv: ['.env']
     cmds:
       - uv run src/run_service.py
   
   # INFO: there will be commands for each new Frontend-Component.
   run-sc:
+    dotenv: ['.env']
     cmds:
       - uv run src/theme_selector.py --app Skill_Companion --variant {{ .VARIANT | default "default" }}
       - uv run streamlit run src/Skill_Companion.py
 
   run-dr:
+    dotenv: ['.env']
     cmds:
       - uv run src/theme_selector.py --app DWH_Readiness --variant {{ .VARIANT | default "default" }}
       - uv run streamlit run src/DWH_Readiness.py
@@ -38,11 +40,18 @@ tasks:
       - uv run ruff check . --fix
       - uv run ruff format .
 
+  test:
+    desc: "Run full pytest suite"
+    dotenv: []
+    cmds:
+      - uv run pytest
+
   eval-skill:
     desc: "Run skillcompanion_evaluation with timestamp parameters"
+    dotenv: ['.env']
     vars:
-      FROM: '{{.FROM | default "2025-08-25T11:00:00Z"}}'
-      TO: '{{.TO | default "2025-08-25T13:00:00Z"}}'
+      FROM: '{{.FROM | default "2025-10-15T11:00:00Z"}}'
+      TO: '{{.TO | default "2025-10-25T13:00:00Z"}}'
       NAME: '{{.NAME | default "skillcompanion_interrupted"}}'
     env:
       FROM_TIMESTAMP: '{{.FROM}}'
@@ -54,4 +63,3 @@ tasks:
   
 
   
-

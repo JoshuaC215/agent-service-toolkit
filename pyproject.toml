@@ -13,7 +13,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 
-requires-python = ">=3.11"
+requires-python = ">=3.11, <3.14"
 
 dependencies = [
     "docx2txt ~=0.8",
@@ -56,6 +56,7 @@ dependencies = [
     "tiktoken >=0.8.0",
     "uvicorn ~=0.32.1",
     "matplotlib>=3.10.5",
+    "json-repair>=0.53.0",
 ]
 
 [dependency-groups]
@@ -68,6 +69,7 @@ dev = [
     "pytest-asyncio",
     "ruff",
     "mypy",
+    "bandit>=1.8.6",
 ]
 
 # Group for the minimal dependencies to run just the client and Streamlit app.
@@ -97,7 +99,13 @@ OPENAI_API_KEY = "sk-fake-openai-key"
 
 [tool.mypy]
 plugins = "pydantic.mypy"
-exclude = "src/streamlit_app.py"
+# Exclude Streamlit main file and archived examples from type checking
+exclude = "(^src/streamlit_app.py$)|(^src/archive/)"
+# Treat missing external stubs as Any to avoid blocking on optional deps
+ignore_missing_imports = true
+# Ensure modules under "src" are resolved as packages consistently
+explicit_package_bases = true
+mypy_path = "src"
 
 [[tool.mypy.overrides]]
 module = ["numexpr.*"]
