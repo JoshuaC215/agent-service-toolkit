@@ -1,6 +1,6 @@
-# Standard Config
-#title: "DWH Readiness Check"
-#app_icon: "🤖"
+# Variant configuration for DWH Readiness Streamlit-App
+title: "roosi DWH Readiness"
+app_icon: "🤖"
 theme: "default"
-#model: "owui/gpt-4o"
-#agent: "skillcompanion_interrupted" # info: not used yet
+model: "owui/gpt-4o"
+agent: "dwh_readiness_summary"

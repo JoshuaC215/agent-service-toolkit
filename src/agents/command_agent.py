@@ -1,9 +1,12 @@
-import random
+import logging
+import secrets
 from typing import Literal
 
 from langchain_core.messages import AIMessage
 from langgraph.graph import START, MessagesState, StateGraph
 from langgraph.types import Command
+
+logger = logging.getLogger(__name__)
 
 
 class AgentState(MessagesState, total=False):
@@ -17,8 +20,8 @@ class AgentState(MessagesState, total=False):
 
 
 def node_a(state: AgentState) -> Command[Literal["node_b", "node_c"]]:
-    print("Called A")
-    value = random.choice(["a", "b"])
+    logger.debug("Called A")
+    value = secrets.choice(["a", "b"])
     goto: Literal["node_b", "node_c"]
     # this is a replacement for a conditional edge function
     if value == "a":
@@ -36,12 +39,12 @@ def node_a(state: AgentState) -> Command[Literal["node_b", "node_c"]]:
 
 
 def node_b(state: AgentState):
-    print("Called B")
+    logger.debug("Called B")
     return {"messages": [AIMessage(content="Hello B")]}
 
 
 def node_c(state: AgentState):
-    print("Called C")
+    logger.debug("Called C")
     return {"messages": [AIMessage(content="Hello C")]}
 
 

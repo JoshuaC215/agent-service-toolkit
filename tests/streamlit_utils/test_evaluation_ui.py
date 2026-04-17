@@ -37,11 +37,10 @@ def patch_streamlit_minimal(monkeypatch):
     monkeypatch.setattr(st, "rerun", lambda: None)
 
     # Inputs default
+    monkeypatch.setattr(st, "date_input", lambda label, value=None, key=None: value)
     monkeypatch.setattr(
-        st, "date_input", lambda label, value=None, key=None: value
-    )
-    monkeypatch.setattr(
-        st, "time_input",
+        st,
+        "time_input",
         lambda label, value=None, key=None, step=None: value,
     )
 
@@ -93,6 +92,7 @@ def test_render_eval_login_success_admin(monkeypatch, patch_streamlit_minimal):
         return _User(token="T", id="U1", role="admin")
 
     from client.auth import Auth
+
     monkeypatch.setattr(Auth, "login", _fake_login, raising=False)
 
     # is_admin_user injected checker
@@ -120,7 +120,9 @@ def test_render_eval_login_success_admin(monkeypatch, patch_streamlit_minimal):
     assert st.session_state.get("eval_require_login") is False
 
 
-def test_render_evaluation_content_requires_login_invokes_login(monkeypatch, patch_streamlit_minimal):
+def test_render_evaluation_content_requires_login_invokes_login(
+    monkeypatch, patch_streamlit_minimal
+):
     # Force login required
     st.session_state.eval_require_login = True
     st.session_state.pop("owui-token", None)
@@ -151,9 +153,7 @@ def test_run_generation_success_sets_image_path(monkeypatch, patch_streamlit_min
     )
     import subprocess as _real_subprocess
 
-    monkeypatch.setattr(
-        _real_subprocess, "run", lambda *a, **k: _Result()
-    )
+    monkeypatch.setattr(_real_subprocess, "run", lambda *a, **k: _Result())
 
     # Ensure rerun doesn't break tests
     monkeypatch.setattr(st, "rerun", lambda: None)
@@ -166,10 +166,15 @@ def test_run_generation_success_sets_image_path(monkeypatch, patch_streamlit_min
     assert st.session_state.get("eval_running") is False
     assert st.session_state.get("eval_error") in (None, "")
     # We just check that a path string was set (file may not exist in test context)
-    assert isinstance(st.session_state.get("eval_image_path"), str) and len(st.session_state.eval_image_path) > 0
+    assert (
+        isinstance(st.session_state.get("eval_image_path"), str)
+        and len(st.session_state.eval_image_path) > 0
+    )
 
 
-def test_render_evaluation_content_generate_calls_run_generation(monkeypatch, patch_streamlit_minimal):
+def test_render_evaluation_content_generate_calls_run_generation(
+    monkeypatch, patch_streamlit_minimal
+):
     # Logged-in state
     st.session_state.eval_require_login = False
     st.session_state["owui-token"] = "X"

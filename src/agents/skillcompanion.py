@@ -3,15 +3,14 @@ import logging
 from typing import Annotated, Any, TypedDict
 
 from langchain.prompts import SystemMessagePromptTemplate
-from langchain_core.language_models.base import LanguageModelInput
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.graph import StateGraph
 from langgraph.graph.message import add_messages
-from langgraph.types import interrupt
 
+from agents.helpers import built_finish_msg_and_link, interrupt_and_append, wrap_model
 from core import get_model
 from schema.models import OpenwebuiModelName
 
@@ -29,17 +28,20 @@ class State(TypedDict):
 
 
 memory = SqliteSaver.from_conn_string(":memory:")
-llm_model = get_model(OpenwebuiModelName.GPT_4O)
+
+# Lazy LLM model initialization to avoid import-time failures when env is not ready
+_llm_model: BaseChatModel | None = None
 
 
-def wrap_model(
-    model: BaseChatModel | Runnable[LanguageModelInput, Any], system_prompt: str
-) -> RunnableSerializable[State, Any]:
-    preprocessor = RunnableLambda(
-        lambda state: [SystemMessage(content=str(system_prompt))] + state["messages"],
-        name="StateModifier",
-    )
-    return preprocessor | model
+def _get_llm_model() -> BaseChatModel:
+    """
+    Lazily initialize and cache the LLM model.
+    Avoids raising at import time when environment variables (e.g., OpenWebUI URL/token) are not yet set.
+    """
+    global _llm_model
+    if _llm_model is None:
+        _llm_model = get_model(OpenwebuiModelName.GPT_4O)
+    return _llm_model
 
 
 # --- Questions (mix of open/closed, 3-4 about KI use cases) ---
@@ -155,25 +157,29 @@ async def ask_question(state: State) -> dict:
     )
     idx = idx + 1
     logger.info(f"idx: {idx}")
-    ###
-    # Prepare messages for LLM invocation
-    messages = state.get("messages", [])
-    if not (
-        messages
-        and isinstance(messages[0], SystemMessage)
-        and str(system_prompt) in getattr(messages[0], "content", "")
-    ):
-        messages = [SystemMessage(content=str(system_prompt))] + messages
     config = RunnableConfig()
-    ###
+    llm_response = None
     try:
-        model = get_model(OpenwebuiModelName.GPT_4O)
-        model_runnable = wrap_model(model, messages)
-        llm_response = await model_runnable.ainvoke(state, config)
-    except Exception as e:
-        logger.error(f"Exception: {e}")
+        model = _get_llm_model()
+        try:
+            model_runnable = wrap_model(model, str(system_prompt))
+            llm_response = await model_runnable.ainvoke(state, config)
+        except TypeError:
+            logger.warning(
+                "ask_question: wrap_model not supported for current model; falling back to direct ainvoke"
+            )
+            llm_response = await model.ainvoke(
+                [SystemMessage(content=str(system_prompt)), *state.get("messages", [])],
+                config=config,
+            )
+    except Exception:
+        logger.exception("ask_question: LLM invocation failed")
     # Include company_size and tech_affinity in the LLM invocation
-    question_text = llm_response.content.strip()
+    question_text = (
+        llm_response.content.strip()
+        if llm_response and getattr(llm_response, "content", None)
+        else "Können Sie bitte Ihre letzte Aussage präzisieren, damit ich die nächste Frage passend formulieren kann?"
+    )
     return {
         "messages": [AIMessage(content=question_text)],
         "question": question_text,
@@ -255,38 +261,27 @@ async def assign_category(state: State) -> dict:
     )
     config = RunnableConfig()
     messages = [SystemMessage(content=prompt)]
-    llm_response = await llm_model.ainvoke(messages, config=config)
+    try:
+        model = _get_llm_model()
+        llm_response = await model.ainvoke(messages, config=config)
+        category = llm_response.content.strip()
+    except Exception:
+        logger.exception("assign_category: LLM invocation failed")
+        category = "Beginner"
+    return {"category": category}
 
-    catagory = llm_response.content.strip()
-    return {"category": catagory}
 
-
-async def finish(state: State) -> dict:
+async def finish(state: State, config: RunnableConfig) -> dict:
     """
     Finalize the skill check and present the result to the user.
 
     This function generates a closing message based on the assigned category,
     provides a resource link, and sets the finished flag in the state.
-
-    Args:
-        state (State): The current state of the dialog.
-
-    Returns:
-        dict: {
-            "messages": [AIMessage],  # The final AIMessage with the result and resource link
-            "finished": True          # Flag indicating the process is complete
-        }
     """
     category = state.get("category", "Beginner")
-    url = f"https://bento.roosi.ai/?kiskill={category}"
-    md_link = f"[Weitere Informationen]({url})"
-    msg = (
-        f"Vielen Dank für Ihre Teilnahme!\n\n"
-        f"Basierend auf Ihren Angaben ordne ich Sie der Kategorie **{category}** zu. "
-        f"Diese Information wird nun an unser System weitergeleitet, um Ihnen passende Ressourcen bereitzustellen.\n\n"
-        f"{md_link}\n\n"
-        f"Es folgen entsprechende nächste Schritte."
-    )
+    url_parameters = config.get("configurable", {}).get("url_parameters")
+    base, md_link = built_finish_msg_and_link(category, url_parameters)
+    msg = f"{base}\n\n{md_link}\n\nEs folgen entsprechende nächste Schritte."
     return {
         "messages": [AIMessage(content=msg)],
         "finished": True,
@@ -334,10 +329,10 @@ async def interrupt_process(state: State) -> dict:
     """
     logger.info("Interrupting")
     # Use a user-friendly prompt for clarification, similar to interrupt_agent
-    prompt = interrupt(
-        "Bitte präzisieren Sie Ihre letzte Antwort oder wählen Sie eine Option, damit ich fortfahren kann."
+    _ = interrupt_and_append(
+        state,
+        "Bitte präzisieren Sie Ihre letzte Antwort oder wählen Sie eine Option, damit ich fortfahren kann.",
     )
-    state["messages"].append(HumanMessage(prompt))
     return state
 
 

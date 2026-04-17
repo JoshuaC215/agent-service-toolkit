@@ -19,6 +19,7 @@ from pandas import DataFrame
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+
 def langfuse_trace_call(
     public_key: str,
     secret_key: str,
@@ -45,7 +46,9 @@ def langfuse_trace_call(
     except requests.HTTPError as err:
         status = getattr(err.response, "status_code", None) or getattr(response, "status_code", "")
         try:
-            body = (err.response.text if getattr(err, "response", None) is not None else response.text)[:500]
+            body = (
+                err.response.text if getattr(err, "response", None) is not None else response.text
+            )[:500]
         except Exception:
             body = "<no body>"
         raise Exception(f"HTTP error {status}: {err}. Body: {body}")
@@ -82,7 +85,6 @@ def get_lf_traces(
 
 
 def _safe_png_filename(agent_name: str, from_ts: str, to_ts: str) -> str:
-
     def _compact(ts: str) -> str:
         try:
             t = ts[:-1] + "+00:00" if isinstance(ts, str) and ts.endswith("Z") else ts
@@ -188,7 +190,9 @@ def generate_skillcompanion_png_bytes(
             dt = dt.astimezone(UTC)
             return dt.strftime("%d.%m.%Y %H:%M")
 
-        title_text = f"Skill Companion Ergebnis – {_fmt_utc(from_timestamp)} – {_fmt_utc(to_timestamp)} UTC"
+        title_text = (
+            f"Skill Companion Ergebnis – {_fmt_utc(from_timestamp)} – {_fmt_utc(to_timestamp)} UTC"
+        )
         ax.set_title(title_text, pad=16)
         ax.set_ylabel("Anzahl")
         upper = max(values) if max(values) > 0 else 1
@@ -247,6 +251,6 @@ if __name__ == "__main__":
         print(f"Saved bar chart to {saved}")
     except Exception as e:
         # Print error and exit non-zero
-        
+
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

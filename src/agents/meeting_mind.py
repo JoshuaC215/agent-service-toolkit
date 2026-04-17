@@ -1,19 +1,15 @@
-import json
-import re
-import unicodedata
-from datetime import datetime
-from typing import Literal
+import logging
 
-from json_repair import repair_json
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, SystemMessage
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import MessagesState, StateGraph
 from pydantic import BaseModel, Field
 
+from agents.helpers import wrap_model
+from agents.utils import JSONCleaner, current_date_str
 from core import get_model, settings
+
+logger = logging.getLogger(__name__)
 
 
 class AgentState(MessagesState, total=False):
@@ -92,7 +88,7 @@ class MeetingSummary(BaseModel):
     Breakdown: Breakdownn = Field(description="The Contents of the Meeting summary")
 
 
-current_date = datetime.now().strftime("%B %d, %Y")
+current_date = current_date_str()
 
 json_example = """{"Breakdown": {"tasks": [{"description": "Prepare a report on the status of the procedural bylaw 2410.","assigned_to": "CEO","priority": "High"},{"description": "Follow up with the public works department regarding the tree asset projections.","assigned_to": "Nomar","priority": "Medium"},{"description": "Gather names for the two vacant positions on the Northeast Red Watershed District Committee.","assigned_to": "Council Members",    "priority": "Medium"},{    "description": "Draft the policy changes for the new community grant system.",    "assigned_to": "Grants Officer",    "priority": "High"},{    "description": "Schedule a meeting with local business leaders to discuss economic growth initiatives.",    "assigned_to": "Economic Development Manager","priority": "Low"}
             ],
@@ -283,7 +279,6 @@ json_example = """{"Breakdown": {"tasks": [{"description": "Prepare a report on 
         }
     """
 
-parser = PydanticOutputParser(pydantic_object=MeetingSummary)
 
 instructions = f"""
     Based on the user transcription data you have access to, you need to produce a Breakdown of Categories:
@@ -331,28 +326,19 @@ instructions = f"""
     """
 
 
-def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
-    preprocessor = RunnableLambda(
-        lambda state: [SystemMessage(content=instructions)] + state["messages"],
-        name="StateModifier",
-    )
-    return preprocessor | model
-
-
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     m = get_model(
         config["configurable"].get("model", settings.DEFAULT_MODEL),
         config["configurable"].get("api_key", None),
     )
-    model_runnable = wrap_model(m)
+    model_runnable = wrap_model(m, instructions)
     response = await model_runnable.ainvoke(state, config)
 
     tst = JSONCleaner()
     try:
-        pass
         response.content = tst.clean_json(response.content)
-    except Exception as e:
-        print(e)
+    except Exception:
+        logger.exception("JSON cleaning failed; returning raw content")
 
     return {"messages": [response]}
 
@@ -362,49 +348,9 @@ agent.add_node("model", acall_model)
 
 
 # After "model", if there are tool calls, run "tools". Otherwise END.
-def pending_tool_calls(state: AgentState) -> Literal["tools", "done"]:
-    last_message = state["messages"][-1]
-    if not isinstance(last_message, AIMessage):
-        raise TypeError(f"Expected AIMessage, got {type(last_message)}")
-    if last_message.tool_calls:
-        return "tools"
-    return "done"
 
 
 agent.set_entry_point("model")
 agent.set_finish_point("model")
 
 better_meeting_mind = agent.compile(checkpointer=MemorySaver())
-
-
-class JSONCleaner:
-    def clean_json(self, json_str):
-        start = json_str.find("{")
-        end = json_str.rfind("}")
-        if start == -1 or end == -1:
-            msg = "Invalid JSON string: Missing '{' or '}'"
-            raise ValueError(msg)
-        try:
-            json_str = json_str[start : end + 1]
-            json_str = self._remove_control_characters(json_str)
-            json_str = self._normalize_unicode(json_str)
-            json_str = self._validate_json(json_str)
-
-            return str(repair_json(json_str))
-        except Exception as e:
-            msg = f"Error cleaning JSON string: {e}"
-            raise ValueError(msg) from e
-
-    def _remove_control_characters(self, s: str) -> str:
-        return re.sub(r"[\x00-\x1F\x7F]", "", s)
-
-    def _normalize_unicode(self, s: str) -> str:
-        return unicodedata.normalize("NFC", s)
-
-    def _validate_json(self, s: str) -> str:
-        try:
-            json.loads(s)
-        except json.JSONDecodeError as e:
-            msg = f"Invalid JSON string: {e}"
-            raise ValueError(msg) from e
-        return s

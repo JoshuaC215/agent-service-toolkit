@@ -1,12 +1,11 @@
 import asyncio
 
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage
-from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.types import StreamWriter
 
 from agents.bg_task_agent.task import Task
+from agents.helpers import wrap_model
 from core import get_model, settings
 
 
@@ -15,14 +14,6 @@ class AgentState(MessagesState, total=False):
 
     documentation: https://typing.readthedocs.io/en/latest/spec/typeddict.html#totality
     """
-
-
-def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
-    preprocessor = RunnableLambda(
-        lambda state: state["messages"],
-        name="StateModifier",
-    )
-    return preprocessor | model  # type: ignore[return-value]
 
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:

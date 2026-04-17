@@ -27,6 +27,7 @@ class DWHQuestion:
     Args:
         text (str): The question text.
     """
+
     text: str
 
     @staticmethod
@@ -47,6 +48,7 @@ class DWHQuestion:
             raise ValueError("Each question must be a dict with a 'text' field of type str.")
         return DWHQuestion(text=obj["text"])
 
+
 @dataclass
 class DWHReadinessCheckObject:
     """
@@ -58,6 +60,7 @@ class DWHReadinessCheckObject:
         scale (Literal["normal", "inverse"]): The scoring scale.
         questions (list[DWHQuestion]): List of questions.
     """
+
     title: str
     description: str
     scale: Literal["normal", "inverse"]
@@ -80,7 +83,7 @@ class DWHReadinessCheckObject:
         if not isinstance(obj, dict):
             raise ValueError("Root object must be a dict.")
         title = obj.get("title", "")
-        description = obj.get("description","")
+        description = obj.get("description", "")
         if not isinstance(title, str):
             title = ""
         scale = obj.get("scale", "normal")
@@ -92,7 +95,10 @@ class DWHReadinessCheckObject:
         if len(questions) != QUESTION_LIMIT:
             raise ValueError(f"questions must have {QUESTION_LIMIT} items, got {len(questions)}")
         question_objs = [DWHQuestion.from_dict(q) for q in questions]
-        return DWHReadinessCheckObject(title=title, description=description,scale=scale, questions=question_objs)
+        return DWHReadinessCheckObject(
+            title=title, description=description, scale=scale, questions=question_objs
+        )
+
 
 def load_questions_from_json(json_filename: str) -> DWHReadinessCheckObject | None:
     """
@@ -113,21 +119,23 @@ def load_questions_from_json(json_filename: str) -> DWHReadinessCheckObject | No
         return DWHReadinessCheckObject.from_dict(data)
     except ValueError as ve:
         logger.error(f"Invalid JSON in {json_filename}: {ve}")
-        st.error(
-            ERROR_LOADING_QUESTIONS_MSG
-        )
+        st.error(ERROR_LOADING_QUESTIONS_MSG)
         return None
     except Exception as e:
         logger.error(f"Error loading questions from {json_filename}: {e}")
-        st.error(
-            ERROR_LOADING_QUESTIONS_MSG
-        )
+        st.error(ERROR_LOADING_QUESTIONS_MSG)
         return None
 
-questions_for_dwh_readiness_challenge: DWHReadinessCheckObject | None = load_questions_from_json("dwh_readiness_challenge_questions.json")
-questions_for_dwh_readiness_satisfaction: DWHReadinessCheckObject | None = load_questions_from_json("dwh_readiness_satisfaction_questions.json")
 
-challenge_eval_map:dict[tuple[int,int],tuple[str,str]] = {
+questions_for_dwh_readiness_challenge: DWHReadinessCheckObject | None = load_questions_from_json(
+    "dwh_readiness_challenge_questions.json"
+)
+questions_for_dwh_readiness_satisfaction: DWHReadinessCheckObject | None = load_questions_from_json(
+    "dwh_readiness_satisfaction_questions.json"
+)
+
+
+challenge_eval_map: dict[tuple[int, int], tuple[str, str]] = {
     (0, 7): (
         "warning",
         "**Hoher Handlungsbedarf:** Es gibt massive Engpässe im aktuellen Datenmanagement. Das Unternehmen ist stark eingeschränkt und kann aus Daten kaum Mehrwert ziehen. Eine grundlegende Neuausrichtung ist erforderlich.",
@@ -141,7 +149,7 @@ challenge_eval_map:dict[tuple[int,int],tuple[str,str]] = {
         "**Geringer Handlungsbedarf:** Es gibt nur wenige Probleme mit der Datenverarbeitung. Das Unternehmen ist bereits gut aufgestellt, sollte aber spezifische Engpässe weiter verbessern.",
     ),
 }
-satisfaction_eval_map:dict[tuple[int,int],tuple[str,str]] = {
+satisfaction_eval_map: dict[tuple[int, int], tuple[str, str]] = {
     (0, 7): (
         "warning",
         "**Schwache Dateninfrastruktur:** Die bestehenden Systeme sind nicht ausreichend, um eine datengetriebene Strategie zu unterstützen. Prozesse sind ineffizient, und Entscheidungen basieren oft auf unvollständigen oder fehlerhaften Daten.",
@@ -156,10 +164,8 @@ satisfaction_eval_map:dict[tuple[int,int],tuple[str,str]] = {
     ),
 }
 
-def compute_and_show_results(
-    score: int,
-    eval_map: dict[tuple[int, int], tuple[str, str]]
-) -> None:
+
+def compute_and_show_results(score: int, eval_map: dict[tuple[int, int], tuple[str, str]]) -> None:
     """
     Compute the evaluation result based on the score and show the result using Streamlit.
 
@@ -189,28 +195,10 @@ def compute_and_show_results(
         st.write("Punktzahl außerhalb des erwarteten Bereichs")
     if selected_msg is not None:
         if "Dateninfrastruktur" in selected_msg:
-            st.session_state["satisfaction_final_result"]= selected_msg
+            st.session_state["satisfaction_final_result"] = selected_msg
         else:
             st.session_state["challenge_final_result"] = selected_msg
 
-def render_slider_section() -> None:
-    """
-    Render the slider section for technical affinity and company size in the Streamlit UI.
-
-    Returns:
-        None
-    """
-    st.write("Vor Beginn des DWH Readiness-Checks bitten wir Sie, die technische Affinität und Mitarbeiteranzahl Ihres Unternehmens anzugeben. Diese Informationen helfen uns, die Ergebnisse optimal auf Ihre Bedürfnisse zuzuschneiden und den Weg zu einer verbesserten Datenstrategie zu ebnen.")
-    tech_affinity = st.select_slider(
-        "Wie technisch affin ist Ihre Firma (1=nicht technisch bzw. 5= sehr technisch affin)?",
-        options=[1, 2, 3, 4, 5],
-        value=3,
-    )
-    st.write(f"Die technische Affinität Ihrer Firma ist: {tech_affinity}")
-    company_size = st.slider("Wie viele Mitarbeiter hat ihre Firma?", 0, 1000, 500)
-    st.write(f"Die Größe ihres Unternehmens beträgt {company_size} Mitarbeiter!")
-    st.session_state["tech_affinity"] = tech_affinity
-    st.session_state["company_size"] = company_size
 
 def validate_and_extract_questions(
     dwhReadinessCheckObject: DWHReadinessCheckObject | None,
@@ -250,6 +238,7 @@ def validate_and_extract_questions(
 
     return title, description, scale, question_texts
 
+
 def show_questionnaire_title_and_description(title: str, description: str) -> None:
     """
     Show the questionnaire title and description in Streamlit.
@@ -261,6 +250,7 @@ def show_questionnaire_title_and_description(title: str, description: str) -> No
     if title:
         st.title(title)
         st.write(description)
+
 
 def invert_points_dict_if_needed(scale: str, points_dict: dict[str, int]) -> dict[str, int]:
     """
@@ -276,6 +266,7 @@ def invert_points_dict_if_needed(scale: str, points_dict: dict[str, int]) -> dic
     if scale == "inverse":
         return {k: 2 - v for k, v in points_dict.items()}
     return points_dict
+
 
 def initialize_session_state(prefix: str, question_texts: list[str]) -> str:
     """
@@ -297,6 +288,7 @@ def initialize_session_state(prefix: str, question_texts: list[str]) -> str:
             st.session_state[key] = None
     return question_index_key
 
+
 def advance_index(prefix: str, question_index_key: str, question_texts: list[str]) -> None:
     """
     Advance the current question index if the current question is answered.
@@ -310,6 +302,7 @@ def advance_index(prefix: str, question_index_key: str, question_texts: list[str
     if st.session_state[f"{prefix}_{i}"] is not None:
         if st.session_state[question_index_key] < len(question_texts) - 1:
             st.session_state[question_index_key] += 1
+
 
 def render_questions(
     prefix: str,
@@ -333,13 +326,14 @@ def render_questions(
         with col2:
             st.session_state.current_radio_key = i
             st.radio(
-                label="",
+                label=f"Antwort für Frage {i + 1}",
                 options=answer_options,
                 horizontal=True,
                 key=f"{prefix}_{i}",
                 label_visibility="collapsed",
                 on_change=lambda: advance_index(prefix, question_index_key, question_texts),
             )
+
 
 def all_questions_answered(prefix: str, question_texts: list[str]) -> bool:
     """
@@ -352,11 +346,12 @@ def all_questions_answered(prefix: str, question_texts: list[str]) -> bool:
     Returns:
         bool: True if all questions are answered, False otherwise.
     """
-    return all(
-        st.session_state[f"{prefix}_{i}"] is not None for i in range(len(question_texts))
-    )
+    return all(st.session_state[f"{prefix}_{i}"] is not None for i in range(len(question_texts)))
 
-def calculate_total_points(prefix: str, question_texts: list[str], points_dict: dict[str, int]) -> int:
+
+def calculate_total_points(
+    prefix: str, question_texts: list[str], points_dict: dict[str, int]
+) -> int:
     """
     Calculate the total points for the questionnaire.
 
@@ -369,14 +364,14 @@ def calculate_total_points(prefix: str, question_texts: list[str], points_dict: 
         int: The total points.
     """
     return sum(
-        points_dict.get(st.session_state[f"{prefix}_{i}"], 0)
-        for i in range(len(question_texts))
+        points_dict.get(st.session_state[f"{prefix}_{i}"], 0) for i in range(len(question_texts))
     )
+
 
 def render_questionnaire(
     dwhReadinessCheckObject: DWHReadinessCheckObject | None,
     prefix: str,
-    toggle_next: Callable[..., None] = lambda: None,
+    toggle_next: Callable[..., None] | None = None,
     eval_map: dict = {},
     next_label: str = "",
     answer_options: list[str] = ["Ja", "Teilweise", "Nein"],
@@ -388,7 +383,7 @@ def render_questionnaire(
     Args:
         dwhReadinessCheckObject (DWHReadinessCheckObject | None): The questionnaire object to display.
         prefix (str): Prefix for session state keys.
-        toggle_next (Callable[..., None], optional): Function to call when moving to the next section.
+        toggle_next (Callable[..., None] | None, optional): Function to call when moving to the next section.
         eval_map (dict, optional): Evaluation map for scoring.
         next_label (str, optional): Label for the next button.
         answer_options (list[str], optional): List of answer options.
@@ -413,7 +408,32 @@ def render_questionnaire(
         total_points = calculate_total_points(prefix, question_texts, points_dict)
         if eval_map:
             compute_and_show_results(total_points, eval_map)
-        if toggle_next and next_label:
+        if isinstance(next_label, str) and next_label != "":
             if st.button(next_label):
-                toggle_next()
+                if toggle_next is not None:
+                    toggle_next()
                 st.rerun()
+
+
+def render_slider_section() -> None:
+    """
+    Render the slider section for technical affinity and company size in the Streamlit UI.
+
+    Returns:
+        None
+    """
+    st.write(
+        "Vor Beginn des DWH Readiness-Checks bitten wir Sie, die technische Affinität und Mitarbeiteranzahl "
+        "Ihres Unternehmens anzugeben. Diese Informationen helfen uns, die Ergebnisse optimal auf Ihre "
+        "Bedürfnisse zuzuschneiden und den Weg zu einer verbesserten Datenstrategie zu ebnen."
+    )
+    tech_affinity = st.select_slider(
+        "Wie technisch affin ist Ihre Firma (1=nicht technisch bzw. 5= sehr technisch affin)?",
+        options=[1, 2, 3, 4, 5],
+        value=3,
+    )
+    st.write(f"Die technische Affinität Ihrer Firma ist: {tech_affinity}")
+    company_size = st.slider("Wie viele Mitarbeiter hat ihre Firma?", 0, 1000, 500)
+    st.write(f"Die Größe ihres Unternehmens beträgt {company_size} Mitarbeiter!")
+    st.session_state["tech_affinity"] = tech_affinity
+    st.session_state["company_size"] = company_size

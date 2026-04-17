@@ -1,15 +1,14 @@
 import logging
-import os
+from os import environ
 from typing import Any
 
 from langchain_aws import AmazonKnowledgeBasesRetriever
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
-from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
-from langchain_core.runnables.base import RunnableSequence
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
 
+from agents.helpers import wrap_model
 from core import get_model, settings
 
 logger = logging.getLogger(__name__)
@@ -28,7 +27,7 @@ class AgentState(MessagesState, total=False):
 def get_kb_retriever():
     """Create and return a Knowledge Base retriever instance."""
     # Get the Knowledge Base ID from environment
-    kb_id = os.environ.get("AWS_KB_ID", "")
+    kb_id = environ.get("AWS_KB_ID", "")
     if not kb_id:
         raise ValueError("AWS_KB_ID environment variable must be set")
 
@@ -42,44 +41,6 @@ def get_kb_retriever():
         },
     )
     return retriever
-
-
-def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
-    """Wrap the model with a system prompt for the Knowledge Base agent."""
-
-    def create_system_message(state):
-        base_prompt = """You are a helpful assistant that provides accurate information based on retrieved documents.
-
-        You will receive a query along with relevant documents retrieved from a knowledge base. Use these documents to inform your response.
-
-        Follow these guidelines:
-        1. Base your answer primarily on the retrieved documents
-        2. If the documents contain the answer, provide it clearly and concisely
-        3. If the documents are insufficient, state that you don't have enough information
-        4. Never make up facts or information not present in the documents
-        5. Always cite the source documents when referring to specific information
-        6. If the documents contradict each other, acknowledge this and explain the different perspectives
-
-        Format your response in a clear, conversational manner. Use markdown formatting when appropriate.
-        """
-
-        # Check if documents were retrieved
-        if "kb_documents" in state:
-            # Append document information to the system prompt
-            document_prompt = f"\n\nI've retrieved the following documents that may be relevant to the query:\n\n{state['kb_documents']}\n\nPlease use these documents to inform your response to the user's query. Only use information from these documents and clearly indicate when you are unsure."
-            return [SystemMessage(content=base_prompt + document_prompt)] + state["messages"]
-        else:
-            # No documents were retrieved
-            no_docs_prompt = (
-                "\n\nNo relevant documents were found in the knowledge base for this query."
-            )
-            return [SystemMessage(content=base_prompt + no_docs_prompt)] + state["messages"]
-
-    preprocessor = RunnableLambda(
-        create_system_message,
-        name="StateModifier",
-    )
-    return RunnableSequence(preprocessor, model)
 
 
 async def retrieve_documents(state: AgentState, config: RunnableConfig) -> AgentState:
@@ -147,7 +108,37 @@ async def prepare_augmented_prompt(state: AgentState, config: RunnableConfig) ->
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     """Generate a response based on the retrieved documents."""
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
-    model_runnable = wrap_model(m)
+
+    def _kb_system_builder(state):
+        base_prompt = """You are a helpful assistant that provides accurate information based on retrieved documents.
+
+        You will receive a query along with relevant documents retrieved from a knowledge base. Use these documents to inform your response.
+
+        Follow these guidelines:
+        1. Base your answer primarily on the retrieved documents
+        2. If the documents contain the answer, provide it clearly and concisely
+        3. If the documents are insufficient, state that you don't have enough information
+        4. Never make up facts or information not present in the documents
+        5. Always cite the source documents when referring to specific information
+        6. If the documents contradict each other, acknowledge this and explain the different perspectives
+
+        Format your response in a clear, conversational manner. Use markdown formatting when appropriate.
+        """
+        if "kb_documents" in state:
+            document_prompt = (
+                "\n\nI've retrieved the following documents that may be relevant to the query:\n\n"
+                f"{state.get('kb_documents', '')}\n\n"
+                "Please use these documents to inform your response to the user's query. Only use information from these documents and clearly indicate when you are unsure."
+            )
+            content = base_prompt + document_prompt
+        else:
+            no_docs_prompt = (
+                "\n\nNo relevant documents were found in the knowledge base for this query."
+            )
+            content = base_prompt + no_docs_prompt
+        return [SystemMessage(content=content)]
+
+    model_runnable = wrap_model(m, system=_kb_system_builder)
 
     response = await model_runnable.ainvoke(state, config)
 

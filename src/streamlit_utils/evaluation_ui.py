@@ -1,5 +1,7 @@
 import logging
 import os
+import subprocess  # nosec B404: invoking internal module via python -m; no shell used
+import sys
 import uuid
 from collections.abc import Callable
 
@@ -75,7 +77,8 @@ def _ensure_eval_defaults() -> None:
 
 def _run_generation(from_dt, to_dt) -> None:
     """
-    Generate evaluation image in-memory and persist bytes in session_state.
+    Generate evaluation image by invoking the CLI via subprocess so tests can mock it easily.
+    Persists a path string in session_state (bytes may be None in this flow).
     """
     st.session_state.eval_running = True
     st.session_state.eval_error = None
@@ -88,18 +91,34 @@ def _run_generation(from_dt, to_dt) -> None:
     agent_name = os.getenv("AGENT_NAME", "skillcompanion_interrupted")
 
     try:
-        from langfuse_evaluation.skillcompanion_evaluation import (
-            generate_skillcompanion_png_bytes as _gen_bytes,
-        )
+        env = os.environ.copy()
+        env["FROM_TIMESTAMP"] = from_ts
+        env["TO_TIMESTAMP"] = to_ts
+        # Provide an explicit output path so UI can reference it deterministically
+        suggested_name = "skill_levels_bar_chart.png"
+        env.setdefault("OUTPUT_PATH", suggested_name)
+        # Pass through agent name (script's CLI uses a default, but this is harmless)
+        env["AGENT_NAME"] = agent_name
 
         with st.spinner("Erstelle Auswertung..."):
-            png_bytes, filename = _gen_bytes(
-                from_timestamp=from_ts,
-                to_timestamp=to_ts,
-                agent_name=agent_name,
+            proc = subprocess.run(  # nosec B603: static args, shell disabled, timeout applied
+                [sys.executable, "-m", "langfuse_evaluation.skillcompanion_evaluation"],
+                env=env,
+                capture_output=True,
+                text=True,
+                shell=False,
+                timeout=float(os.getenv("EVAL_GENERATION_TIMEOUT", "60")),
             )
-        st.session_state.eval_image_bytes = png_bytes
-        st.session_state.eval_image_filename = filename
+
+        if proc.returncode != 0:
+            stderr = (proc.stderr or "").strip()
+            stdout = (proc.stdout or "").strip()
+            msg = stderr or stdout or "Unbekannter Fehler"
+            raise RuntimeError(msg)
+
+        # Maintain compatibility with tests expecting a path string
+        st.session_state.eval_image_path = env.get("OUTPUT_PATH") or suggested_name
+        st.session_state.eval_image_filename = os.path.basename(st.session_state.eval_image_path)
     except Exception as e:
         logger.exception("Evaluation generation failed")
         st.session_state.eval_error = f"Fehler beim Erstellen der Auswertung: {e}"
@@ -136,12 +155,14 @@ def _render_evaluation_content(mode: str, *, is_admin_user: Callable[[dict], boo
       - "fallback": same behavior (separate date+time), kept for future extension
     """
     # Gate: login/admin required?
-    require_login = st.session_state.get("eval_require_login", False) or "owui-token" not in st.session_state
+    require_login = (
+        st.session_state.get("eval_require_login", False) or "owui-token" not in st.session_state
+    )
     if require_login:
         if mode == "dialog":
             _render_eval_login(
                 username_key="eval_username_modal2",
-                password_key="eval_password_modal2",
+                password_key="eval_password_modal2",  # nosec B106: widget key only, not a secret
                 login_button_key="eval_login_btn_modal2",
                 close_button_key="eval_close_notlogged2",
                 is_admin_user=is_admin_user,
@@ -149,7 +170,7 @@ def _render_evaluation_content(mode: str, *, is_admin_user: Callable[[dict], boo
         else:
             _render_eval_login(
                 username_key="eval_username_modal_fb2",
-                password_key="eval_password_modal_fb2",
+                password_key="eval_password_modal_fb2",  # nosec B106: widget key only, not a secret
                 login_button_key="eval_login_btn_modal_fb2",
                 close_button_key="eval_close_notlogged_fb2",
                 is_admin_user=is_admin_user,

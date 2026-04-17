@@ -1,57 +1,59 @@
 import asyncio
+import logging
 
 from client import AgentClient
 from core import settings
+from core.logging import setup_logging
 from schema import ChatMessage
+
+logger = logging.getLogger(__name__)
+setup_logging()
 
 
 async def amain() -> None:
     #### ASYNC ####
     client = AgentClient(settings.BASE_URL)
 
-    print("Agent info:")
-    print(client.info)
+    logger.info("Agent info:")
+    logger.info("%s", client.info)
 
-    print("Chat example:")
+    logger.info("Chat example:")
     response = await client.ainvoke("Tell me a brief joke?", model="gpt-4o")
     response.pretty_print()
 
-    print("\nStream example:")
+    logger.info("Stream example:")
     async for message in client.astream("Share a quick fun fact?"):
         if isinstance(message, str):
-            print(message, flush=True, end="")
+            logger.info("%s", message)
         elif isinstance(message, ChatMessage):
-            print("\n", flush=True)
             message.pretty_print()
         else:
-            print(f"ERROR: Unknown type - {type(message)}")
+            logger.error("Unknown type - %s", type(message))
 
 
 def main() -> None:
     #### SYNC ####
     client = AgentClient(settings.BASE_URL)
 
-    print("Agent info:")
-    print(client.info)
+    logger.info("Agent info:")
+    logger.info("%s", client.info)
 
-    print("Chat example:")
+    logger.info("Chat example:")
     response = client.invoke("Tell me a brief joke?", model="gpt-4o")
     response.pretty_print()
 
-    print("\nStream example:")
+    logger.info("Stream example:")
     for message in client.stream("Share a quick fun fact?"):
         if isinstance(message, str):
-            print(message, flush=True, end="")
+            logger.info("%s", message)
         elif isinstance(message, ChatMessage):
-            print("\n", flush=True)
             message.pretty_print()
         else:
-            print(f"ERROR: Unknown type - {type(message)}")
+            logger.error("Unknown type - %s", type(message))
 
 
 if __name__ == "__main__":
-    print("Running in sync mode")
+    logger.info("Running in sync mode")
     main()
-    print("\n\n\n\n\n")
-    print("Running in async mode")
+    logger.info("Running in async mode")
     asyncio.run(amain())

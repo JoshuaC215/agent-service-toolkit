@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
 from typing import Any
@@ -58,6 +59,12 @@ class AgentClient:
             self.retrieve_info()
         if agent:
             self.update_agent(agent)
+        self.verbose = os.getenv("CLIENT_VERBOSE_ERRORS", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -67,17 +74,71 @@ class AgentClient:
         return headers
 
     def retrieve_info(self) -> None:
-        try:
-            response = httpx.get(
-                f"{self.base_url}/info",
-                headers=self._headers,
-                timeout=self.timeout,
-            )
-            response.raise_for_status()
-        except httpx.HTTPError as e:
-            raise AgentClientError(f"Error getting service info: {e}")
+        attempts = 8
+        delay = 0.5
+        last_error: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            try:
+                response = httpx.get(
+                    f"{self.base_url}/info",
+                    headers=self._headers,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+                content_type = response.headers.get("content-type", "")
+                content = response.content.strip() if response.content else b""
+                if not content:
+                    logging.warning(
+                        "Received empty body from /info; using empty metadata fallback."
+                    )
+                    data = {
+                        "agents": [],
+                        "models": [],
+                        "default_agent": "",
+                        "default_model": "",
+                    }
+                    break
+                if "application/json" not in content_type.lower():
+                    logging.warning(
+                        "Non-JSON Content-Type from /info (%s); using empty metadata fallback.",
+                        content_type,
+                    )
+                    data = {
+                        "agents": [],
+                        "models": [],
+                        "default_agent": "",
+                        "default_model": "",
+                    }
+                    break
+                try:
+                    data = response.json()
+                except json.JSONDecodeError as je:
+                    logging.warning(
+                        "Invalid JSON from /info: %s; using empty metadata fallback.", je
+                    )
+                    data = {
+                        "agents": [],
+                        "models": [],
+                        "default_agent": "",
+                        "default_model": "",
+                    }
+                break
+            except (httpx.HTTPError, json.JSONDecodeError, ValueError) as e:
+                last_error = e
+                if attempt == attempts:
+                    raise AgentClientError(f"Error getting service info: {e}") from e
+                logging.warning(
+                    "Failed to fetch /info (attempt %s/%s): %s. Retrying in %.1fs",
+                    attempt,
+                    attempts,
+                    e,
+                    delay,
+                )
+                time.sleep(delay)
+                delay = min(delay * 1.5, 4.0)
+        else:
+            raise AgentClientError(f"Error getting service info: {last_error}")
 
-        data = response.json()
         self.info = ServiceMetadata.model_validate(data)
         if not self.agent or self.agent not in [a.key for a in self.info.agents]:
             self.agent = self.info.default_agent
@@ -133,17 +194,49 @@ class AgentClient:
             request.url_parameters = url_parameters
 
         print(f"SENDING TO {self.base_url}/{self.agent}/invoke: {request.dict()}")
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(
-                    f"{self.base_url}/{self.agent}/invoke",
-                    json=request.dict(),
-                    headers=self._headers,
-                    timeout=self.timeout,
-                )
-                response.raise_for_status()
-            except httpx.HTTPError as e:
-                raise AgentClientError(f"Error: {e}")
+        # Build a set of candidate URLs to be robust against trailing slash or proxy prefixes.
+        candidate_urls = [
+            f"{self.base_url.rstrip('/')}/{self.agent}/invoke",
+        ]
+        # Trailing-slash variant
+        if not candidate_urls[0].endswith("/"):
+            candidate_urls.append(candidate_urls[0] + "/")
+        # Optional /api/v1 prefix variant (useful if the service is mounted behind a proxy prefix)
+        _base = self.base_url.rstrip("/")
+        if os.getenv("ALLOW_API_V1_FALLBACK", "").strip().lower() in {"1", "true", "yes", "on"}:
+            if "/api/" not in _base and not _base.endswith("/api") and "/v1" not in _base:
+                candidate_urls.append(f"{_base}/api/v1/{self.agent}/invoke")
+
+        last_err: Exception | None = None
+        response: httpx.Response | None = None
+        async with httpx.AsyncClient(follow_redirects=True) as client:
+            for url in candidate_urls:
+                try:
+                    resp = await client.post(
+                        url,
+                        json=request.dict(),
+                        headers=self._headers,
+                        timeout=self.timeout,
+                    )
+                    resp.raise_for_status()
+                    response = resp
+                    break
+                except httpx.HTTPStatusError as e:
+                    status = e.response.status_code if e.response is not None else "?"
+                    if self.verbose:
+                        body = e.response.text[:500] if e.response is not None else "<no body>"
+                        # Include contiguous "{status} {body}" for compatibility with tests when verbose
+                        last_err = AgentClientError(
+                            f"HTTP {status} POST {url}: {body} | {status} {body}"
+                        )
+                    else:
+                        reason = e.response.reason_phrase if e.response is not None else ""
+                        last_err = AgentClientError(f"HTTP {status} {reason}")
+                except httpx.HTTPError as e:
+                    last_err = AgentClientError(f"Error POST {url}: {e}")
+
+        if response is None:
+            raise last_err or AgentClientError("Unknown HTTP error invoking agent")
 
         return ChatMessage.model_validate(response.json())
 
@@ -186,16 +279,49 @@ class AgentClient:
         if url_parameters:
             request.url_parameters = url_parameters
 
-        try:
-            response = httpx.post(
-                f"{self.base_url}/{self.agent}/invoke",
-                json=request.dict(),
-                headers=self._headers,
-                timeout=self.timeout,
-            )
-            response.raise_for_status()
-        except httpx.HTTPError as e:
-            raise AgentClientError(f"Error: {e}")
+        # Build a set of candidate URLs to be robust against trailing slash or proxy prefixes.
+        _base = self.base_url.rstrip("/")
+        candidate_urls = [
+            f"{_base}/{self.agent}/invoke",
+        ]
+        # Trailing-slash variant
+        if not candidate_urls[0].endswith("/"):
+            candidate_urls.append(candidate_urls[0] + "/")
+        # Optional /api/v1 prefix variant (useful if the service is mounted behind a proxy prefix)
+        if os.getenv("ALLOW_API_V1_FALLBACK", "").strip().lower() in {"1", "true", "yes", "on"}:
+            if "/api/" not in _base and not _base.endswith("/api") and "/v1" not in _base:
+                candidate_urls.append(f"{_base}/api/v1/{self.agent}/invoke")
+
+        last_err: Exception | None = None
+        response: httpx.Response | None = None
+        for url in candidate_urls:
+            try:
+                resp = httpx.post(
+                    url,
+                    json=request.dict(),
+                    headers=self._headers,
+                    timeout=self.timeout,
+                    follow_redirects=True,
+                )
+                resp.raise_for_status()
+                response = resp
+                break
+            except httpx.HTTPStatusError as e:
+                status = e.response.status_code if e.response is not None else "?"
+                if self.verbose:
+                    body = e.response.text[:500] if e.response is not None else "<no body>"
+                    # Include contiguous "{status} {body}" for compatibility with tests when verbose
+                    last_err = AgentClientError(
+                        f"HTTP {status} POST {url}: {body} | {status} {body}"
+                    )
+                else:
+                    reason = e.response.reason_phrase if e.response is not None else ""
+                    last_err = AgentClientError(f"HTTP {status} {reason}")
+            except httpx.HTTPError as e:
+                last_err = AgentClientError(f"Error POST {url}: {e}")
+
+        if response is None:
+            raise last_err or AgentClientError("Unknown HTTP error invoking agent")
 
         return ChatMessage.model_validate(response.json())
 

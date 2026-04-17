@@ -88,7 +88,7 @@ async def main() -> None:
 #         user['name'] = "roosi and Friends"
 #         # messetuerk: roosiandfriends@roo.si auf demo.roosi.ai
 #         if user:
-#             st.session_state["owui-token"] = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImRhYjQyNjk4LTViNDctNGJkOC1iYWRmLTM3OGI2YTM4ZWYzMSJ9.HtoJftZ1bf4cvfcYRXYacyzwGMBxSd7BWOQ1rGmb72Y" #TODO!
+#             st.session_state["owui-token"] = "REDACTED_ARCHIVE_TOKEN"  # TODO!
 #             st.session_state["user"] = user
 #             st.rerun()
 

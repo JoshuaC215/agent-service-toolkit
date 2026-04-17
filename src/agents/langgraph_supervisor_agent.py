@@ -16,6 +16,7 @@ def multiply(a: float, b: float) -> float:
     return a * b
 
 
+# TODO implement or delete
 def web_search(query: str) -> str:
     """Search the web for information."""
     return (

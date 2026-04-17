@@ -15,6 +15,7 @@ from schema.models import (
     GroqModelName,
     OllamaModelName,
     OpenAIModelName,
+    OpenwebuiModelName,
 )
 
 
@@ -70,3 +71,39 @@ def test_get_model_invalid():
     with pytest.raises(ValueError, match="Unsupported model:"):
         # Using type: ignore since we're intentionally testing invalid input
         get_model("invalid_model")  # type: ignore
+
+
+def test_get_model_openwebui_base_url_fallback_uses_api_path(monkeypatch):
+    monkeypatch.delenv("OWUI_CHAT_API_URL", raising=False)
+    monkeypatch.setenv("OWUI_BASE_URL", "https://dev.roosi.ai")
+
+    get_model.cache_clear()
+    model = get_model(OpenwebuiModelName.GPT_4O, owui_api_key="token")
+
+    assert isinstance(model, ChatOpenAI)
+    assert os.environ["OPENAI_API_BASE"] == "https://dev.roosi.ai/api"
+    assert os.environ["OPENAI_BASE_URL"] == "https://dev.roosi.ai/api"
+
+
+def test_get_model_openwebui_trims_trailing_slash(monkeypatch):
+    monkeypatch.setenv("OWUI_CHAT_API_URL", "https://dev.roosi.ai/api/")
+    monkeypatch.setenv("OWUI_BASE_URL", "https://dev.roosi.ai/")
+
+    get_model.cache_clear()
+    model = get_model(OpenwebuiModelName.GPT_4O, owui_api_key="token")
+
+    assert isinstance(model, ChatOpenAI)
+    assert os.environ["OPENAI_API_BASE"] == "https://dev.roosi.ai/api"
+    assert os.environ["OPENAI_BASE_URL"] == "https://dev.roosi.ai/api"
+
+
+def test_get_model_openwebui_collapses_double_slashes(monkeypatch):
+    monkeypatch.setenv("OWUI_CHAT_API_URL", "https://dev.roosi.ai//api")
+    monkeypatch.setenv("OWUI_BASE_URL", "https://dev.roosi.ai/")
+
+    get_model.cache_clear()
+    model = get_model(OpenwebuiModelName.GPT_4O, owui_api_key="token")
+
+    assert isinstance(model, ChatOpenAI)
+    assert os.environ["OPENAI_API_BASE"] == "https://dev.roosi.ai/api"
+    assert os.environ["OPENAI_BASE_URL"] == "https://dev.roosi.ai/api"

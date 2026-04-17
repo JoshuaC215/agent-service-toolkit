@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
@@ -6,6 +7,8 @@ from pydantic import BaseModel, Field
 
 from core import get_model, settings
 from schema.models import GroqModelName
+
+logger = logging.getLogger(__name__)
 
 
 class SafetyAssessment(Enum):
@@ -78,7 +81,7 @@ def parse_llama_guard_output(output: str) -> LlamaGuardOutput:
 class LlamaGuard:
     def __init__(self) -> None:
         if settings.GROQ_API_KEY is None:
-            print("GROQ_API_KEY not set, skipping LlamaGuard")
+            logger.info("GROQ_API_KEY not set; LlamaGuard will pass SAFE")
             self.model = None
             return
         self.model = get_model(GroqModelName.LLAMA_GUARD_4_12B).with_config(tags=["skip_stream"])
@@ -118,4 +121,4 @@ if __name__ == "__main__":
             ),
         ],
     )
-    print(output)
+    logger.info("%s", output)

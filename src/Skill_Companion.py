@@ -3,12 +3,14 @@ import logging
 import os
 import uuid
 from collections.abc import AsyncGenerator
-from datetime import datetime
+from typing import cast
 
 import streamlit as st
 from dotenv import load_dotenv
 from pydantic import ValidationError
+from streamlit.delta_generator import DeltaGenerator
 
+from agents.utils import current_date_str
 from client import AgentClient, AgentClientError
 from client.auth import Auth
 from schema import ChatMessage, VariantIdentifier
@@ -46,7 +48,7 @@ def _is_admin_user(user: dict) -> bool:
 
     # Roles collection
     roles = user.get("roles")
-    if isinstance(roles, (list, tuple, set)):
+    if isinstance(roles, (list, tuple, set)):  # noqa: UP038
         for r in roles:
             if isinstance(r, str) and r.strip().lower() == "admin":
                 return True
@@ -58,7 +60,7 @@ def _is_admin_user(user: dict) -> bool:
     # Permissions/scopes/authorities collections
     for key in ("permissions", "scopes", "authorities"):
         seq = user.get(key)
-        if isinstance(seq, (list, tuple, set)):
+        if isinstance(seq, (list, tuple, set)):  # noqa: UP038
             for p in seq:
                 if isinstance(p, str) and p.strip().lower() == "admin":
                     return True
@@ -69,6 +71,7 @@ def _is_admin_user(user: dict) -> bool:
 
     return False
 
+
 def _parse_boolish(value) -> bool:
     """
     Convert common truthy/falsey representations into a boolean.
@@ -76,7 +79,7 @@ def _parse_boolish(value) -> bool:
     Never raises; unknown or None -> False.
     """
     # Resolve first element of list/tuple
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, (list, tuple)):  # noqa: UP038
         value = value[0] if value else None
 
     if value is None:
@@ -85,7 +88,7 @@ def _parse_boolish(value) -> bool:
     if isinstance(value, bool):
         return value
 
-    if isinstance(value, (int, float)):
+    if isinstance(value, (int, float)):  # noqa: UP038
         return value == 1 or value == 1.0
 
     if isinstance(value, str):
@@ -170,7 +173,9 @@ async def main(config: VariantConfig) -> None:
 
     # Initialize AI avatar once from config and reuse everywhere
     if "ai_avatar" not in st.session_state:
-        st.session_state.ai_avatar = f"src/static/{config.get('ai_message_avatar_filename', 'roosi_logo.png')}"
+        st.session_state.ai_avatar = (
+            f"src/static/{config.get('ai_message_avatar_filename', 'roosi_logo.png')}"
+        )
     # Evaluation dialog/session defaults and trigger button (always visible)
     if "evaluation_dialog_open" not in st.session_state:
         st.session_state.evaluation_dialog_open = False
@@ -214,7 +219,9 @@ async def main(config: VariantConfig) -> None:
 
     # Modal evaluation dialog (true modal overlay if Streamlit supports st.dialog)
     # Guard: if Evaluation button is disabled via URL parameter, make sure modal cannot be open
-    if not st.session_state.get("show_eval_button", False) and st.session_state.get("evaluation_dialog_open", False):
+    if not st.session_state.get("show_eval_button", False) and st.session_state.get(
+        "evaluation_dialog_open", False
+    ):
         st.session_state.evaluation_dialog_open = False
     if st.session_state.evaluation_dialog_open:
         _dialog_callable = getattr(st, "dialog", None)
@@ -255,7 +262,7 @@ async def main(config: VariantConfig) -> None:
         load_dotenv()
         agent_url = os.getenv("BACKEND_URL")
         if not agent_url:
-            host = os.getenv("HOST", "0.0.0.0")
+            host = os.getenv("HOST", "0.0.0.0")  # nosec B104: intentional bind on all interfaces for containerized/remote access
             port = os.getenv("PORT", 8080)
             agent_url = f"http://{host}:{port}"
         try:
@@ -306,7 +313,7 @@ async def main(config: VariantConfig) -> None:
     use_streaming = False
 
     # Draw existing messages
-    messages: list[ChatMessage] = st.session_state.messages
+    messages = st.session_state.messages
 
     # draw_messages() expects an async iterator over messages
     async def amessage_iter() -> AsyncGenerator[ChatMessage, None]:
@@ -327,7 +334,7 @@ async def main(config: VariantConfig) -> None:
             value="51-250",
         )
         st.session_state["company_size"] = company_size
-        date_of_skill_check = datetime.now().strftime("%Y-%m-%d")
+        date_of_skill_check = current_date_str()
     user = st.session_state["user"]
     run_id = st.session_state["run_id"]
     if st.session_state.show_start_button:
@@ -404,7 +411,8 @@ async def main(config: VariantConfig) -> None:
                 st.error(f"Unexpected error: {type(e).__name__}: {e}")
                 st.stop()
 
-#TODO Refactoring draw_messages wird in mehreren Dateien öfter verwendet, wahrscheinlich wegen Copy and Paste => Prüfen ob nötig und sonst refactorn
+
+# TODO Refactoring draw_messages wird in mehreren Dateien öfter verwendet, wahrscheinlich wegen Copy and Paste => Prüfen ob nötig und sonst refactorn
 async def draw_messages(
     messages_agen: AsyncGenerator[ChatMessage | str, None],
     is_new: bool = False,
@@ -448,11 +456,21 @@ async def draw_messages(
                         "ai",
                         avatar=st.session_state.get("ai_avatar", "src/static/roosi_logo.png"),
                     )
-                with st.session_state.last_message:
-                    streaming_placeholder = st.empty()
+                if st.session_state.last_message is not None:
+                    last_container = cast(DeltaGenerator, st.session_state.last_message)
+                    with last_container:
+                        streaming_placeholder = st.empty()
 
             streaming_content += msg
-            streaming_placeholder.write(streaming_content)
+            if streaming_placeholder is not None:
+                ph = cast(DeltaGenerator, streaming_placeholder)
+                ph.write(streaming_content)
+            else:
+                if st.session_state.last_message is not None:
+                    last_container = cast(DeltaGenerator, st.session_state.last_message)
+                    with last_container:
+                        streaming_placeholder = st.empty()
+                        streaming_placeholder.write(streaming_content)
             continue
         if not isinstance(msg, ChatMessage):
             st.error(f"Unexpected message type: {type(msg)}")
@@ -479,16 +497,18 @@ async def draw_messages(
                         avatar=st.session_state.get("ai_avatar", "src/static/roosi_logo.png"),
                     )
 
-                with st.session_state.last_message:
-                    # If the message has content, write it out.
-                    # Reset the streaming variables to prepare for the next message.
-                    if msg.content:
-                        if streaming_placeholder:
-                            streaming_placeholder.write(msg.content)
-                            streaming_content = ""
-                            streaming_placeholder = None
-                        else:
-                            st.write(msg.content)
+                if st.session_state.last_message is not None:
+                    last_container = cast(DeltaGenerator, st.session_state.last_message)
+                    with last_container:
+                        # If the message has content, write it out.
+                        # Reset the streaming variables to prepare for the next message.
+                        if msg.content:
+                            if streaming_placeholder:
+                                streaming_placeholder.write(msg.content)
+                                streaming_content = ""
+                                streaming_placeholder = None
+                            else:
+                                st.write(msg.content)
 
                     if msg.tool_calls:
                         # Create a status container for each tool call and store the
@@ -506,7 +526,12 @@ async def draw_messages(
 
                         # Expect one ToolMessage for each tool call.
                         for _ in range(len(call_results)):
-                            tool_result: ChatMessage = await anext(messages_agen)
+                            tool_result_any = await anext(messages_agen)  # type: ignore[arg-type]
+                            if not isinstance(tool_result_any, ChatMessage):
+                                st.error(f"Unexpected message type: {type(tool_result_any)}")
+                                st.write(tool_result_any)
+                                st.stop()
+                            tool_result = tool_result_any
                             if tool_result.type != "tool":
                                 st.error(f"Unexpected ChatMessage type: {tool_result.type}")
                                 st.write(tool_result)
@@ -541,10 +566,11 @@ async def draw_messages(
                     st.session_state.last_message = st.chat_message(
                         name="task", avatar=":material/manufacturing:"
                     )
-                    with st.session_state.last_message:
-                        status = TaskDataStatus()
+                    last_container = cast(DeltaGenerator, st.session_state.last_message)
+                    with last_container:
+                        st.session_state.task_status = TaskDataStatus()
 
-                status.add_and_draw_task_data(task_data)
+                st.session_state.task_status.add_and_draw_task_data(task_data)
 
             # In case of an unexpected message type, log an error and stop
             case _:

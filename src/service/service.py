@@ -50,18 +50,17 @@ def verify_bearer(
     ],
 ) -> None:
     """
-    Dependency to verify the provided Bearer token against AUTH_SECRET.
+    Enforce bearer verification when AUTH_SECRET is configured.
 
-    Args:
-        http_auth (HTTPAuthorizationCredentials | None): The HTTP Bearer credentials.
-
-    Raises:
-        HTTPException: If the provided token does not match AUTH_SECRET.
+    Behaviour:
+    - If AUTH_SECRET is not configured: allow request (no auth).
+    - If AUTH_SECRET is configured:
+        - If no Authorization header provided OR header invalid: 401 Unauthorized.
     """
     if not settings.AUTH_SECRET:
         return
     auth_secret = settings.AUTH_SECRET.get_secret_value()
-    if not http_auth or http_auth.credentials != auth_secret:
+    if http_auth is None or http_auth.credentials != auth_secret:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
 
 
@@ -86,12 +85,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         # Initialize both checkpointer (for short-term memory) and store (for long-term memory)
         async with initialize_database() as saver, initialize_store() as store:
-            # Set up both components
-            if hasattr(saver, "setup"):  # ignore: union-attr
-                await saver.setup()
+            # Set up both components (guard against non-callable / sync / async)
+            if hasattr(saver, "setup"):
+                _s_setup = getattr(saver, "setup")
+                if callable(_s_setup):
+                    _res = _s_setup()
+                    if inspect.isawaitable(_res):
+                        await _res
             # Only setup store for Postgres as InMemoryStore doesn't need setup
-            if hasattr(store, "setup"):  # ignore: union-attr
-                await store.setup()
+            if hasattr(store, "setup"):
+                _st_setup = getattr(store, "setup")
+                if callable(_st_setup):
+                    _res2 = _st_setup()
+                    if inspect.isawaitable(_res2):
+                        await _res2
 
             # Configure agents with both memory components
             agents = get_all_agent_info()
@@ -147,7 +154,12 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     Parse user input and handle any required interrupt resumption.
     Returns kwargs for agent invocation and the run_id.
     """
-    run_id: str = user_input.run_id or str(uuid4())
+    # Ensure RunnableConfig.run_id is UUID-typed
+    try:
+        run_uuid: UUID = UUID(user_input.run_id) if user_input.run_id else uuid4()
+    except (TypeError, ValueError):
+        run_uuid = uuid4()
+
     thread_id: str = user_input.thread_id or str(uuid4())
     user_id: str = user_input.user_id or str(uuid4())
     owui_token: str | None = user_input.api_key
@@ -174,6 +186,9 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
         )
         callbacks.append(langfuse_handler)
 
+    # Optional: allow clients to override initial agent input via agent_config["input"]
+    explicit_input: Command | dict[str, Any] | None = None
+
     if user_input.agent_config:
         if overlap := configurable.keys() & user_input.agent_config.keys():
             raise HTTPException(
@@ -181,10 +196,15 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
                 detail=f"agent_config contains reserved keys: {overlap}",
             )
         configurable.update(user_input.agent_config)
+        if "input" in user_input.agent_config:
+            explicit_input = user_input.agent_config["input"]
+
+    # Nutze das vom Client angegebene Modell unverändert.
+    # Falls keine Modellangabe vorhanden ist, greift später DEFAULT_MODEL im Agent/Client-Fluss.
 
     config = RunnableConfig(
         configurable=configurable,
-        run_id=run_id,
+        run_id=run_uuid,  # type: ignore[arg-type]
         callbacks=callbacks,
     )
 
@@ -195,18 +215,21 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     ]
 
     input: Command | dict[str, Any]
-    if interrupted_tasks:
+    if explicit_input is not None:
+        # Use explicit initial state provided by the client (e.g. {"readiness_result": {...}})
+        input = explicit_input
+    elif interrupted_tasks:
         # assume user input is response to resume agent execution from interrupt
         input = Command(resume=user_input.message)
     else:
         input = {"messages": [HumanMessage(content=user_input.message)]}
 
-    kwargs = {
+    kwargs: dict[str, Any] = {
         "input": input,
         "config": config,
     }
 
-    return kwargs, run_id
+    return kwargs, run_uuid
 
 
 @router.post("/{agent_id}/invoke")
@@ -397,7 +420,6 @@ def _create_ai_message(parts: dict) -> AIMessage:
     sig = inspect.signature(AIMessage)
     valid_keys = set(sig.parameters)
     filtered = {k: v for k, v in parts.items() if k in valid_keys}
-    filtered["content"] = str(filtered.get("content") or "")
     return AIMessage(**filtered)
 
 

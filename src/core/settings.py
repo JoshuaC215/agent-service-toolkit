@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     )
     MODE: str | None = None
 
-    HOST: str = "0.0.0.0"
+    HOST: str = "0.0.0.0"  # nosec B104: bind-all is intentional for container/ingress; override via env in production
     PORT: int = 8080
 
     AUTH_SECRET: SecretStr | None = None

@@ -1,17 +1,22 @@
-from datetime import datetime
-from typing import Literal
-
 from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
 from langchain_community.utilities import OpenWeatherMapAPIWrapper
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, SystemMessage
-from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.messages import AIMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.managed import RemainingSteps
 from langgraph.prebuilt import ToolNode
 
-from agents.llama_guard import LlamaGuard, LlamaGuardOutput, SafetyAssessment
+from agents.helpers import (
+    check_safety,
+    format_safety_message,
+    pending_tool_calls,
+    run_llamaguard,
+    should_block,
+    wrap_model,
+)
+from agents.llama_guard import LlamaGuardOutput
 from agents.tools import calculator
+from agents.utils import current_date_str
 from core import get_model, settings
 
 
@@ -36,7 +41,7 @@ if settings.OPENWEATHERMAP_API_KEY:
     )
     tools.append(OpenWeatherMapQueryRun(name="Weather", api_wrapper=wrapper))
 
-current_date = datetime.now().strftime("%B %d, %Y")
+current_date = current_date_str()
 instructions = f"""
     You are a helpful research assistant with the ability to search the web and use other tools.
     Today's date is {current_date}.
@@ -51,31 +56,14 @@ instructions = f"""
     """
 
 
-def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
-    bound_model = model.bind_tools(tools)
-    preprocessor = RunnableLambda(
-        lambda state: [SystemMessage(content=instructions)] + state["messages"],
-        name="StateModifier",
-    )
-    return preprocessor | bound_model  # type: ignore[return-value]
-
-
-def format_safety_message(safety: LlamaGuardOutput) -> AIMessage:
-    content = (
-        f"This conversation was flagged for unsafe content: {', '.join(safety.unsafe_categories)}"
-    )
-    return AIMessage(content=content)
-
-
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
-    model_runnable = wrap_model(m)
+    model_runnable = wrap_model(m, instructions, tools=tools)
     response = await model_runnable.ainvoke(state, config)
 
     # Run llama guard check here to avoid returning the message if it's unsafe
-    llama_guard = LlamaGuard()
-    safety_output = await llama_guard.ainvoke("Agent", state["messages"] + [response])
-    if safety_output.safety_assessment == SafetyAssessment.UNSAFE:
+    safety_output = await run_llamaguard("Agent", state["messages"] + [response])
+    if should_block(safety_output):
         return {"messages": [format_safety_message(safety_output)], "safety": safety_output}
 
     if state["remaining_steps"] < 2 and response.tool_calls:
@@ -92,8 +80,7 @@ async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
 
 
 async def llama_guard_input(state: AgentState, config: RunnableConfig) -> AgentState:
-    llama_guard = LlamaGuard()
-    safety_output = await llama_guard.ainvoke("User", state["messages"])
+    safety_output = await run_llamaguard("User", state["messages"])
     return {"safety": safety_output, "messages": []}
 
 
@@ -112,13 +99,6 @@ agent.set_entry_point("guard_input")
 
 
 # Check for unsafe input and block further processing if found
-def check_safety(state: AgentState) -> Literal["unsafe", "safe"]:
-    safety: LlamaGuardOutput = state["safety"]
-    match safety.safety_assessment:
-        case SafetyAssessment.UNSAFE:
-            return "unsafe"
-        case _:
-            return "safe"
 
 
 agent.add_conditional_edges(
@@ -133,13 +113,6 @@ agent.add_edge("tools", "model")
 
 
 # After "model", if there are tool calls, run "tools". Otherwise END.
-def pending_tool_calls(state: AgentState) -> Literal["tools", "done"]:
-    last_message = state["messages"][-1]
-    if not isinstance(last_message, AIMessage):
-        raise TypeError(f"Expected AIMessage, got {type(last_message)}")
-    if last_message.tool_calls:
-        return "tools"
-    return "done"
 
 
 agent.add_conditional_edges("model", pending_tool_calls, {"tools": "tools", "done": END})

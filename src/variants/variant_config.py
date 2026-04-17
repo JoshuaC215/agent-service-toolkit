@@ -1,4 +1,4 @@
-import os
+from os import path
 from typing import Any
 
 import yaml
@@ -35,13 +35,15 @@ class VariantConfig:
             return self.config
 
         identifier = self.identifier
-        base_path = f"{os.path.dirname(os.path.abspath(__file__))}/{identifier['streamlit_app_name'].lower()}"
+        base_path = (
+            f"{path.dirname(path.abspath(__file__))}/{identifier['streamlit_app_name'].lower()}"
+        )
 
         identifier["variant"] = "" if identifier["variant"] is None else identifier["variant"]
 
-        if os.path.exists(f"{base_path}/{identifier['variant']}.yml"):
+        if path.exists(f"{base_path}/{identifier['variant']}.yml"):
             filename = identifier["variant"]
-        elif os.path.exists(f"{base_path}/default.yml"):
+        elif path.exists(f"{base_path}/default.yml"):
             filename = "default"
         else:
             raise Exception("Failed to load variant config.")

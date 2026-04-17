@@ -1,17 +1,14 @@
 import logging
-from datetime import datetime
-from typing import Any
+from datetime import UTC, datetime
 
 from langchain.prompts import SystemMessagePromptTemplate
-from langchain_core.language_models.base import LanguageModelInput
-from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.runnables import Runnable, RunnableConfig, RunnableLambda, RunnableSerializable
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore
-from langgraph.types import interrupt
 from pydantic import BaseModel, Field
 
+from agents.helpers import interrupt_and_append, wrap_model
 from core import get_model, settings
 
 # Added logger
@@ -25,16 +22,6 @@ class AgentState(MessagesState, total=False):
     """
 
     birthdate: datetime | None
-
-
-def wrap_model(
-    model: BaseChatModel | Runnable[LanguageModelInput, Any], system_prompt: BaseMessage
-) -> RunnableSerializable[AgentState, Any]:
-    preprocessor = RunnableLambda(
-        lambda state: [system_prompt] + state["messages"],
-        name="StateModifier",
-    )
-    return preprocessor | model
 
 
 background_prompt = SystemMessagePromptTemplate.from_template("""
@@ -74,6 +61,58 @@ class BirthdateExtraction(BaseModel):
     )
 
 
+def normalize_birthdate(date_str: str) -> datetime:
+    """
+    Parse and validate a birthdate string, normalizing to a naive datetime at midnight.
+    - Accepts ISO 8601 (YYYY-MM-DD or full datetime, with or without timezone)
+    - Also tries common formats: MM/DD/YYYY, 'Month Day, Year', 'Mon Day, Year'
+    - Ensures the date is not in the future
+    Raises ValueError for invalid formats or future dates.
+    """
+    if date_str is None:
+        raise ValueError("No date string provided")
+
+    s = str(date_str).strip()
+    dt: datetime | None = None
+
+    # 1) ISO 8601 first (handles YYYY-MM-DD, YYYY-MM-DDTHH:MM:SS[.fff][+TZ])
+    try:
+        dt = datetime.fromisoformat(s)
+    except Exception:
+        dt = None
+
+    # 2) Try common human formats if ISO failed
+    if dt is None:
+        from datetime import datetime as _dt
+
+        for fmt in ("%m/%d/%Y", "%B %d, %Y", "%b %d, %Y"):
+            try:
+                dt = _dt.strptime(s, fmt)
+                break
+            except Exception:
+                continue  # nosec B112
+
+    if dt is None:
+        raise ValueError(f"Unrecognized date format: {s!r}")
+
+    # Normalize timezone: convert tz-aware to UTC then drop tzinfo; keep only date component
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(UTC).replace(tzinfo=None)
+
+    # Truncate to midnight of that date
+    normalized = datetime(dt.year, dt.month, dt.day)
+
+    # Validate not in the future
+    today = datetime.now(UTC).date()
+    if normalized.date() > today:
+        raise ValueError("Birthdate cannot be in the future")
+
+    return normalized
+
+
+MAX_BIRTHDATE_ATTEMPTS = 3
+
+
 async def determine_birthdate(
     state: AgentState, config: RunnableConfig, store: BaseStore
 ) -> AgentState:
@@ -81,7 +120,7 @@ async def determine_birthdate(
 
     # Attempt to get user_id for unique storage per user
     user_id = config["configurable"].get("user_id")
-    logger.info(f"[determine_birthdate] Extracted user_id: {user_id}")
+    logger.debug(f"[determine_birthdate] Extracted user_id: {user_id}")
     namespace = None
     key = "birthdate"
     birthdate = None  # Initialize birthdate
@@ -102,23 +141,28 @@ async def determine_birthdate(
                 else:  # Assume it's the Item object directly
                     user_data = result
 
-            if user_data and user_data.value.get("birthdate"):
-                # Convert ISO format string back to datetime object
-                birthdate_str = user_data.value["birthdate"]
-                birthdate = datetime.fromisoformat(birthdate_str) if birthdate_str else None
-                # We already have the birthdate, return it
-                logger.info(
-                    f"[determine_birthdate] Found birthdate in store for user {user_id}: {birthdate}"
-                )
-                return {
-                    "birthdate": birthdate,
-                    "messages": [],
-                }
+            if user_data:
+                value = getattr(user_data, "value", None)
+                if isinstance(value, dict) and value.get("birthdate"):
+                    birthdate_str = value["birthdate"]
+                    birthdate = normalize_birthdate(birthdate_str)
+                    # We already have the birthdate, return it
+                    logger.info(
+                        f"[determine_birthdate] Found birthdate in store for user {user_id}"
+                    )
+                    return {
+                        "birthdate": birthdate,
+                        "messages": [],
+                    }
+        except (KeyError, AttributeError, TypeError, ValueError) as e:
+            logger.warning(
+                f"[determine_birthdate] Store read failed for namespace={namespace}, key={key}: {type(e).__name__}: {e}"
+            )
         except Exception as e:
-            # Log the error or handle cases where the store might be unavailable
-            logger.error(f"Error reading from store for namespace {namespace}, key {key}: {e}")
-            # Proceed with extraction if read fails
-            pass
+            logger.error(
+                f"[determine_birthdate] Unexpected error reading store for namespace={namespace}, key={key}: {type(e).__name__}: {e}",
+                exc_info=True,
+            )
     else:
         # If no user_id, we cannot reliably store/retrieve user-specific data.
         # Consider logging this situation.
@@ -131,28 +175,37 @@ async def determine_birthdate(
     model_runnable = wrap_model(
         m.with_structured_output(BirthdateExtraction), birthdate_extraction_prompt.format()
     ).with_config(tags=["skip_stream"])
-    response: BirthdateExtraction = await model_runnable.ainvoke(state, config)
+    birthdate = None
+    for attempt in range(MAX_BIRTHDATE_ATTEMPTS):
+        response: BirthdateExtraction = await model_runnable.ainvoke(state, config)
+        # If no birthdate found after extraction attempt, interrupt
+        if response.birthdate is None:
+            interrupt_and_append(
+                state, f"{response.reasoning}\nPlease tell me your birthdate in YYYY-MM-DD format."
+            )
+            continue
+        # Birthdate found - normalize and validate
+        try:
+            birthdate = normalize_birthdate(response.birthdate)
+            break
+        except ValueError:
+            # If parsing/validation fails, ask for clarification
+            interrupt_and_append(
+                state,
+                "I couldn't understand the date. Please provide your birthdate in YYYY-MM-DD format (e.g., 1990-04-23).",
+            )
+            logger.info("birthdate validation error")
+            continue  # nosec B112: iterative retry is intentional; handled with user prompt and bounded by MAX_BIRTHDATE_ATTEMPTS
 
-    # If no birthdate found after extraction attempt, interrupt
-    if response.birthdate is None:
-        birthdate_input = interrupt(f"{response.reasoning}\nPlease tell me your birthdate?")
-        # Re-run extraction with the new input
-        state["messages"].append(HumanMessage(birthdate_input))
-        # Note: Recursive call might need careful handling of depth or state updates
-        return await determine_birthdate(state, config, store)
-
-    # Birthdate found - convert string to datetime
-    try:
-        birthdate = datetime.fromisoformat(response.birthdate)
-    except ValueError:
-        # If parsing fails, ask for clarification
-        birthdate_input = interrupt(
-            "I couldn't understand the date format. Please provide your birthdate in YYYY-MM-DD format."
+    # Give up after max attempts without raising or recursing
+    if birthdate is None:
+        logger.info(
+            f"[determine_birthdate] Max attempts reached without valid birthdate for user_id={user_id}"
         )
-        # Re-run extraction with the new input
-        state["messages"].append(HumanMessage(birthdate_input))
-        # Note: Recursive call might need careful handling of depth or state updates
-        return await determine_birthdate(state, config, store)
+        return {
+            "birthdate": None,
+            "messages": [],
+        }
 
     # Store the newly extracted birthdate only if we have a user_id
     if user_id and namespace:
@@ -160,9 +213,15 @@ async def determine_birthdate(
         birthdate_str = birthdate.isoformat() if birthdate else None
         try:
             await store.aput(namespace, key, {"birthdate": birthdate_str})
+        except (KeyError, AttributeError, TypeError, ValueError) as e:
+            logger.warning(
+                f"[determine_birthdate] Store write failed for namespace={namespace}, key={key}: {type(e).__name__}: {e}"
+            )
         except Exception as e:
-            # Log the error or handle cases where the store write might fail
-            logger.error(f"Error writing to store for namespace {namespace}, key {key}: {e}")
+            logger.error(
+                f"[determine_birthdate] Unexpected error writing store for namespace={namespace}, key={key}: {type(e).__name__}: {e}",
+                exc_info=True,
+            )
 
     # Return the determined birthdate (either from store or extracted)
     logger.info(f"[determine_birthdate] Returning birthdate {birthdate} for user {user_id}")

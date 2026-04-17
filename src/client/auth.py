@@ -7,6 +7,8 @@ import streamlit as st
 from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
+# Default HTTP timeout (seconds) for OWUI auth requests
+REQUEST_TIMEOUT = float(os.getenv("OWUI_HTTP_TIMEOUT", "10"))
 
 
 class Auth:
@@ -53,7 +55,7 @@ class Auth:
         url = f"{self.OWUI_BASE_URL}/api/v1/auths/signin"
         payload = {"email": username, "password": password}
         logger.info(url)
-        response = requests.post(url, json=payload)
+        response = requests.post(url, json=payload, timeout=REQUEST_TIMEOUT)
         if response.status_code == 200:
             return response.json()
         else:
@@ -67,7 +69,7 @@ class Auth:
         payload = {"email": username, "password": password}
         logger.info(url)
         try:
-            response = requests.post(url, json=payload)
+            response = requests.post(url, json=payload, timeout=REQUEST_TIMEOUT)
             if response.status_code == 200:
                 user = response.json()
                 if user:
@@ -81,7 +83,7 @@ class Auth:
         """Ensures logged in user is actually the same as in owui."""
         url = f"{self.OWUI_BASE_URL}/api/v1/auths"
         headers = {"Authorization": f"Bearer {st.session_state['owui-token']}"}
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
         logger.info(response.json())
         if response.status_code == 200:
             user = response.json()

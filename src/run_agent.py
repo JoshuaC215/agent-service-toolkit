@@ -8,7 +8,10 @@ from langchain_core.runnables import RunnableConfig
 from langgraph.graph import MessagesState
 from langgraph.graph.state import CompiledStateGraph
 
+from core.logging import setup_logging
+
 load_dotenv()
+setup_logging()
 
 from agents import DEFAULT_AGENT, get_agent  # noqa: E402
 

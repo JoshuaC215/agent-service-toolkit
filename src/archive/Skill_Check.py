@@ -68,16 +68,12 @@ async def main() -> None:
 
     auth = Auth()
     if not auth.is_logged_in():
-        # keep as idea
-        # user = auth.login('demo@roosi.ai', 'XXX') #TODO!
+        # Archived demo flow only. Never embed credentials or tokens in repo files.
         user = {}
         user["name"] = "Demo"
         if user:
-            st.session_state["owui-token"] = (
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImY2NTQwYTIxLWE0NTItNDIwOC04Zjg0LTc5MGUzY2VjMWNiYyJ9.D35iUQWt4ezG2gcHi8n3sgebr-361n-qhkzJHS4Fl0A"  # TODO!
-            )
-            st.session_state["user"] = user
-            st.rerun()
+            st.warning("Archived demo requires external auth setup.")
+            st.stop()
 
     if "agent_client" not in st.session_state:
         load_dotenv()
