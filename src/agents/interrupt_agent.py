@@ -1,8 +1,8 @@
 import logging
 from datetime import UTC, datetime
 
-from langchain.prompts import SystemMessagePromptTemplate
 from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.prompts import SystemMessagePromptTemplate
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.store.base import BaseStore

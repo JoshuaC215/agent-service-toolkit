@@ -2,11 +2,11 @@ import json
 import logging
 from typing import Annotated, Any, TypedDict
 
-from langchain.prompts import SystemMessagePromptTemplate
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.prompts import SystemMessagePromptTemplate
 from langchain_core.runnables import RunnableConfig
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph
 from langgraph.graph.message import add_messages
 
@@ -27,7 +27,7 @@ class State(TypedDict):
     finished: bool
 
 
-memory = SqliteSaver.from_conn_string(":memory:")
+memory = MemorySaver()
 
 # Lazy LLM model initialization to avoid import-time failures when env is not ready
 _llm_model: BaseChatModel | None = None

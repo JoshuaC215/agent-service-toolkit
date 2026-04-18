@@ -15,7 +15,7 @@ from langchain_core._api import LangChainBetaWarning
 from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langfuse import Langfuse  # type: ignore[import-untyped]
-from langfuse.callback import CallbackHandler  # type: ignore[import-untyped]
+from langfuse.langchain import CallbackHandler  # type: ignore[import-untyped]
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
 
@@ -177,13 +177,9 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
 
     callbacks = []
     if settings.LANGFUSE_TRACING:
-        # Initialize Langfuse CallbackHandler for Langchain (tracing)
-        langfuse_handler = CallbackHandler(
-            public_key=os.getenv("LANGFUSE_PUBLIC_KEY"),
-            secret_key=os.getenv("LANGFUSE_SECRET_KEY"),
-            host=os.getenv("LANGFUSE_HOST"),
-            user_id=user_input.user_id,
-        )
+        # Langfuse v4 callback handler no longer accepts secret_key/host directly.
+        # It relies on environment configuration and optional trace_context.
+        langfuse_handler = CallbackHandler(public_key=os.getenv("LANGFUSE_PUBLIC_KEY"))
         callbacks.append(langfuse_handler)
 
     # Optional: allow clients to override initial agent input via agent_config["input"]

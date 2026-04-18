@@ -1,8 +1,8 @@
 import logging
 import urllib.parse
-from contextlib import AbstractAsyncContextManager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
-from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
+from langgraph.checkpoint.mongodb import MongoDBSaver
 
 from core.settings import settings
 
@@ -52,11 +52,13 @@ def get_mongo_connection_string() -> str:
         return f"mongodb://{settings.MONGO_HOST}:{settings.MONGO_PORT}/"
 
 
-def get_mongo_saver() -> AbstractAsyncContextManager[AsyncMongoDBSaver]:
+@asynccontextmanager
+async def get_mongo_saver() -> AbstractAsyncContextManager[MongoDBSaver]:
     """Initialize and return a MongoDB saver instance."""
     validate_mongo_config()
     if settings.MONGO_DB is None:  # for type checking
         raise ValueError("MONGO_DB is not set")
-    return AsyncMongoDBSaver.from_conn_string(
+    with MongoDBSaver.from_conn_string(
         get_mongo_connection_string(), db_name=settings.MONGO_DB
-    )
+    ) as saver:
+        yield saver

@@ -1,6 +1,6 @@
 from contextlib import AbstractAsyncContextManager
 
-from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
+from langgraph.checkpoint.mongodb import MongoDBSaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 
@@ -11,7 +11,7 @@ from memory.sqlite import get_sqlite_saver, get_sqlite_store
 
 
 def initialize_database() -> AbstractAsyncContextManager[
-    AsyncSqliteSaver | AsyncPostgresSaver | AsyncMongoDBSaver
+    AsyncSqliteSaver | AsyncPostgresSaver | MongoDBSaver
 ]:
     """
     Initialize the appropriate database checkpointer based on configuration.
