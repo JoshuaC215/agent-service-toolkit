@@ -196,6 +196,32 @@ async def main() -> None:
         if st.button(":material/upload: Share/resume chat", use_container_width=True):
             share_chat_dialog()
 
+        # --- Chat history sidebar ---
+        st.divider()
+        st.markdown("**Recent Conversations**")
+        try:
+            thread_list = agent_client.get_threads(user_id=user_id)
+            if not thread_list.threads:
+                st.caption("No previous conversations.")
+            else:
+                for t in thread_list.threads:
+                    label = t.title if len(t.title) <= 40 else t.title[:37] + "…"
+                    is_active = t.thread_id == st.session_state.thread_id
+                    btn_label = f"{'▶ ' if is_active else ''}{label}"
+                    if st.button(btn_label, key=f"thread_{t.thread_id}", use_container_width=True, disabled=is_active):
+                        # Load the selected thread
+                        try:
+                            history = agent_client.get_history(thread_id=t.thread_id)
+                            st.session_state.messages = history.messages
+                        except AgentClientError:
+                            st.session_state.messages = []
+                        st.session_state.thread_id = t.thread_id
+                        if "last_audio" in st.session_state:
+                            del st.session_state.last_audio
+                        st.rerun()
+        except AgentClientError:
+            st.caption("Could not load conversation history.")
+
         "[View the source code](https://github.com/JoshuaC215/agent-service-toolkit)"
         st.caption(
             "Made with :material/favorite: by [Joshua](https://www.linkedin.com/in/joshua-k-carroll/) in Oakland"

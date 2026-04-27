@@ -173,3 +173,19 @@ class ChatHistoryInput(BaseModel):
 
 class ChatHistory(BaseModel):
     messages: list[ChatMessage]
+
+
+class ThreadInfo(BaseModel):
+    """Summary of a stored conversation thread."""
+
+    thread_id: str = Field(description="Unique thread identifier.")
+    user_id: str = Field(description="User who owns this thread.")
+    title: str = Field(description="First human message, used as display title.")
+    created_at: str = Field(description="ISO-8601 timestamp when the thread was created.")
+    updated_at: str = Field(description="ISO-8601 timestamp of the last message.")
+
+
+class ThreadListResponse(BaseModel):
+    """List of conversation threads for a user."""
+
+    threads: list[ThreadInfo]

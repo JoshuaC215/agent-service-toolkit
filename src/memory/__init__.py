@@ -8,6 +8,7 @@ from core.settings import DatabaseType, settings
 from memory.mongodb import get_mongo_saver
 from memory.postgres import get_postgres_saver, get_postgres_store
 from memory.sqlite import get_sqlite_saver, get_sqlite_store
+from memory.thread_store import get_threads_for_user, register_thread, setup_thread_registry, touch_thread
 
 
 def initialize_database() -> AbstractAsyncContextManager[
@@ -37,4 +38,11 @@ def initialize_store():
         return get_sqlite_store()
 
 
-__all__ = ["initialize_database", "initialize_store"]
+__all__ = [
+    "initialize_database",
+    "initialize_store",
+    "setup_thread_registry",
+    "register_thread",
+    "touch_thread",
+    "get_threads_for_user",
+]
