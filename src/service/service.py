@@ -24,7 +24,14 @@ from langsmith import uuid7
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info, load_agent
 from core import settings
-from memory import initialize_database, initialize_store
+from memory import (
+    get_threads_for_user,
+    initialize_database,
+    initialize_store,
+    register_thread,
+    setup_thread_registry,
+    touch_thread,
+)
 from schema import (
     ChatHistory,
     ChatHistoryInput,
@@ -33,6 +40,7 @@ from schema import (
     FeedbackResponse,
     ServiceMetadata,
     StreamInput,
+    ThreadListResponse,
     UserInput,
 )
 from service.utils import (
@@ -78,6 +86,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             # Only setup store for Postgres as InMemoryStore doesn't need setup
             if hasattr(store, "setup"):  # ignore: union-attr
                 await store.setup()
+
+            # Ensure the thread registry table exists (SQLite only; no-op on Postgres/Mongo)
+            try:
+                setup_thread_registry()
+            except Exception as e:
+                logger.warning(f"Could not set up thread registry: {e}")
 
             # Configure agents with both memory components and async loading
             agents = get_all_agent_info()
@@ -162,8 +176,17 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     if interrupted_tasks:
         # assume user input is response to resume agent execution from interrupt
         input = Command(resume=user_input.message)
+        try:
+            touch_thread(thread_id)
+        except Exception:
+            pass
     else:
         input = {"messages": [HumanMessage(content=user_input.message)]}
+        try:
+            title = user_input.message[:120].strip() or "New conversation"
+            register_thread(thread_id, user_id, title)
+        except Exception:
+            pass
 
     kwargs = {
         "input": input,
@@ -390,6 +413,23 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
         **kwargs,
     )
     return FeedbackResponse()
+
+
+@router.get("/threads")
+async def list_threads(user_id: str) -> ThreadListResponse:
+    """
+    Return all conversation threads for a given user_id, newest first.
+
+    The thread list is stored in a lightweight registry table that is updated
+    every time the user sends a message, so it survives page refreshes and
+    browser restarts — unlike session-only storage in the Streamlit front-end.
+    """
+    try:
+        threads = get_threads_for_user(user_id)
+        return ThreadListResponse(threads=threads)
+    except Exception as e:
+        logger.error(f"Error fetching threads for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error")
 
 
 @router.post("/history")

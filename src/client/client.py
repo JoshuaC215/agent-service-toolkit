@@ -12,6 +12,7 @@ from schema import (
     Feedback,
     ServiceMetadata,
     StreamInput,
+    ThreadListResponse,
     UserInput,
 )
 
@@ -339,6 +340,25 @@ class AgentClient:
                 response.json()
             except httpx.HTTPError as e:
                 raise AgentClientError(f"Error: {e}")
+
+    def get_threads(self, user_id: str) -> ThreadListResponse:
+        """
+        Get all conversation threads for a user, newest first.
+
+        Args:
+            user_id: The user's persistent identifier (stored in browser cookie).
+        """
+        try:
+            response = httpx.get(
+                f"{self.base_url}/threads",
+                params={"user_id": user_id},
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error fetching threads: {e}")
+        return ThreadListResponse.model_validate(response.json())
 
     def get_history(self, thread_id: str) -> ChatHistory:
         """
