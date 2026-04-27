@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import json
 import logging
@@ -214,6 +215,52 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
+_SSE_PING = ": ping\n\n"
+_KEEP_ALIVE_INTERVAL = 15  # seconds between pings when the agent is silent
+_STREAM_SENTINEL = object()  # signals end of agent stream inside the queue
+
+
+async def _agent_stream_with_keepalive(
+    agent: "AgentGraph", kwargs: dict[str, Any], interval: float
+) -> AsyncGenerator[Any, None]:
+    """
+    Wrap agent.astream() and inject SSE comment pings during silent gaps.
+
+    Uses a background producer task + asyncio.Queue so that the agent generator
+    is never cancelled mid-flight (unlike asyncio.wait_for on the iterator directly).
+    Each real stream event is yielded as-is; a ping string is yielded instead
+    whenever no event arrives within `interval` seconds.
+    """
+    queue: asyncio.Queue[Any] = asyncio.Queue()
+
+    async def _producer() -> None:
+        try:
+            async for event in agent.astream(
+                **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
+            ):
+                await queue.put(event)
+        finally:
+            await queue.put(_STREAM_SENTINEL)
+
+    producer_task = asyncio.create_task(_producer())
+    try:
+        while True:
+            try:
+                item = await asyncio.wait_for(queue.get(), timeout=interval)
+            except asyncio.TimeoutError:
+                yield _SSE_PING
+                continue
+            if item is _STREAM_SENTINEL:
+                break
+            yield item
+    finally:
+        producer_task.cancel()
+        try:
+            await producer_task
+        except asyncio.CancelledError:
+            pass
+
+
 async def message_generator(
     user_input: StreamInput, agent_id: str = DEFAULT_AGENT
 ) -> AsyncGenerator[str, None]:
@@ -221,15 +268,21 @@ async def message_generator(
     Generate a stream of messages from the agent.
 
     This is the workhorse method for the /stream endpoint.
+
+    A keep-alive SSE comment (`: ping`) is sent every KEEP_ALIVE_INTERVAL seconds
+    while the agent is busy (e.g. running a long tool call) so that proxies and
+    clients do not close the connection due to network idle timeouts.
     """
     agent: AgentGraph = get_agent(agent_id)
     kwargs, run_id = await _handle_input(user_input, agent)
 
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
-        async for stream_event in agent.astream(
-            **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
-        ):
+        async for stream_event in _agent_stream_with_keepalive(agent, kwargs, _KEEP_ALIVE_INTERVAL):
+            # Pass keep-alive pings directly to the client and skip normal processing
+            if stream_event is _SSE_PING:
+                yield _SSE_PING
+                continue
             if not isinstance(stream_event, tuple):
                 continue
             # Handle different stream event structures based on subgraphs
