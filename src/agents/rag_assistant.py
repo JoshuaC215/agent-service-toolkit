@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, SystemMessage
 from langchain_core.runnables import (
     RunnableConfig,
     RunnableLambda,
@@ -47,12 +47,16 @@ instructions = f"""
     """
 
 
+def _build_messages(state: AgentState) -> list[BaseMessage]:
+    # Filter out any SystemMessages already in history to avoid Anthropic's
+    # "multiple non-consecutive system messages" error (issue #280).
+    non_system = [m for m in state["messages"] if not isinstance(m, SystemMessage)]
+    return [SystemMessage(content=instructions)] + non_system
+
+
 def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
     bound_model = model.bind_tools(tools)
-    preprocessor = RunnableLambda(
-        lambda state: [SystemMessage(content=instructions)] + state["messages"],
-        name="StateModifier",
-    )
+    preprocessor = RunnableLambda(_build_messages, name="StateModifier")
     return preprocessor | bound_model  # type: ignore[return-value]
 
 
