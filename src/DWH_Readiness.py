@@ -206,9 +206,7 @@ async def main() -> None:
                     import json
 
                     parsed = json.loads(response.content)
-                    st.session_state["llm_summary"] = (
-                        parsed  # TODO continue below to use this parsed "nicely" in output ui
-                    )
+                    st.session_state["llm_summary"] = parsed
                 except Exception as e:
                     st.error(f"Fehler bei LLM-Analyse: {e}")
         # Anzeige falls vorhanden

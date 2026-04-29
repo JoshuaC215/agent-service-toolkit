@@ -1,4 +1,5 @@
-from langgraph.prebuilt import create_react_agent
+from ddgs import DDGS
+from langchain.agents import create_agent
 from langgraph_supervisor import create_supervisor
 
 from core import get_model, settings
@@ -16,31 +17,46 @@ def multiply(a: float, b: float) -> float:
     return a * b
 
 
-# TODO implement or delete
 def web_search(query: str) -> str:
     """Search the web for information."""
-    return (
-        "Here are the headcounts for each of the FAANG companies in 2024:\n"
-        "1. **Facebook (Meta)**: 67,317 employees.\n"
-        "2. **Apple**: 164,000 employees.\n"
-        "3. **Amazon**: 1,551,000 employees.\n"
-        "4. **Netflix**: 14,000 employees.\n"
-        "5. **Google (Alphabet)**: 181,269 employees."
-    )
+    cleaned_query = query.strip()
+    if not cleaned_query:
+        return "No query provided."
+
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(cleaned_query, max_results=5))
+    except Exception as exc:
+        return f"Web search failed: {exc}"
+
+    if not results:
+        return "No web results found."
+
+    lines: list[str] = []
+    for idx, item in enumerate(results, start=1):
+        title = item.get("title") or "Untitled"
+        url = item.get("href") or ""
+        snippet = (item.get("body") or "").strip()
+        if snippet:
+            lines.append(f"{idx}. {title}\nURL: {url}\nSnippet: {snippet}")
+        else:
+            lines.append(f"{idx}. {title}\nURL: {url}")
+
+    return "\n\n".join(lines)
 
 
-math_agent = create_react_agent(
+math_agent = create_agent(
     model=model,
     tools=[add, multiply],
     name="math_expert",
-    prompt="You are a math expert. Always use one tool at a time.",
+    system_prompt="You are a math expert. Always use one tool at a time.",
 ).with_config(tags=["skip_stream"])
 
-research_agent = create_react_agent(
+research_agent = create_agent(
     model=model,
     tools=[web_search],
     name="research_expert",
-    prompt="You are a world class researcher with access to web search. Do not do any math.",
+    system_prompt="You are a world class researcher with access to web search. Do not do any math.",
 ).with_config(tags=["skip_stream"])
 
 # Create supervisor workflow

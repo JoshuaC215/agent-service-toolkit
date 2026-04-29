@@ -113,7 +113,6 @@ async def main() -> None:
     messages: list[ChatMessage] = st.session_state.messages
 
     if len(messages) == 0:
-        # TODO: put into fnc
         user_input = "START"
         # messages.append(ChatMessage(type="human", content=user_input))
         st.chat_message("human").write(user_input)
