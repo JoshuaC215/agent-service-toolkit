@@ -501,14 +501,14 @@ class AgentClient:
             except httpx.HTTPError as e:
                 raise AgentClientError(f"Error: {e}")
 
-    def get_history(self, thread_id: str) -> ChatHistory:
+    def get_history(self, thread_id: str, agent_id: str | None = None) -> ChatHistory:
         """
         Get chat history.
 
         Args:
             thread_id (str, optional): Thread ID for identifying a conversation
         """
-        request = ChatHistoryInput(thread_id=thread_id)
+        request = ChatHistoryInput(thread_id=thread_id, agent_id=agent_id)
         try:
             response = httpx.post(
                 f"{self.base_url}/history",

@@ -20,6 +20,7 @@ def mock_agent():
     agent_mock.ainvoke = AsyncMock(
         return_value=[("values", {"messages": [AIMessage(content="Test response")]})]
     )
+    agent_mock.aget_state = AsyncMock()
     agent_mock.get_state = Mock()  # Default empty mock for get_state
     with patch("service.service.get_agent", Mock(return_value=agent_mock)):
         yield agent_mock

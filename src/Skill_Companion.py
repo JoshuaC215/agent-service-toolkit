@@ -115,7 +115,6 @@ def _parse_boolish(value) -> bool:
 HIDE_SIDEBAR = True
 
 
-# TODO: maybe hide input when check finished?
 async def main(config: VariantConfig) -> None:
     st.set_page_config(
         page_title=config.get("title", "roosi SkillCompanion"),
@@ -290,7 +289,10 @@ async def main(config: VariantConfig) -> None:
             messages = []
         else:
             try:
-                messages = agent_client.get_history(thread_id=thread_id).messages
+                messages = agent_client.get_history(
+                    thread_id=thread_id,
+                    agent_id=agent_client.agent,
+                ).messages
             except AgentClientError:
                 st.error("No message history found for this Thread ID.")
                 messages = []
@@ -412,7 +414,6 @@ async def main(config: VariantConfig) -> None:
                 st.stop()
 
 
-# TODO Refactoring draw_messages wird in mehreren Dateien öfter verwendet, wahrscheinlich wegen Copy and Paste => Prüfen ob nötig und sonst refactorn
 async def draw_messages(
     messages_agen: AsyncGenerator[ChatMessage | str, None],
     is_new: bool = False,

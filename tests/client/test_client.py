@@ -277,12 +277,21 @@ def test_get_history(agent_client):
 
     # Mock successful response
     mock_response = Response(200, json=HISTORY, request=Request("POST", "http://test/history"))
-    with patch("httpx.post", return_value=mock_response):
+    with patch("httpx.post", return_value=mock_response) as mock_post:
         history = agent_client.get_history(THREAD_ID)
         assert isinstance(history, ChatHistory)
         assert len(history.messages) == 2
         assert history.messages[0].type == "human"
         assert history.messages[1].type == "ai"
+        _, kwargs = mock_post.call_args
+        assert kwargs["json"]["thread_id"] == THREAD_ID
+        assert kwargs["json"]["agent_id"] is None
+
+    with patch("httpx.post", return_value=mock_response) as mock_post:
+        agent_client.get_history(THREAD_ID, agent_id="custom-agent")
+        _, kwargs = mock_post.call_args
+        assert kwargs["json"]["thread_id"] == THREAD_ID
+        assert kwargs["json"]["agent_id"] == "custom-agent"
 
     # Test error response
     error_response = Response(

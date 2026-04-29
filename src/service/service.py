@@ -166,14 +166,15 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     url_parameters: dict[str, Any] | None = user_input.url_parameters
     variant: VariantIdentifier | None = user_input.variant or None
 
-    configurable = {
+    configurable: dict[str, Any] = {
         "thread_id": thread_id,
-        "model": user_input.model,
         "user_id": user_id,
         "owui_token": owui_token,
         "url_parameters": url_parameters,
         "variant": variant,
     }
+    if user_input.model is not None:
+        configurable["model"] = user_input.model
 
     callbacks = []
     if settings.LANGFUSE_TRACING:
@@ -186,7 +187,8 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     explicit_input: Command | dict[str, Any] | None = None
 
     if user_input.agent_config:
-        if overlap := configurable.keys() & user_input.agent_config.keys():
+        reserved_keys = {"thread_id", "user_id", "model"}
+        if overlap := reserved_keys & user_input.agent_config.keys():
             raise HTTPException(
                 status_code=422,
                 detail=f"agent_config contains reserved keys: {overlap}",
@@ -228,7 +230,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     return kwargs, run_uuid
 
 
-@router.post("/{agent_id}/invoke")
+@router.post("/{agent_id}/invoke", operation_id="invoke_with_agent_id")
 @router.post("/invoke")
 async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMessage:
     """
@@ -443,6 +445,7 @@ def _sse_response_example() -> dict[int | str, Any]:
     "/{agent_id}/stream",
     response_class=StreamingResponse,
     responses=_sse_response_example(),
+    operation_id="stream_with_agent_id",
 )
 @router.post("/stream", response_class=StreamingResponse, responses=_sse_response_example())
 async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> StreamingResponse:
@@ -506,7 +509,7 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
 
 
 @router.post("/history")
-def history(input: ChatHistoryInput) -> ChatHistory:
+async def history(input: ChatHistoryInput) -> ChatHistory:
     """
     Get chat history for a given thread.
 
@@ -521,10 +524,9 @@ def history(input: ChatHistoryInput) -> ChatHistory:
     """
     Get chat history.
     """
-    # TODO: Hard-coding DEFAULT_AGENT here is wonky
-    agent: AgentGraph = get_agent(DEFAULT_AGENT)
+    agent: AgentGraph = get_agent(input.agent_id or DEFAULT_AGENT)
     try:
-        state_snapshot = agent.get_state(
+        state_snapshot = await agent.aget_state(
             config=RunnableConfig(configurable={"thread_id": input.thread_id})
         )
         messages: list[AnyMessage] = state_snapshot.values["messages"]
