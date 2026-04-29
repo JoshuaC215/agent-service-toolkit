@@ -81,7 +81,13 @@ static_agent = agent.compile(checkpointer=MemorySaver())
 
 def test_agent_stream(mock_httpx):
     """Test that streaming from our static agent works correctly with token streaming."""
-    agent_meta = Agent(description="A static agent.", graph=static_agent)
+    agent_meta = Agent(
+        description="A static agent.",
+        graph=static_agent,
+        track="core",
+        stability="stable",
+        pack="core",
+    )
     with patch.dict("agents.agents.agents", {"static-agent": agent_meta}, clear=True):
         client = AgentClient(agent="static-agent")
 

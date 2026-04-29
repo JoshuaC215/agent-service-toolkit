@@ -16,6 +16,21 @@ class AgentInfo(BaseModel):
         description="Description of the agent.",
         examples=["A research assistant for generating research papers."],
     )
+    track: Literal["core", "product", "experimental"] = Field(
+        description="Classification track for the agent.",
+        examples=["core", "product"],
+        default="core",
+    )
+    stability: Literal["stable", "beta", "experimental", "deprecated"] = Field(
+        description="Stability level for the agent.",
+        examples=["stable", "beta"],
+        default="stable",
+    )
+    pack: str = Field(
+        description="Pack identifier that owns the agent.",
+        examples=["core", "skill", "dwh"],
+        default="core",
+    )
 
 
 class VariantIdentifier(TypedDict):
@@ -212,6 +227,11 @@ class ChatHistoryInput(BaseModel):
     thread_id: str = Field(
         description="Thread ID to persist and continue a multi-turn conversation.",
         examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
+    )
+    agent_id: str | None = Field(
+        description="Optional agent ID for agent-specific history retrieval.",
+        default=None,
+        examples=["research-assistant"],
     )
 
 

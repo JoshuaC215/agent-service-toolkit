@@ -1,65 +1,35 @@
 from dataclasses import dataclass
 
-from langgraph.graph.state import CompiledStateGraph
-from langgraph.pregel import Pregel
-
-from agents.bg_task_agent.bg_task_agent import bg_task_agent
-from agents.chatbot import chatbot
-from agents.command_agent import command_agent
-from agents.dwh_readiness_summary import dwh_readiness_summary
-from agents.interrupt_agent import interrupt_agent
-from agents.knowledge_base_agent import kb_agent
-from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
-from agents.rag_assistant import rag_assistant
-from agents.research_assistant import research_assistant
-from agents.skillcompanion import skillcompanion
-from agents.skillcompanion_interrupted import skillcompanion_interrupted
+from agents.packs import load_agent_specs
+from agents.packs.types import AgentGraph
 from schema import AgentInfo
 
 DEFAULT_AGENT = "research-assistant"
-
-# Type alias to handle LangGraph's different agent patterns
-# - @entrypoint functions return Pregel
-# - StateGraph().compile() returns CompiledStateGraph
-AgentGraph = CompiledStateGraph | Pregel
 
 
 @dataclass
 class Agent:
     description: str
     graph: AgentGraph
+    track: str = "core"
+    stability: str = "stable"
+    pack: str = "core"
 
 
-agents: dict[str, Agent] = {
-    "chatbot": Agent(description="A simple chatbot.", graph=chatbot),
-    "research-assistant": Agent(
-        description="A research assistant with web search and calculator.", graph=research_assistant
-    ),
-    "rag-assistant": Agent(
-        description="A RAG assistant with access to information in a database.", graph=rag_assistant
-    ),
-    "command-agent": Agent(description="A command agent.", graph=command_agent),
-    "bg-task-agent": Agent(description="A background task agent.", graph=bg_task_agent),
-    "langgraph-supervisor-agent": Agent(
-        description="A langgraph supervisor agent", graph=langgraph_supervisor_agent
-    ),
-    "interrupt-agent": Agent(description="An agent the uses interrupts.", graph=interrupt_agent),
-    "knowledge-base-agent": Agent(
-        description="A retrieval-augmented generation agent using Amazon Bedrock Knowledge Base",
-        graph=kb_agent,
-    ),
-    "skill-companion": Agent(
-        description="An Assistant to check your skills with AI", graph=skillcompanion
-    ),
-    "skillcompanion_interrupted": Agent(
-        description="A Skill Companion agent with interrupt capability.",
-        graph=skillcompanion_interrupted,
-    ),
-    "dwh_readiness_summary": Agent(
-        description="Generates summary and recommendations for DWH Readiness Check.",
-        graph=dwh_readiness_summary,
-    ),
-}
+def _build_agent_registry() -> dict[str, Agent]:
+    registry: dict[str, Agent] = {}
+    for spec in load_agent_specs():
+        registry[spec.key] = Agent(
+            description=spec.description,
+            graph=spec.graph,
+            track=spec.track,
+            stability=spec.stability,
+            pack=spec.pack,
+        )
+    return registry
+
+
+agents: dict[str, Agent] = _build_agent_registry()
 
 
 def get_agent(agent_id: str) -> AgentGraph:
@@ -68,5 +38,12 @@ def get_agent(agent_id: str) -> AgentGraph:
 
 def get_all_agent_info() -> list[AgentInfo]:
     return [
-        AgentInfo(key=agent_id, description=agent.description) for agent_id, agent in agents.items()
+        AgentInfo(
+            key=agent_id,
+            description=agent.description,
+            track=agent.track,
+            stability=agent.stability,
+            pack=agent.pack,
+        )
+        for agent_id, agent in agents.items()
     ]

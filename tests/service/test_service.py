@@ -170,7 +170,7 @@ def test_history(test_client, mock_agent) -> None:
     ANSWER = "The weather in Tokyo is 70 degrees."
     user_question = HumanMessage(content=QUESTION)
     agent_response = AIMessage(content=ANSWER)
-    mock_agent.get_state.return_value = StateSnapshot(
+    mock_agent.aget_state.return_value = StateSnapshot(
         values={"messages": [user_question, agent_response]},
         next=(),
         config={},
@@ -191,6 +191,37 @@ def test_history(test_client, mock_agent) -> None:
     assert output.messages[0].content == QUESTION
     assert output.messages[1].type == "ai"
     assert output.messages[1].content == ANSWER
+
+
+def test_history_with_agent_id(test_client) -> None:
+    QUESTION = "hello"
+    ANSWER = "world"
+    user_question = HumanMessage(content=QUESTION)
+    agent_response = AIMessage(content=ANSWER)
+
+    custom_agent = AsyncMock()
+    custom_agent.aget_state.return_value = StateSnapshot(
+        values={"messages": [user_question, agent_response]},
+        next=(),
+        config={},
+        metadata=None,
+        created_at=None,
+        parent_config=None,
+        tasks=(),
+        interrupts=(),
+    )
+
+    with patch("service.service.get_agent", return_value=custom_agent) as get_agent_mock:
+        response = test_client.post(
+            "/history",
+            json={
+                "thread_id": "7bcc7cc1-99d7-4b1d-bdb5-e6f90ed44de6",
+                "agent_id": "chatbot",
+            },
+        )
+
+    assert response.status_code == 200
+    get_agent_mock.assert_called_once_with("chatbot")
 
 
 @pytest.mark.asyncio
@@ -339,7 +370,13 @@ def test_stream_interrupt(test_client, mock_agent) -> None:
 def test_info(test_client, mock_settings) -> None:
     """Test that /info returns the correct service metadata."""
 
-    base_agent = Agent(description="A base agent.", graph=None)
+    base_agent = Agent(
+        description="A base agent.",
+        graph=None,
+        track="core",
+        stability="stable",
+        pack="core",
+    )
     mock_settings.AUTH_SECRET = None
     mock_settings.DEFAULT_MODEL = OpenAIModelName.GPT_4O_MINI
     mock_settings.AVAILABLE_MODELS = {OpenAIModelName.GPT_4O_MINI, OpenAIModelName.GPT_4O}
@@ -352,6 +389,9 @@ def test_info(test_client, mock_settings) -> None:
     assert len(output.agents) == 1
     assert output.agents[0].key == "base-agent"
     assert output.agents[0].description == "A base agent."
+    assert output.agents[0].track == "core"
+    assert output.agents[0].stability == "stable"
+    assert output.agents[0].pack == "core"
 
     assert output.default_model == OpenAIModelName.GPT_4O_MINI
     assert output.models == [OpenAIModelName.GPT_4O, OpenAIModelName.GPT_4O_MINI]
