@@ -19,6 +19,11 @@ This project offers a template for you to easily build and run your own agents u
 
 ### Quickstart
 
+This repository supports two tracks:
+
+- **Fast path (core):** build your own Python LangGraph agent quickly on shared service/client/runtime primitives.
+- **Product packs:** run included production-grade app packs (`skill`, `dwh`) that also serve as reference implementations.
+
 Run directly in python
 
 ```sh
@@ -100,9 +105,14 @@ The repository is structured as follows:
 
 To customize the agent for your own use case:
 
-1. Add your new agent to the `src/agents` directory. You can copy `research_assistant.py` or `chatbot.py` and modify it to change the agent's behavior and tools.
-1. Import and add your new agent to the `agents` dictionary in `src/agents/agents.py`. Your agent can be called by `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`.
-1. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
+1. Add your new agent implementation under `src/agents/` (or a new pack under `src/agents/packs/`).
+1. Register your agent in a pack loader (`src/agents/packs/core.py` or a dedicated pack module) so it is discoverable via the registry.
+1. Optionally add a Streamlit app entrypoint under `src/apps/`.
+
+### Product pack app entrypoints
+
+- Skill Companion: `src/apps/skill_companion/app.py`
+- DWH Readiness: `src/apps/dwh_readiness/app.py`
 
 
 ### Handling Private Credential files

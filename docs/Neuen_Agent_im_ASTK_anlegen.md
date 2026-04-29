@@ -1,6 +1,6 @@
 # Neuen Agent im ASTK anlegen – Schritt-für-Schritt-Dokumentation
 
-Diese Anleitung beschreibt, wie ein neuer Agent im Agent Service Toolkit (ASTK) erstellt und angebunden wird. Als Referenz dienen [src/Skill_Companion.py](src/Skill_Companion.py) und [src/agents/skillcompanion_interrupted.py](src/agents/skillcompanion_interrupted.py).
+Diese Anleitung beschreibt, wie ein neuer Agent im Agent Service Toolkit (ASTK) erstellt und angebunden wird. Als Referenz dienen [src/apps/skill_companion/app.py](src/apps/skill_companion/app.py) und [src/agents/skillcompanion_interrupted.py](src/agents/skillcompanion_interrupted.py).
 
 ## Architekturüberblick
 
@@ -24,7 +24,7 @@ flowchart TD
 - Optional: Docker/Compose bei Bedarf; siehe [compose.yaml](compose.yaml) und [docker/](docker/)
 
 ## Komponenten und Begriffe
-- Frontend: Streamlit-App, z. B. [src/Skill_Companion.py](src/Skill_Companion.py)
+- Frontend: Streamlit-App, z. B. [src/apps/skill_companion/app.py](src/apps/skill_companion/app.py)
 - Agent-Logik: LangGraph-Workflow, z. B. [src/agents/skillcompanion_interrupted.py](src/agents/skillcompanion_interrupted.py)
 - Client: Kommunikation UI <-> Service, siehe [src/client/](src/client/)
 - Variantenkonfiguration: YAML/Schalter, siehe [src/variants/](src/variants/)
@@ -93,7 +93,7 @@ Ziel: Verhaltensschalter und Ressourcen an zentraler Stelle.
 Ziel: Bedienoberfläche für den neuen Agenten.
 
 1. Erstelle eine neue Streamlit-Datei, z. B. [src/My_Agent.py](src/My_Agent.py)
-2. Verwende das Muster aus [src/Skill_Companion.py](src/Skill_Companion.py): 
+2. Verwende das Muster aus [src/apps/skill_companion/app.py](src/apps/skill_companion/app.py): 
    - Session-State initialisieren (UI-Schalter, run_id, thread_id, Avatare)
    - Login via Auth sicherstellen
    - AgentClient initialisieren und den Agent-Namen setzen
@@ -106,7 +106,7 @@ Optional: Evaluation-Dialog einblenden; siehe [src/streamlit_utils/evaluation_ui
 ## Schritt 6: Agent im Backend registrieren
 Ziel: Agent über die Service-API verfügbar machen.
 
-1. Füge den neuen Agenten in der zentralen Agenten-Registry hinzu; siehe [src/agents/agents.py](src/agents/agents.py)
+1. Füge den neuen Agenten in eine Pack-Registry hinzu; siehe [src/agents/packs/loader.py](src/agents/packs/loader.py)
 2. Importiere die Kompilat-Variable deines Agents und trage sie in die verfügbare Liste/Dikt ein
 3. Prüfe, dass der Name im Backend mit der UI-Konfiguration übereinstimmt
 
@@ -184,7 +184,7 @@ Ziel: Auswertungen im UI nutzen.
 
 
 ## Anhang: Nützliche Referenzen im Repo
-- UI-Beispiel: [src/Skill_Companion.py](src/Skill_Companion.py)
+- UI-Beispiel: [src/apps/skill_companion/app.py](src/apps/skill_companion/app.py)
 - Agent-Beispiel: [src/agents/skillcompanion_interrupted.py](src/agents/skillcompanion_interrupted.py)
 - Varianten: [src/variants/](src/variants/)
 - Prompts: [src/agents/prompts/](src/agents/prompts/)

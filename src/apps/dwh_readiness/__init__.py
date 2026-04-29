@@ -1,0 +1,1 @@
+"""DWH Readiness product app."""

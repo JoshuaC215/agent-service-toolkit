@@ -26,13 +26,13 @@ tasks:
     dotenv: ['.env']
     cmds:
       - uv run src/theme_selector.py --app Skill_Companion --variant {{ .VARIANT | default "default" }}
-      - uv run streamlit run src/Skill_Companion.py
+      - uv run streamlit run src/apps/skill_companion/app.py
 
   run-dr:
     dotenv: ['.env']
     cmds:
       - uv run src/theme_selector.py --app DWH_Readiness --variant {{ .VARIANT | default "default" }}
-      - uv run streamlit run src/DWH_Readiness.py
+      - uv run streamlit run src/apps/dwh_readiness/app.py
 
   dev:
     desc: "Run Ruff for code quality and formatting"
