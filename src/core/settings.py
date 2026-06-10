@@ -142,6 +142,7 @@ class Settings(BaseSettings):
     MONGO_USER: str | None = None
     MONGO_PASSWORD: SecretStr | None = None
     MONGO_AUTH_SOURCE: str | None = None
+    MONGO_TLS: bool = True  # set to False only for local development
 
     # Azure OpenAI Settings
     AZURE_OPENAI_API_KEY: SecretStr | None = None
