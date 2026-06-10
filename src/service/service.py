@@ -79,6 +79,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             if hasattr(store, "setup"):  # ignore: union-attr
                 await store.setup()
 
+            if not settings.AUTH_SECRET:
+                logger.warning(
+                    "AUTH_SECRET is not configured — all API endpoints are unauthenticated. "
+                    "Set AUTH_SECRET in your environment to enable bearer token authentication."
+                )
+
             # Configure agents with both memory components and async loading
             agents = get_all_agent_info()
             for a in agents:
