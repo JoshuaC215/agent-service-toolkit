@@ -4,7 +4,7 @@ from typing import Any
 
 from langchain_aws import AmazonKnowledgeBasesRetriever
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableConfig, RunnableLambda, RunnableSerializable
 from langchain_core.runnables.base import RunnableSequence
 from langgraph.graph import END, MessagesState, StateGraph
@@ -47,7 +47,7 @@ def get_kb_retriever():
 def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
     """Wrap the model with a system prompt for the Knowledge Base agent."""
 
-    def create_system_message(state):
+    def create_system_message(state) -> list[BaseMessage]:
         base_prompt = """You are a helpful assistant that provides accurate information based on retrieved documents.
 
         You will receive a query along with relevant documents retrieved from a knowledge base. Use these documents to inform your response.
@@ -63,17 +63,19 @@ def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessa
         Format your response in a clear, conversational manner. Use markdown formatting when appropriate.
         """
 
+        # Filter out any SystemMessages already in history to avoid Anthropic's
+        # "multiple non-consecutive system messages" error (issue #280).
+        non_system = [m for m in state["messages"] if not isinstance(m, SystemMessage)]
+
         # Check if documents were retrieved
         if "kb_documents" in state:
-            # Append document information to the system prompt
             document_prompt = f"\n\nI've retrieved the following documents that may be relevant to the query:\n\n{state['kb_documents']}\n\nPlease use these documents to inform your response to the user's query. Only use information from these documents and clearly indicate when you are unsure."
-            return [SystemMessage(content=base_prompt + document_prompt)] + state["messages"]
+            return [SystemMessage(content=base_prompt + document_prompt)] + non_system
         else:
-            # No documents were retrieved
             no_docs_prompt = (
                 "\n\nNo relevant documents were found in the knowledge base for this query."
             )
-            return [SystemMessage(content=base_prompt + no_docs_prompt)] + state["messages"]
+            return [SystemMessage(content=base_prompt + no_docs_prompt)] + non_system
 
     preprocessor = RunnableLambda(
         create_system_message,
