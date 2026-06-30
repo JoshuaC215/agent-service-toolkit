@@ -133,6 +133,12 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
 
     configurable = {"thread_id": thread_id, "user_id": user_id}
     if user_input.model is not None:
+        if user_input.model not in settings.AVAILABLE_MODELS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Model '{user_input.model}' is not available. "
+                       f"Allowed: {[m.value for m in settings.AVAILABLE_MODELS]}",
+            )
         configurable["model"] = user_input.model
 
     callbacks: list[Any] = []
