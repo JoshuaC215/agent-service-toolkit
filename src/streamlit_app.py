@@ -150,9 +150,11 @@ async def main() -> None:
                 help="Configure VOICE_TTS_PROVIDER in .env to enable"
                 if not voice or not voice.tts
                 else None,
-                on_change=lambda: st.session_state.pop("last_audio", None)
-                if not st.session_state.get("enable_audio", True)
-                else None,
+                on_change=lambda: (
+                    st.session_state.pop("last_audio", None)
+                    if not st.session_state.get("enable_audio", True)
+                    else None
+                ),
                 key="enable_audio",
             )
 
