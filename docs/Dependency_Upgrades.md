@@ -156,11 +156,38 @@ These are real issues hit during the June 2026 refresh — check them first next
 
 Majors intentionally held out of the safe round, each needing its own PR:
 
-| Upgrade | From → To | Why deferred / ROI |
-|---|---|---|
-| **langfuse** | 3.x → 4.x | Deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250). v4 is an observation-centric rewrite (`start_observation`, decomposed trace updates, changed default OTel span export). Revisit deliberately. |
+*None currently — the last entry (langfuse) landed; see below.* Re-add a table here (`| Upgrade
+| From → To | Why deferred / ROI |`) as new majors get triaged and held out of a safe-bumps
+round.
 
 **Landed since the table above was written:**
+- **langfuse** 3.15.0 → 4.12.0: previously deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250)
+  pending a validated look at v4. Investigated and landed: this repo's entire Langfuse surface is
+  `from langfuse.langchain import CallbackHandler` (no-arg `CallbackHandler()`) plus
+  `Langfuse().auth_check()` in the `/health` check — it never touches the low-level tracing API
+  (`start_span`/`start_generation` → `start_observation`, `update_current_trace()` →
+  `propagate_attributes()`, the new default OTel span-filtering) that actually changed shape in
+  v4. Confirmed both call sites are unchanged in v4 (same constructor signatures), so this was a
+  version-bump, not a rewrite: `uv lock --upgrade-package langfuse` picked v4.12.0 with **zero**
+  new/changed transitive deps (a 2-line lockfile diff). `uv run mypy src`, the full test suite,
+  and a live fake-model e2e all pass, including a check that `/invoke` and `/stream` complete
+  normally with `LANGFUSE_TRACING=true` and the `CallbackHandler` attached even when no real
+  Langfuse server is reachable (`auth_check()` correctly surfaces a 403 into the existing
+  try/except in `/health` rather than crashing anything).
+  **On the self-hosting/infra question that motivated deferring this**: the ClickHouse + Redis +
+  S3 requirement people associate with "later Langfuse versions" belongs to the **Langfuse
+  platform** (the self-hosted server) going to v3 back in 2024 — it is *not* new to the Python
+  SDK v4 bump, and a maintainer has confirmed SDK v4 made "no changes to underlying
+  infrastructure" for self-hosters. This repo doesn't bundle any Langfuse server infra itself
+  (nothing in `compose.yaml`) — it's purely a client pointed at `LANGFUSE_HOST`/keys, so this was
+  never actually a repo concern, just a byproduct of how self-hosted Langfuse evolved
+  independently of this SDK version. One real, SDK-version-agnostic risk to flag for
+  self-hosters: there's a documented case of `auth_check()`/tracing breaking when an old
+  self-hosted server version is paired with a much newer SDK — self-hosters should keep their
+  server reasonably current, independent of this bump. Not validated against a live self-hosted
+  or Langfuse Cloud server with real credentials in this pass (sandbox has no Docker daemon to
+  spin up the self-host stack) — do that check with real credentials before relying on it in
+  production, same caveat pattern as the Gemini bump below.
 - **mypy** 1.x → 2.1.0 (dropped the `<2.0` cap): no new type errors surfaced against this repo's code.
 - **langchain-google-genai** 3.0.3 → 4.2.6: repo surface is light (`ChatGoogleGenerativeAI` in `core/llm.py`, plus generic `with_structured_output` in `agents/interrupt_agent.py`); `uv run mypy src`, the full test suite, and a live fake-model e2e pass (`test_llm.py` covers `GoogleModelName` construction). The gRPC-transport drop and `with_structured_output` default-method change are real behavior changes on the actual Gemini API path — not exercised by the fake-model smoke test — so give that path a manual check with a real `GOOGLE_API_KEY` before relying on it in production.
 - **Docker base images** bumped `python:3.12.3-slim` → `python:3.13.14-slim` in `docker/Dockerfile.app` and `docker/Dockerfile.service` (already within the `>=3.12,<3.15` floor and CI's 3.12/3.13/3.14 matrix).
