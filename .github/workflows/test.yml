@@ -18,15 +18,15 @@ jobs:
         python-version: ["3.12", "3.13", "3.14"]
 
     steps:
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v7
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install uv
-      uses: astral-sh/setup-uv@v7
+      uses: astral-sh/setup-uv@v8.2.0
       with:
-        version: "0.7.19"
+        version: "0.11.26"
     - name: Install dependencies with uv
       run: |
         uv sync --frozen
@@ -46,7 +46,7 @@ jobs:
         uv run pytest --cov=src/ --cov-report=xml
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
 
@@ -66,7 +66,7 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -124,9 +124,9 @@ jobs:
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v8.2.0
         with:
-          version: "0.7.19"
+          version: "0.11.26"
       - name: Install ONLY CLIENT dependencies with uv
         run: |
           uv sync --frozen --only-group client --only-group dev
