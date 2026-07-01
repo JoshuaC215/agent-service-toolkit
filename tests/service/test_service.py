@@ -4,8 +4,7 @@ from unittest.mock import AsyncMock, patch
 import langsmith
 import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
-from langgraph.pregel.types import StateSnapshot
-from langgraph.types import Interrupt
+from langgraph.types import Interrupt, StateSnapshot
 
 from agents.agents import Agent
 from schema import ChatHistory, ChatMessage, ServiceMetadata
