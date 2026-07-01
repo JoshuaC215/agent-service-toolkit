@@ -1,5 +1,4 @@
 from functools import cache
-from typing import TypeAlias
 
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
@@ -51,7 +50,7 @@ class FakeToolModel(FakeListChatModel):
         return self
 
 
-ModelT: TypeAlias = (
+type ModelT = (
     AzureChatOpenAI
     | ChatOpenAI
     | ChatAnthropic
