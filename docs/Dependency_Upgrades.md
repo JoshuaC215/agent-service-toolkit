@@ -137,9 +137,21 @@ These are real issues hit during the June/July 2026 refresh — check them first
   longer applies). The 2.x SQLite saver called `Connection.is_alive()`, which `aiosqlite`
   removed in 0.22. The 3.x saver doesn't call it, so the pin was dropped along with the
   checkpointer bump above.
+- **`langchain-mcp-adapters` 0.3.0 tightened its `connections` typing.** `MultiServerMCPClient`
+  now takes an invariant `dict[str, Connection]` instead of a looser mapping type, so
+  `github_mcp_agent.py`'s connections dict needed an explicit `dict[str, Connection]`
+  annotation to keep `mypy src` clean (landed in PR #312).
+- **`ruff` 0.15's formatter reformats conditional lambdas.** Bumping past 0.15 reformatted a
+  conditional lambda in `streamlit_app.py` (added parens) — expect a one-time `ruff format`
+  diff like this on any ruff minor bump that changes formatter behavior, not just lint rules
+  (landed in PR #312).
+- **`langchain-google-vertexai` caps `pyarrow`.** `langchain-google-vertexai==3.2.4` (the latest
+  release) depends on `pyarrow>=19.0.1,<24.0.0`, so our `pyarrow >=23.0.1` floor can't move to
+  `24.x` until `langchain-google-vertexai` releases a version that allows it — checked during
+  the July 2026 safe-bumps round, re-check next time `langchain-google-vertexai` bumps.
 - **`numpy 2.5` dropped Python 3.11.** The repo has since dropped 3.11 (now `>=3.12`), so the
-  `numpy ~=2.4.6` pin is no longer forced by the Python floor and can be revisited in a future
-  safe-bumps round.
+  `numpy ~=2.4.6` pin was no longer forced by the Python floor — bumped to `~=2.5.0` in the July
+  2026 safe-bumps round.
 - **`langchain-openai` → `openai` → `jiter` floor.** Bumping `langchain-openai` pulled a newer
   `openai` that required `jiter >=0.10`, so the `jiter` pin had to move too. Expect chains like
   this when bumping the LLM SDKs.
@@ -171,9 +183,8 @@ These are real issues hit during the June/July 2026 refresh — check them first
 
 Majors intentionally held out of the safe round, each needing its own PR:
 
-*None currently — the last entry (langfuse) landed; see below.* Re-add a table here (`| Upgrade
-| From → To | Why deferred / ROI |`) as new majors get triaged and held out of a safe-bumps
-round.
+*None currently.* Add a table row here (`| Upgrade | From → To | Why deferred / ROI |`) as new
+majors get triaged and held out of a safe-bumps round.
 
 **Landed since the table above was written:**
 - **langfuse** 3.15.0 → 4.12.0: previously deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250)
@@ -207,6 +218,8 @@ round.
 - **langchain-google-genai** 3.0.3 → 4.2.6: repo surface is light (`ChatGoogleGenerativeAI` in `core/llm.py`, plus generic `with_structured_output` in `agents/interrupt_agent.py`); `uv run mypy src`, the full test suite, and a live fake-model e2e pass (`test_llm.py` covers `GoogleModelName` construction). The gRPC-transport drop and `with_structured_output` default-method change are real behavior changes on the actual Gemini API path — not exercised by the fake-model smoke test — so give that path a manual check with a real `GOOGLE_API_KEY` before relying on it in production.
 - **Docker base images** bumped `python:3.12.3-slim` → `python:3.13.14-slim` in `docker/Dockerfile.app` and `docker/Dockerfile.service` (already within the `>=3.12,<3.15` floor and CI's 3.12/3.13/3.14 matrix).
 - **pandas** 2.2.3 → 3.0.3 (transitive-only; nothing in `src/` imports pandas, only Streamlit consumes it): `uv lock --upgrade-package pandas` dropped the now-unneeded `pytz`/`tzdata` transitive deps. `uv run mypy src` and the full test suite pass; live-tested the Streamlit app end-to-end against the fake-model service (chat send/receive, streaming, feedback widget all render correctly under 3.0's Copy-on-Write default).
+- **July 2026 safe-bumps round** (`uv lock --upgrade` plus a few tilde-pin bumps, all within existing majors or transitive-only): `numpy` 2.4.6→2.5.0, `pyowm` 3.3.0→3.5.0, `python-dotenv` 1.0.1→1.2.2 (both the main and `client` dependency groups), `aiosqlite` 0.21.0→0.22.1 (floor-only pin, no `pyproject.toml` change needed), and dev-only `pytest-env` 1.2.0→1.6.0. Plus transitive-only movement `uv lock --upgrade` picked up on its own: `cryptography` 44.0.3→49.0.0, `wrapt` 1.17.3→2.2.2, `sse-starlette` 2.1.3→3.3.4, `pymongo` 4.12.1→4.16.0, `anthropic` 0.113.0→0.115.0, `boto3`/`botocore`, `google-cloud-aiplatform`, `narwhals`, `packaging`, `pillow`, `pyopenssl` (all patch/minor). None of these are imported directly in `src/` except `numpy`/`pyowm`/`python-dotenv`, all with unchanged call sites. `uv run ruff check`/`format --check`, `mypy src`, and the full test suite (126 passed, 2 skipped) all clean; live-tested the FastAPI service (`/health`, `/invoke`, `/history` checkpointer round-trip) and the Streamlit app end-to-end (sent a message through a real browser against the fake-model service — response, streaming, and the feedback widget all rendered correctly).
+- **GitHub Actions + `uv` CLI runtime refresh** (PR #318, landed the same day as the round above): see the coupling-constraints entries above for the Node-runtime-deprecation and `setup-uv` immutable-tag details.
 
 ## Python version policy
 
