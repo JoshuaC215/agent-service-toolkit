@@ -131,6 +131,25 @@ These are real issues hit during the June 2026 refresh — check them first next
 - **`mypy` is unpinned in the `dev` group.** A plain `uv lock --upgrade` will happily jump it
   to the next major (2.x) and flood you with new type errors. If you want to hold it back,
   add an explicit cap (e.g. `mypy <2.0`).
+- **Our own `grpcio` floor was over-constrained, and it blocked Python 3.14.** `grpcio` is
+  transitive-only (nothing in `src/` imports `grpc`; it's pulled in by chromadb,
+  google-api-core, opentelemetry-exporter-otlp-proto-grpc, etc.) — checking `uv.lock`, *none*
+  of those actual consumers record a version-specific requirement on it. The `>=1.81.1` floor
+  in `pyproject.toml` was purely a leftover from the "reconcile pins to lock" step (§5) of a
+  past refresh — i.e. whatever the resolver happened to pick, written down as if it were a
+  requirement. That incidentally blocked bumping the dev-only `langgraph-cli[inmem]` chain
+  past `langgraph-api 0.7.27`, since `langgraph-api >=0.8.0` pins `grpcio<1.81.0` (needed to
+  get a `jsonschema-rs` version with Python 3.14 wheels — see the Python version policy
+  section). **Lesson: when reconciling a `>=` floor to match the lock, sanity-check the
+  written pin against what the lockfile's actual dependents require** (`grep` the package
+  block in `uv.lock` for its own `dependencies`/reverse-deps and their `specifier`s) before
+  writing it down as gospel — otherwise a future coupling can be blocked by a floor nothing
+  actually needs. Fixed by removing `grpcio` from `[project] dependencies` entirely —
+  confirmed (by diffing `uv.lock` with/without the line) that nothing about what installs
+  changes; it's still pulled in transitively at the same version (`1.80.0`) via
+  `google-api-core[grpc]` / `googleapis-common-protos[grpc]` / `langgraph-api`. Since it's
+  transitive-only, there's nothing to gain from listing it explicitly, and doing so is what
+  created the artificial floor in the first place.
 
 ## Currently deferred upgrades (backlog)
 
@@ -142,7 +161,6 @@ Majors intentionally held out of the safe round, each needing its own PR:
 | **langfuse** | 3.x → 4.x | Deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250). v4 is an observation-centric rewrite (`start_observation`, decomposed trace updates, changed default OTel span export). Revisit deliberately. |
 | **pandas** | 2.x → 3.0 | Transitive-only (nothing in the repo imports pandas; only Streamlit consumes it, and it allows `<4`). 3.0 is a real major (Copy-on-Write default, PyArrow-backed strings). Bump in isolation and smoke-test Streamlit's dataframe/chat rendering — or drop the explicit `pandas` dep entirely and let Streamlit pull it. |
 | **mypy** | 1.x → 2.0 | Dev-only; will surface new type errors. Do it in a focused tooling PR so type-fix churn doesn't mix with a dependency refresh. |
-| **Python 3.14 support** | add 3.14 to the matrix | Blocked on the **dev-only** `langgraph-cli[inmem]` chain, and it's not just one issue: (1) `jsonschema-rs` needs a `langgraph-api` release recent enough to allow a 3.14-wheel version (fixed now that `langgraph-checkpoint` is 4.x — `langgraph-api` naturally resolves to 0.7.27); **but** (2) `langgraph-api` **0.8.0+** pins `grpcio<1.81.0`, which conflicts with our production `grpcio >=1.81.1` floor, so the resolver can't go past `langgraph-api 0.7.27` (→ `jsonschema-rs 0.29.1`, no 3.14 wheels, cap is `<0.30` at that `langgraph-api` version). Either relax the `grpcio` floor (check why it was set to `>=1.81.1` first) or wait for `langgraph-api`/`grpcio-health-checking` to widen their range. Retry by raising `requires-python`'s upper bound to `<3.15` and running `uv lock`; only ship once `uv sync` succeeds on a 3.14 interpreter. |
 
 ## Python version policy
 
@@ -158,15 +176,20 @@ stable release** (2025-10-07).
 | 3.13 | Oct 2024 | Oct 2029 |
 | 3.14 | Oct 2025 | Oct 2030 |
 
-Current declarations: `requires-python = ">=3.12,<3.14"`, classifiers + CI matrix cover
-3.12/3.13, ruff targets `py312`, and the Docker images use `python:3.12.3-slim`. (Python 3.11
-support was dropped; see below for why 3.14 isn't in yet.)
+Current declarations: `requires-python = ">=3.12,<3.15"`, classifiers + CI matrix cover
+3.12/3.13/3.14, ruff targets `py312`, and the Docker images use `python:3.12.3-slim` (still
+fine — `<3.15` is just the upper bound, the base image doesn't need to move to 3.14). Python
+3.11 support was dropped earlier; 3.14 support landed after clearing two sequential
+`langgraph-cli[inmem]`-chain blockers (see the coupling-constraints section): first the
+`langgraph-checkpoint` floor capping `jsonschema-rs`, then an over-tight `grpcio` floor of our
+own capping `langgraph-api`. Once both cleared, `uv sync` on a real Python 3.14.6 interpreter
+worked cleanly and the full suite (ruff/mypy/pytest/live e2e) passed.
 
-**Recommendations (not yet applied):**
-
-- **Add Python 3.14 — still blocked, see the backlog table above.** It's stable, and the main
-  *runtime* dependency risk (C-extension wheel availability: numpy, pyarrow, grpcio,
-  onnxruntime, psycopg) checks out fine. The **dev-only** `langgraph-cli[inmem]` chain is what
-  blocks it — the langgraph + checkpointers upgrade cleared one blocker (`jsonschema-rs`'s
-  version was capped by an old `langgraph-checkpoint` floor) but exposed a second: newer
-  `langgraph-api` pins `grpcio<1.81.0`, conflicting with our `grpcio >=1.81.1` floor.
+**One thing to watch, not a repo issue:** validating locally against a **3.14.0 pre-release
+build** (`rc2`, the only one cached in the dev sandbox this was built in) hit a real but
+already-fixed CPython/pydantic interaction
+(`TypeError: _eval_type() got an unexpected keyword argument 'prefer_fwd_module'`,
+[pydantic#12544](https://github.com/pydantic/pydantic/issues/12544)) that does **not**
+reproduce on the final 3.14.0+ stable release. If a local validation run hits this on Python
+3.14, install a current patch release (`uv python install 3.14`, not an `rc`) rather than
+treating it as a regression.
