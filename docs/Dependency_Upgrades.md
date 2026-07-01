@@ -108,16 +108,23 @@ These are real issues hit during the June 2026 refresh — check them first next
   `langgraph` **1.0–1.1.x** wants `langgraph-checkpoint <5,>=2.1` (works with
   `langgraph-checkpoint-{postgres,sqlite}` **2.x** / `-mongodb` **0.1–0.3**). `langgraph`
   **1.2.0+** requires `langgraph-checkpoint >=4.1`, which **forces** the checkpointers to
-  **3.x** (postgres/sqlite) and **0.4.x** (mongodb). So the checkpointer 3.0 upgrade and the
-  langgraph 1.2 upgrade are **one coupled unit** — see the backlog.
-- **`aiosqlite <0.22` is required by `langgraph-checkpoint-sqlite` 2.x.** The 2.x SQLite saver
-  calls `Connection.is_alive()`; `aiosqlite` removed that (Thread subclassing) in 0.22, so a
-  `uv lock --upgrade` that pulls aiosqlite 0.22+ breaks the SQLite checkpointer at runtime
-  (caught by `tests/service/test_service_e2e.py`). There's an explicit pin + comment in
-  `pyproject.toml`; remove it when moving to the 3.x SQLite checkpointer.
-- **`numpy 2.5` dropped Python 3.11.** While the repo supports 3.11, numpy is capped at 2.4.x.
-  This is the clearest example of an old Python version holding back a dependency (see Python
-  policy below).
+  **3.x** (postgres/sqlite) and **0.4.x** (mongodb). This was landed as one coupled unit
+  (langgraph 1.1→1.2, checkpointers 2.x→3.x/0.4.x). Verified: 2.x-written SQLite and Postgres
+  checkpoints read and continue correctly under the 3.x savers (round-tripped manually — old
+  writer venv → new reader venv — since the test suite mocks `initialize_database` and never
+  exercises real backends). **MongoDB is untested** — no `mongod` available in the sandbox
+  this was developed in; only import/wiring was smoke-tested against a refused connection.
+  `langgraph-checkpoint-mongodb` **0.4.0** also dropped `AsyncMongoDBSaver`/the `.aio`
+  submodule entirely in favor of a sync `MongoDBSaver` (async methods bridge via a thread
+  executor internally); `src/memory/mongodb.py` now wraps it in a small async context manager
+  (`_AsyncMongoDBSaver`) that runs connect/close via `asyncio.to_thread`.
+- **`aiosqlite <0.22` was required by `langgraph-checkpoint-sqlite` 2.x** (removed — no
+  longer applies). The 2.x SQLite saver called `Connection.is_alive()`, which `aiosqlite`
+  removed in 0.22. The 3.x saver doesn't call it, so the pin was dropped along with the
+  checkpointer bump above.
+- **`numpy 2.5` dropped Python 3.11.** The repo has since dropped 3.11 (now `>=3.12`), so the
+  `numpy ~=2.4.6` pin is no longer forced by the Python floor and can be revisited in a future
+  safe-bumps round.
 - **`langchain-openai` → `openai` → `jiter` floor.** Bumping `langchain-openai` pulled a newer
   `openai` that required `jiter >=0.10`, so the `jiter` pin had to move too. Expect chains like
   this when bumping the LLM SDKs.
@@ -131,12 +138,11 @@ Majors intentionally held out of the safe round, each needing its own PR:
 
 | Upgrade | From → To | Why deferred / ROI |
 |---|---|---|
-| **langgraph + checkpointers** (coupled) | langgraph 1.1.x→1.2.x; checkpoint-postgres/sqlite 2.x→3.x; mongodb 0.1.x→0.4.x | **Security-driven** (`langgraph-checkpoint >=3` removes default deserialization of `json`-typed payloads). **Breaking for existing stored checkpoints**; must test each backend in `src/memory/*.py` against a live DB and read pre-existing checkpoints. Medium/high ROI, dedicated PR. |
 | **langchain-google-genai** | 3.x → 4.x | Migrates to the unified `google-genai` SDK: drops gRPC transport (REST only), changes `with_structured_output` default to `method="json_schema"`. Repo surface is light (`ChatGoogleGenerativeAI` in `core/llm.py`); mostly a Gemini-path regression test. |
 | **langfuse** | 3.x → 4.x | Deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250). v4 is an observation-centric rewrite (`start_observation`, decomposed trace updates, changed default OTel span export). Revisit deliberately. |
 | **pandas** | 2.x → 3.0 | Transitive-only (nothing in the repo imports pandas; only Streamlit consumes it, and it allows `<4`). 3.0 is a real major (Copy-on-Write default, PyArrow-backed strings). Bump in isolation and smoke-test Streamlit's dataframe/chat rendering — or drop the explicit `pandas` dep entirely and let Streamlit pull it. |
 | **mypy** | 1.x → 2.0 | Dev-only; will surface new type errors. Do it in a focused tooling PR so type-fix churn doesn't mix with a dependency refresh. |
-| **Python 3.14 support** | add 3.14 to the matrix | **Blocked on the langgraph + checkpointers upgrade above.** The dev-only `langgraph-cli[inmem]` chain (`langgraph-api`) only gets a `jsonschema-rs` build with 3.14 wheels once `langgraph-api` is bumped past ~0.9, but every `langgraph-api` release since ~0.5.35 requires `langgraph-checkpoint >=3.0.1`, which conflicts with our `langgraph-checkpoint-{sqlite,postgres}` 2.x pins (`uv lock --upgrade-package langgraph-cli` backtracks all the way to `langgraph-api 0.4.48` to satisfy that). Land the checkpointer major first, then retry adding 3.14. |
+| **Python 3.14 support** | add 3.14 to the matrix | Blocked on the **dev-only** `langgraph-cli[inmem]` chain, and it's not just one issue: (1) `jsonschema-rs` needs a `langgraph-api` release recent enough to allow a 3.14-wheel version (fixed now that `langgraph-checkpoint` is 4.x — `langgraph-api` naturally resolves to 0.7.27); **but** (2) `langgraph-api` **0.8.0+** pins `grpcio<1.81.0`, which conflicts with our production `grpcio >=1.81.1` floor, so the resolver can't go past `langgraph-api 0.7.27` (→ `jsonschema-rs 0.29.1`, no 3.14 wheels, cap is `<0.30` at that `langgraph-api` version). Either relax the `grpcio` floor (check why it was set to `>=1.81.1` first) or wait for `langgraph-api`/`grpcio-health-checking` to widen their range. Retry by raising `requires-python`'s upper bound to `<3.15` and running `uv lock`; only ship once `uv sync` succeeds on a 3.14 interpreter. |
 
 ## Python version policy
 
@@ -158,13 +164,9 @@ support was dropped; see below for why 3.14 isn't in yet.)
 
 **Recommendations (not yet applied):**
 
-- **Add Python 3.14 — blocked, not a simple add.** It's stable, and the main *runtime*
-  dependency risk (C-extension wheel availability: numpy, pyarrow, grpcio, onnxruntime,
-  psycopg) checks out fine. But the **dev-only** `langgraph-cli[inmem]` chain doesn't: its
-  `jsonschema-rs` transitive dep has no 3.14 wheels at the version pulled in by our currently
-  reachable `langgraph-api`, and the only newer `langgraph-api` releases that *would* pull a
-  3.14-compatible `jsonschema-rs` require `langgraph-checkpoint >=3.0.1` — which conflicts
-  with our `langgraph-checkpoint-{sqlite,postgres}` 2.x pins. See the deferred **langgraph +
-  checkpointers** upgrade above; do that first, then retry 3.14 (add `"3.14"` to the CI
-  matrix and raise `requires-python`'s upper bound to `<3.15`, only shipping once the matrix
-  is green).
+- **Add Python 3.14 — still blocked, see the backlog table above.** It's stable, and the main
+  *runtime* dependency risk (C-extension wheel availability: numpy, pyarrow, grpcio,
+  onnxruntime, psycopg) checks out fine. The **dev-only** `langgraph-cli[inmem]` chain is what
+  blocks it — the langgraph + checkpointers upgrade cleared one blocker (`jsonschema-rs`'s
+  version was capped by an old `langgraph-checkpoint` floor) but exposed a second: newer
+  `langgraph-api` pins `grpcio<1.81.0`, conflicting with our `grpcio >=1.81.1` floor.
