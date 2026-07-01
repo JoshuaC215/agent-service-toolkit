@@ -144,8 +144,12 @@ These are real issues hit during the June 2026 refresh — check them first next
   written pin against what the lockfile's actual dependents require** (`grep` the package
   block in `uv.lock` for its own `dependencies`/reverse-deps and their `specifier`s) before
   writing it down as gospel — otherwise a future coupling can be blocked by a floor nothing
-  actually needs. Fixed by dropping the floor entirely (bare `"grpcio"`) and letting the
-  resolver pick freely; it now lands on `1.80.0`, satisfying `langgraph-api`.
+  actually needs. Fixed by removing `grpcio` from `[project] dependencies` entirely —
+  confirmed (by diffing `uv.lock` with/without the line) that nothing about what installs
+  changes; it's still pulled in transitively at the same version (`1.80.0`) via
+  `google-api-core[grpc]` / `googleapis-common-protos[grpc]` / `langgraph-api`. Since it's
+  transitive-only, there's nothing to gain from listing it explicitly, and doing so is what
+  created the artificial floor in the first place.
 
 ## Currently deferred upgrades (backlog)
 
