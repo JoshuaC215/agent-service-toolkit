@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytest
 from langchain_anthropic import ChatAnthropic
-from langchain_community.chat_models import FakeListChatModel
+from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
