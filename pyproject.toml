@@ -8,12 +8,11 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
     "Framework :: FastAPI",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 ]
 
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.12,<3.14"
 
 dependencies = [
     # Constrained <0.22: langgraph-checkpoint-sqlite 2.x calls Connection.is_alive(),
@@ -86,7 +85,7 @@ client = [
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 extend-select = ["I", "U"]

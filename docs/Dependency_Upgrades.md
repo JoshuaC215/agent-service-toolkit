@@ -136,6 +136,7 @@ Majors intentionally held out of the safe round, each needing its own PR:
 | **langfuse** | 3.x → 4.x | Deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250). v4 is an observation-centric rewrite (`start_observation`, decomposed trace updates, changed default OTel span export). Revisit deliberately. |
 | **pandas** | 2.x → 3.0 | Transitive-only (nothing in the repo imports pandas; only Streamlit consumes it, and it allows `<4`). 3.0 is a real major (Copy-on-Write default, PyArrow-backed strings). Bump in isolation and smoke-test Streamlit's dataframe/chat rendering — or drop the explicit `pandas` dep entirely and let Streamlit pull it. |
 | **mypy** | 1.x → 2.0 | Dev-only; will surface new type errors. Do it in a focused tooling PR so type-fix churn doesn't mix with a dependency refresh. |
+| **Python 3.14 support** | add 3.14 to the matrix | **Blocked on the langgraph + checkpointers upgrade above.** The dev-only `langgraph-cli[inmem]` chain (`langgraph-api`) only gets a `jsonschema-rs` build with 3.14 wheels once `langgraph-api` is bumped past ~0.9, but every `langgraph-api` release since ~0.5.35 requires `langgraph-checkpoint >=3.0.1`, which conflicts with our `langgraph-checkpoint-{sqlite,postgres}` 2.x pins (`uv lock --upgrade-package langgraph-cli` backtracks all the way to `langgraph-api 0.4.48` to satisfy that). Land the checkpointer major first, then retry adding 3.14. |
 
 ## Python version policy
 
@@ -151,21 +152,19 @@ stable release** (2025-10-07).
 | 3.13 | Oct 2024 | Oct 2029 |
 | 3.14 | Oct 2025 | Oct 2030 |
 
-Current declarations: `requires-python = ">=3.11,<3.14"` (note: **3.14 is currently
-excluded**), classifiers + CI matrix cover 3.11/3.12/3.13, ruff targets `py311`, and the
-Docker images use `python:3.12.3-slim`.
+Current declarations: `requires-python = ">=3.12,<3.14"`, classifiers + CI matrix cover
+3.12/3.13, ruff targets `py312`, and the Docker images use `python:3.12.3-slim`. (Python 3.11
+support was dropped; see below for why 3.14 isn't in yet.)
 
 **Recommendations (not yet applied):**
 
-- **Drop Python 3.11 — not urgent, but increasingly worth it.** It's security-supported
-  until Oct 2027, so there's no hard deadline. But keeping it already constrains the stack
-  (numpy is capped at 2.4.x because 2.5 needs ≥3.12). Dropping it unlocks newer wheels.
-  Low effort: set `requires-python = ">=3.12"`, remove the 3.11 classifier and CI matrix
-  entry, and bump ruff `target-version = "py312"`.
-- **Add Python 3.14 — yes, soon, as its own small PR.** It's stable. The main risk is
-  C-extension wheel availability (numpy, pyarrow, grpcio, onnxruntime, psycopg). Validate by
-  adding `"3.14"` to the CI matrix and raising the `requires-python` upper bound to `<3.15`
-  first; only ship once the matrix is green.
-- **Clean combined target:** support **3.12–3.14** (drop 3.11, add 3.14). That keeps a
-  three-version matrix and frees up newer dependencies in one move. Remember to also update
-  the Docker base image and `[tool.ruff] target-version` to match.
+- **Add Python 3.14 — blocked, not a simple add.** It's stable, and the main *runtime*
+  dependency risk (C-extension wheel availability: numpy, pyarrow, grpcio, onnxruntime,
+  psycopg) checks out fine. But the **dev-only** `langgraph-cli[inmem]` chain doesn't: its
+  `jsonschema-rs` transitive dep has no 3.14 wheels at the version pulled in by our currently
+  reachable `langgraph-api`, and the only newer `langgraph-api` releases that *would* pull a
+  3.14-compatible `jsonschema-rs` require `langgraph-checkpoint >=3.0.1` — which conflicts
+  with our `langgraph-checkpoint-{sqlite,postgres}` 2.x pins. See the deferred **langgraph +
+  checkpointers** upgrade above; do that first, then retry 3.14 (add `"3.14"` to the CI
+  matrix and raise `requires-python`'s upper bound to `<3.15`, only shipping once the matrix
+  is green).

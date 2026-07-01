@@ -1,5 +1,4 @@
 from enum import StrEnum, auto
-from typing import TypeAlias
 
 
 class Provider(StrEnum):
@@ -107,7 +106,7 @@ class FakeModelName(StrEnum):
     FAKE = "fake"
 
 
-AllModelEnum: TypeAlias = (
+type AllModelEnum = (
     OpenAIModelName
     | OpenAICompatibleName
     | AzureOpenAIModelName
