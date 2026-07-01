@@ -45,9 +45,9 @@ def test_get_model_groq():
 
 def test_get_model_groq_guard():
     with patch.dict(os.environ, {"GROQ_API_KEY": "test_key"}):
-        model = get_model(GroqModelName.LLAMA_GUARD_4_12B)
+        model = get_model(GroqModelName.GPT_OSS_SAFEGUARD_20B)
         assert isinstance(model, ChatGroq)
-        assert model.model_name == "meta-llama/llama-guard-4-12b"
+        assert model.model_name == "openai/gpt-oss-safeguard-20b"
         assert model.temperature < 0.01
 
 

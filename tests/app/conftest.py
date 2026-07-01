@@ -20,7 +20,10 @@ def mock_agent_client(mock_env):
         models=[OpenAIModelName.GPT_5_NANO, OpenAIModelName.GPT_5_MINI],
     )
 
-    with patch("client.AgentClient") as mock_agent_client:
+    with (
+        patch("client.AgentClient") as mock_agent_client,
+        patch("voice.VoiceManager.from_env", return_value=None),
+    ):
         mock_agent_client_instance = mock_agent_client.return_value
         mock_agent_client_instance.info = mock_info
         yield mock_agent_client_instance

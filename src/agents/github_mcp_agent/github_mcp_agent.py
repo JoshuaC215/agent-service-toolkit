@@ -6,7 +6,7 @@ from datetime import datetime
 from langchain.agents import create_agent
 from langchain_core.tools import BaseTool
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langchain_mcp_adapters.sessions import StreamableHttpConnection
+from langchain_mcp_adapters.sessions import Connection, StreamableHttpConnection
 from langgraph.graph.state import CompiledStateGraph
 
 from agents.lazy_agent import LazyLoadingAgent
@@ -60,7 +60,7 @@ class GitHubMCPAgent(LazyLoadingAgent):
         try:
             # Initialize MCP client directly
             github_pat = settings.GITHUB_PAT.get_secret_value()
-            connections = {
+            connections: dict[str, Connection] = {
                 "github": StreamableHttpConnection(
                     transport="streamable_http",
                     url=settings.MCP_GITHUB_SERVER_URL,

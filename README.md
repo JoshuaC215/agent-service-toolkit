@@ -58,7 +58,7 @@ docker compose watch
 1. **Streamlit Interface**: Provides a user-friendly chat interface for interacting with the agent, including voice input and output.
 1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path. Available agents and models are described in `/info`
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
-1. **Content Moderation**: Implements LlamaGuard for content moderation (requires Groq API key).
+1. **Content Moderation**: Implements Safeguard for content moderation (requires Groq API key).
 1. **RAG Agent**: A basic RAG agent implementation using ChromaDB - see [docs](docs/RAG_Assistant.md).
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.

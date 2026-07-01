@@ -20,6 +20,7 @@ from langfuse.langchain import (
 )
 from langgraph.types import Command, Interrupt
 from langsmith import Client as LangsmithClient
+from langsmith import uuid7
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info, load_agent
 from core import settings
@@ -78,6 +79,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             if hasattr(store, "setup"):  # ignore: union-attr
                 await store.setup()
 
+            if not settings.AUTH_SECRET:
+                logger.warning(
+                    "AUTH_SECRET is not configured — all API endpoints are unauthenticated. "
+                    "Set AUTH_SECRET in your environment to enable bearer token authentication."
+                )
+
             # Configure agents with both memory components and async loading
             agents = get_all_agent_info()
             for a in agents:
@@ -120,7 +127,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
     Parse user input and handle any required interrupt resumption.
     Returns kwargs for agent invocation and the run_id.
     """
-    run_id = uuid4()
+    run_id = uuid7()
     thread_id = user_input.thread_id or str(uuid4())
     user_id = user_input.user_id or str(uuid4())
 
