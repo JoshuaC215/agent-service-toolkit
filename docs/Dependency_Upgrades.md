@@ -159,12 +159,12 @@ Majors intentionally held out of the safe round, each needing its own PR:
 | Upgrade | From → To | Why deferred / ROI |
 |---|---|---|
 | **langfuse** | 3.x → 4.x | Deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250). v4 is an observation-centric rewrite (`start_observation`, decomposed trace updates, changed default OTel span export). Revisit deliberately. |
-| **pandas** | 2.x → 3.0 | Transitive-only (nothing in the repo imports pandas; only Streamlit consumes it, and it allows `<4`). 3.0 is a real major (Copy-on-Write default, PyArrow-backed strings). Bump in isolation and smoke-test Streamlit's dataframe/chat rendering — or drop the explicit `pandas` dep entirely and let Streamlit pull it. |
 
 **Landed since the table above was written:**
 - **mypy** 1.x → 2.1.0 (dropped the `<2.0` cap): no new type errors surfaced against this repo's code.
 - **langchain-google-genai** 3.0.3 → 4.2.6: repo surface is light (`ChatGoogleGenerativeAI` in `core/llm.py`, plus generic `with_structured_output` in `agents/interrupt_agent.py`); `uv run mypy src`, the full test suite, and a live fake-model e2e pass (`test_llm.py` covers `GoogleModelName` construction). The gRPC-transport drop and `with_structured_output` default-method change are real behavior changes on the actual Gemini API path — not exercised by the fake-model smoke test — so give that path a manual check with a real `GOOGLE_API_KEY` before relying on it in production.
 - **Docker base images** bumped `python:3.12.3-slim` → `python:3.13.14-slim` in `docker/Dockerfile.app` and `docker/Dockerfile.service` (already within the `>=3.12,<3.15` floor and CI's 3.12/3.13/3.14 matrix).
+- **pandas** 2.2.3 → 3.0.3 (transitive-only; nothing in `src/` imports pandas, only Streamlit consumes it): `uv lock --upgrade-package pandas` dropped the now-unneeded `pytz`/`tzdata` transitive deps. `uv run mypy src` and the full test suite pass; live-tested the Streamlit app end-to-end against the fake-model service (chat send/receive, streaming, feedback widget all render correctly under 3.0's Copy-on-Write default).
 
 ## Python version policy
 
