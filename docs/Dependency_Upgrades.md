@@ -128,9 +128,10 @@ These are real issues hit during the June 2026 refresh — check them first next
 - **`langchain-openai` → `openai` → `jiter` floor.** Bumping `langchain-openai` pulled a newer
   `openai` that required `jiter >=0.10`, so the `jiter` pin had to move too. Expect chains like
   this when bumping the LLM SDKs.
-- **`mypy` is unpinned in the `dev` group.** A plain `uv lock --upgrade` will happily jump it
-  to the next major (2.x) and flood you with new type errors. If you want to hold it back,
-  add an explicit cap (e.g. `mypy <2.0`).
+- **`mypy` was capped at `<2.0` in the `dev` group** to keep the 2.x major out of a routine
+  safe-bumps round (a plain `uv lock --upgrade` would otherwise jump it and flood you with new
+  type errors). Bumped deliberately to `~=2.1.0` in a focused pass — no new errors surfaced
+  against this repo's code, so the cap was lifted rather than re-added.
 - **Our own `grpcio` floor was over-constrained, and it blocked Python 3.14.** `grpcio` is
   transitive-only (nothing in `src/` imports `grpc`; it's pulled in by chromadb,
   google-api-core, opentelemetry-exporter-otlp-proto-grpc, etc.) — checking `uv.lock`, *none*
@@ -157,10 +158,13 @@ Majors intentionally held out of the safe round, each needing its own PR:
 
 | Upgrade | From → To | Why deferred / ROI |
 |---|---|---|
-| **langchain-google-genai** | 3.x → 4.x | Migrates to the unified `google-genai` SDK: drops gRPC transport (REST only), changes `with_structured_output` default to `method="json_schema"`. Repo surface is light (`ChatGoogleGenerativeAI` in `core/llm.py`); mostly a Gemini-path regression test. |
 | **langfuse** | 3.x → 4.x | Deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250). v4 is an observation-centric rewrite (`start_observation`, decomposed trace updates, changed default OTel span export). Revisit deliberately. |
 | **pandas** | 2.x → 3.0 | Transitive-only (nothing in the repo imports pandas; only Streamlit consumes it, and it allows `<4`). 3.0 is a real major (Copy-on-Write default, PyArrow-backed strings). Bump in isolation and smoke-test Streamlit's dataframe/chat rendering — or drop the explicit `pandas` dep entirely and let Streamlit pull it. |
-| **mypy** | 1.x → 2.0 | Dev-only; will surface new type errors. Do it in a focused tooling PR so type-fix churn doesn't mix with a dependency refresh. |
+
+**Landed since the table above was written:**
+- **mypy** 1.x → 2.1.0 (dropped the `<2.0` cap): no new type errors surfaced against this repo's code.
+- **langchain-google-genai** 3.0.3 → 4.2.6: repo surface is light (`ChatGoogleGenerativeAI` in `core/llm.py`, plus generic `with_structured_output` in `agents/interrupt_agent.py`); `uv run mypy src`, the full test suite, and a live fake-model e2e pass (`test_llm.py` covers `GoogleModelName` construction). The gRPC-transport drop and `with_structured_output` default-method change are real behavior changes on the actual Gemini API path — not exercised by the fake-model smoke test — so give that path a manual check with a real `GOOGLE_API_KEY` before relying on it in production.
+- **Docker base images** bumped `python:3.12.3-slim` → `python:3.13.14-slim` in `docker/Dockerfile.app` and `docker/Dockerfile.service` (already within the `>=3.12,<3.15` floor and CI's 3.12/3.13/3.14 matrix).
 
 ## Python version policy
 
@@ -177,9 +181,9 @@ stable release** (2025-10-07).
 | 3.14 | Oct 2025 | Oct 2030 |
 
 Current declarations: `requires-python = ">=3.12,<3.15"`, classifiers + CI matrix cover
-3.12/3.13/3.14, ruff targets `py312`, and the Docker images use `python:3.12.3-slim` (still
-fine — `<3.15` is just the upper bound, the base image doesn't need to move to 3.14). Python
-3.11 support was dropped earlier; 3.14 support landed after clearing two sequential
+3.12/3.13/3.14, ruff targets `py312`, and the Docker images use `python:3.13.14-slim` (bumped
+from `3.12.3-slim`; `<3.15` is just the upper bound, so the base image doesn't need to move to
+3.14). Python 3.11 support was dropped earlier; 3.14 support landed after clearing two sequential
 `langgraph-cli[inmem]`-chain blockers (see the coupling-constraints section): first the
 `langgraph-checkpoint` floor capping `jsonschema-rs`, then an over-tight `grpcio` floor of our
 own capping `langgraph-api`. Once both cleared, `uv sync` on a real Python 3.14.6 interpreter
