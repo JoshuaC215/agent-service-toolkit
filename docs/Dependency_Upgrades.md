@@ -23,6 +23,8 @@ than upgrading everything blindly.
 | CI test matrix | `.github/workflows/test.yml` (`python-version`) |
 | Container base image | `docker/Dockerfile.app`, `docker/Dockerfile.service` |
 | Supported Python range + classifiers | `pyproject.toml` → `requires-python`, `classifiers` |
+| GitHub Actions versions (`actions/checkout`, `setup-python`, `setup-uv`, `docker/*`, `codecov-action`, …) | `.github/workflows/*.yml` (`uses:`) |
+| `uv` CLI version — CI, quickstart docs, and Docker images (**keep all three in sync**) | `.github/workflows/test.yml` (`astral-sh/setup-uv` → `version:`), `README.md` install snippet, `docker/Dockerfile.app`/`docker/Dockerfile.service` (`pip install uv==`) |
 
 ## Upgrade workflow (the recipe)
 
@@ -99,8 +101,21 @@ outbound Docker Hub access (not available in every sandbox; CI handles it via do
 
 ## Coupling constraints & gotchas (learned the hard way)
 
-These are real issues hit during the June 2026 refresh — check them first next time:
+These are real issues hit during the June/July 2026 refresh — check them first next time:
 
+- **GitHub Actions Node runtime deprecations show up as CI warnings, not lockfile conflicts.**
+  GitHub periodically deprecates the Node.js runtime an Action ships with (16 → 20 → 24), and
+  pinned `uses: owner/action@vN` refs don't auto-upgrade. Check each action's `action.yml` for its
+  `runs.using` value (or just check for the warning banner on a run) and bump to the earliest
+  major that ships the current runtime. `docker/build-push-action` v4 also turned on SLSA
+  provenance attestations by default — set `provenance: false` explicitly if you don't want
+  multi-manifest images as a side effect of an otherwise-unrelated runtime bump. Composite actions
+  (`runs.using: composite`, e.g. `codecov/codecov-action`) can still be hiding a stale nested
+  action (it called `actions/github-script@v7`, Node 20) — check their `action.yml` for their own
+  `uses:` lines, not just the top-level `runs.using`.
+- **`astral-sh/setup-uv` stopped publishing floating major tags as of v8.0.0** (a deliberate
+  supply-chain-hardening move, same motivation as the tj-actions incident). `@v7` still floats;
+  `@v8` requires pinning the exact release, e.g. `astral-sh/setup-uv@v8.2.0`.
 - **`langchain` ⇄ `langgraph` move in lockstep.** The `langchain` meta-package pins a narrow
   `langgraph` range. e.g. `langchain 1.3.x` requires `langgraph >=1.2.5,<1.3`, while
   `langchain 1.2.18` requires `langgraph >=1.1.10,<1.2`. You cannot bump one past the other.
