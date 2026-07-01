@@ -1,8 +1,10 @@
+import asyncio
 import logging
 import urllib.parse
 from contextlib import AbstractAsyncContextManager
 
-from langgraph.checkpoint.mongodb.aio import AsyncMongoDBSaver
+from langgraph.checkpoint.mongodb import MongoDBSaver
+from pymongo import MongoClient
 
 from core.settings import settings
 
@@ -52,11 +54,34 @@ def get_mongo_connection_string() -> str:
         return f"mongodb://{settings.MONGO_HOST}:{settings.MONGO_PORT}/"
 
 
-def get_mongo_saver() -> AbstractAsyncContextManager[AsyncMongoDBSaver]:
+class _AsyncMongoDBSaver(AbstractAsyncContextManager[MongoDBSaver]):
+    """Async context manager wrapping MongoDBSaver, which is sync-only as of
+    langgraph-checkpoint-mongodb 0.4 (it bridges to async internally via a thread executor).
+    Connecting and building the saver's indexes does blocking I/O, so both are run off the
+    event loop thread.
+    """
+
+    def __init__(self, conn_string: str, db_name: str):
+        self._conn_string = conn_string
+        self._db_name = db_name
+        self._saver: MongoDBSaver | None = None
+
+    async def __aenter__(self) -> MongoDBSaver:
+        def _connect() -> MongoDBSaver:
+            client: MongoClient = MongoClient(self._conn_string)
+            return MongoDBSaver(client, db_name=self._db_name)
+
+        self._saver = await asyncio.to_thread(_connect)
+        return self._saver
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        if self._saver is not None:
+            await asyncio.to_thread(self._saver.close)
+
+
+def get_mongo_saver() -> AbstractAsyncContextManager[MongoDBSaver]:
     """Initialize and return a MongoDB saver instance."""
     validate_mongo_config()
     if settings.MONGO_DB is None:  # for type checking
         raise ValueError("MONGO_DB is not set")
-    return AsyncMongoDBSaver.from_conn_string(
-        get_mongo_connection_string(), db_name=settings.MONGO_DB
-    )
+    return _AsyncMongoDBSaver(get_mongo_connection_string(), settings.MONGO_DB)
