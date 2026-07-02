@@ -110,4 +110,4 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["ag_ui_langgraph.*"]
-ignore_missing_imports = true
+follow_untyped_imports = true
