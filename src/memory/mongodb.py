@@ -40,6 +40,7 @@ def validate_mongo_config() -> None:
 def get_mongo_connection_string() -> str:
     """Build and return the MongoDB connection string from settings."""
 
+    tls_param = "&tls=true" if settings.MONGO_TLS else ""
     if _has_auth_credentials():
         if settings.MONGO_PASSWORD is None:  # for type checking
             raise ValueError("MONGO_PASSWORD is not set")
@@ -48,10 +49,11 @@ def get_mongo_connection_string() -> str:
         return (
             f"mongodb://{settings.MONGO_USER}:{password_escaped}@"
             f"{settings.MONGO_HOST}:{settings.MONGO_PORT}/"
-            f"?authSource={settings.MONGO_AUTH_SOURCE}"
+            f"?authSource={settings.MONGO_AUTH_SOURCE}{tls_param}"
         )
     else:
-        return f"mongodb://{settings.MONGO_HOST}:{settings.MONGO_PORT}/"
+        tls_query = "?tls=true" if settings.MONGO_TLS else ""
+        return f"mongodb://{settings.MONGO_HOST}:{settings.MONGO_PORT}/{tls_query}"
 
 
 class _AsyncMongoDBSaver(AbstractAsyncContextManager[MongoDBSaver]):
