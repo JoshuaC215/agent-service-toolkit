@@ -2,7 +2,7 @@ from functools import cache
 
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
-from langchain_community.chat_models import FakeListChatModel
+from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_vertexai import ChatVertexAI
 from langchain_groq import ChatGroq

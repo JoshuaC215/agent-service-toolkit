@@ -7,7 +7,7 @@ import pytest
 from agents.lazy_agent import LazyLoadingAgent
 
 
-class TestLazyLoadingAgent(LazyLoadingAgent):
+class LazyLoadingAgentFixture(LazyLoadingAgent):
     """Test implementation of LazyLoadingAgent."""
 
     def __init__(self):
@@ -29,26 +29,26 @@ class TestLazyLoadingAgentBase:
 
     def test_initialization(self):
         """Test that agent initializes correctly."""
-        agent = TestLazyLoadingAgent()
+        agent = LazyLoadingAgentFixture()
         assert not agent._loaded
         assert agent._graph is None
 
     @pytest.mark.asyncio
     async def test_load(self):
         """Test that load works correctly."""
-        agent = TestLazyLoadingAgent()
+        agent = LazyLoadingAgentFixture()
         await agent.load()
         assert agent._loaded
 
     def test_get_graph_before_load(self):
         """Test that get_graph raises error before load."""
-        agent = TestLazyLoadingAgent()
+        agent = LazyLoadingAgentFixture()
         with pytest.raises(RuntimeError, match="Agent not loaded"):
             agent.get_graph()
 
     def test_get_graph_after_load(self):
         """Test that get_graph works after load."""
-        agent = TestLazyLoadingAgent()
+        agent = LazyLoadingAgentFixture()
         agent._loaded = True
         agent._graph = Mock()
 
@@ -57,7 +57,7 @@ class TestLazyLoadingAgentBase:
 
     def test_get_graph_no_graph_created(self):
         """Test that get_graph raises error if no graph was created."""
-        agent = TestLazyLoadingAgent()
+        agent = LazyLoadingAgentFixture()
         agent._loaded = True
         agent._graph = None
 

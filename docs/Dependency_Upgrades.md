@@ -23,6 +23,8 @@ than upgrading everything blindly.
 | CI test matrix | `.github/workflows/test.yml` (`python-version`) |
 | Container base image | `docker/Dockerfile.app`, `docker/Dockerfile.service` |
 | Supported Python range + classifiers | `pyproject.toml` → `requires-python`, `classifiers` |
+| GitHub Actions versions (`actions/checkout`, `setup-python`, `setup-uv`, `docker/*`, `codecov-action`, …) | `.github/workflows/*.yml` (`uses:`) |
+| `uv` CLI version — CI, quickstart docs, and Docker images (**keep all three in sync**) | `.github/workflows/test.yml` (`astral-sh/setup-uv` → `version:`), `README.md` install snippet, `docker/Dockerfile.app`/`docker/Dockerfile.service` (`pip install uv==`) |
 
 ## Upgrade workflow (the recipe)
 
@@ -99,8 +101,21 @@ outbound Docker Hub access (not available in every sandbox; CI handles it via do
 
 ## Coupling constraints & gotchas (learned the hard way)
 
-These are real issues hit during the June 2026 refresh — check them first next time:
+These are real issues hit during the June/July 2026 refresh — check them first next time:
 
+- **GitHub Actions Node runtime deprecations show up as CI warnings, not lockfile conflicts.**
+  GitHub periodically deprecates the Node.js runtime an Action ships with (16 → 20 → 24), and
+  pinned `uses: owner/action@vN` refs don't auto-upgrade. Check each action's `action.yml` for its
+  `runs.using` value (or just check for the warning banner on a run) and bump to the earliest
+  major that ships the current runtime. `docker/build-push-action` v4 also turned on SLSA
+  provenance attestations by default — set `provenance: false` explicitly if you don't want
+  multi-manifest images as a side effect of an otherwise-unrelated runtime bump. Composite actions
+  (`runs.using: composite`, e.g. `codecov/codecov-action`) can still be hiding a stale nested
+  action (it called `actions/github-script@v7`, Node 20) — check their `action.yml` for their own
+  `uses:` lines, not just the top-level `runs.using`.
+- **`astral-sh/setup-uv` stopped publishing floating major tags as of v8.0.0** (a deliberate
+  supply-chain-hardening move, same motivation as the tj-actions incident). `@v7` still floats;
+  `@v8` requires pinning the exact release, e.g. `astral-sh/setup-uv@v8.2.0`.
 - **`langchain` ⇄ `langgraph` move in lockstep.** The `langchain` meta-package pins a narrow
   `langgraph` range. e.g. `langchain 1.3.x` requires `langgraph >=1.2.5,<1.3`, while
   `langchain 1.2.18` requires `langgraph >=1.1.10,<1.2`. You cannot bump one past the other.
@@ -122,9 +137,21 @@ These are real issues hit during the June 2026 refresh — check them first next
   longer applies). The 2.x SQLite saver called `Connection.is_alive()`, which `aiosqlite`
   removed in 0.22. The 3.x saver doesn't call it, so the pin was dropped along with the
   checkpointer bump above.
+- **`langchain-mcp-adapters` 0.3.0 tightened its `connections` typing.** `MultiServerMCPClient`
+  now takes an invariant `dict[str, Connection]` instead of a looser mapping type, so
+  `github_mcp_agent.py`'s connections dict needed an explicit `dict[str, Connection]`
+  annotation to keep `mypy src` clean (landed in PR #312).
+- **`ruff` 0.15's formatter reformats conditional lambdas.** Bumping past 0.15 reformatted a
+  conditional lambda in `streamlit_app.py` (added parens) — expect a one-time `ruff format`
+  diff like this on any ruff minor bump that changes formatter behavior, not just lint rules
+  (landed in PR #312).
+- **`langchain-google-vertexai` caps `pyarrow`.** `langchain-google-vertexai==3.2.4` (the latest
+  release) depends on `pyarrow>=19.0.1,<24.0.0`, so our `pyarrow >=23.0.1` floor can't move to
+  `24.x` until `langchain-google-vertexai` releases a version that allows it — checked during
+  the July 2026 safe-bumps round, re-check next time `langchain-google-vertexai` bumps.
 - **`numpy 2.5` dropped Python 3.11.** The repo has since dropped 3.11 (now `>=3.12`), so the
-  `numpy ~=2.4.6` pin is no longer forced by the Python floor and can be revisited in a future
-  safe-bumps round.
+  `numpy ~=2.4.6` pin was no longer forced by the Python floor — bumped to `~=2.5.0` in the July
+  2026 safe-bumps round.
 - **`langchain-openai` → `openai` → `jiter` floor.** Bumping `langchain-openai` pulled a newer
   `openai` that required `jiter >=0.10`, so the `jiter` pin had to move too. Expect chains like
   this when bumping the LLM SDKs.
@@ -156,15 +183,43 @@ These are real issues hit during the June 2026 refresh — check them first next
 
 Majors intentionally held out of the safe round, each needing its own PR:
 
-| Upgrade | From → To | Why deferred / ROI |
-|---|---|---|
-| **langfuse** | 3.x → 4.x | Deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250). v4 is an observation-centric rewrite (`start_observation`, decomposed trace updates, changed default OTel span export). Revisit deliberately. |
+*None currently.* Add a table row here (`| Upgrade | From → To | Why deferred / ROI |`) as new
+majors get triaged and held out of a safe-bumps round.
 
 **Landed since the table above was written:**
+- **langfuse** 3.15.0 → 4.12.0: previously deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250)
+  pending a validated look at v4. Investigated and landed: this repo's entire Langfuse surface is
+  `from langfuse.langchain import CallbackHandler` (no-arg `CallbackHandler()`) plus
+  `Langfuse().auth_check()` in the `/health` check — it never touches the low-level tracing API
+  (`start_span`/`start_generation` → `start_observation`, `update_current_trace()` →
+  `propagate_attributes()`, the new default OTel span-filtering) that actually changed shape in
+  v4. Confirmed both call sites are unchanged in v4 (same constructor signatures), so this was a
+  version-bump, not a rewrite: `uv lock --upgrade-package langfuse` picked v4.12.0 with **zero**
+  new/changed transitive deps (a 2-line lockfile diff). `uv run mypy src`, the full test suite,
+  and a live fake-model e2e all pass, including a check that `/invoke` and `/stream` complete
+  normally with `LANGFUSE_TRACING=true` and the `CallbackHandler` attached even when no real
+  Langfuse server is reachable (`auth_check()` correctly surfaces a 403 into the existing
+  try/except in `/health` rather than crashing anything).
+  **On the self-hosting/infra question that motivated deferring this**: the ClickHouse + Redis +
+  S3 requirement people associate with "later Langfuse versions" belongs to the **Langfuse
+  platform** (the self-hosted server) going to v3 back in 2024 — it is *not* new to the Python
+  SDK v4 bump, and a maintainer has confirmed SDK v4 made "no changes to underlying
+  infrastructure" for self-hosters. This repo doesn't bundle any Langfuse server infra itself
+  (nothing in `compose.yaml`) — it's purely a client pointed at `LANGFUSE_HOST`/keys, so this was
+  never actually a repo concern, just a byproduct of how self-hosted Langfuse evolved
+  independently of this SDK version. One real, SDK-version-agnostic risk to flag for
+  self-hosters: there's a documented case of `auth_check()`/tracing breaking when an old
+  self-hosted server version is paired with a much newer SDK — self-hosters should keep their
+  server reasonably current, independent of this bump. Not validated against a live self-hosted
+  or Langfuse Cloud server with real credentials in this pass (sandbox has no Docker daemon to
+  spin up the self-host stack) — do that check with real credentials before relying on it in
+  production, same caveat pattern as the Gemini bump below.
 - **mypy** 1.x → 2.1.0 (dropped the `<2.0` cap): no new type errors surfaced against this repo's code.
 - **langchain-google-genai** 3.0.3 → 4.2.6: repo surface is light (`ChatGoogleGenerativeAI` in `core/llm.py`, plus generic `with_structured_output` in `agents/interrupt_agent.py`); `uv run mypy src`, the full test suite, and a live fake-model e2e pass (`test_llm.py` covers `GoogleModelName` construction). The gRPC-transport drop and `with_structured_output` default-method change are real behavior changes on the actual Gemini API path — not exercised by the fake-model smoke test — so give that path a manual check with a real `GOOGLE_API_KEY` before relying on it in production.
 - **Docker base images** bumped `python:3.12.3-slim` → `python:3.13.14-slim` in `docker/Dockerfile.app` and `docker/Dockerfile.service` (already within the `>=3.12,<3.15` floor and CI's 3.12/3.13/3.14 matrix).
 - **pandas** 2.2.3 → 3.0.3 (transitive-only; nothing in `src/` imports pandas, only Streamlit consumes it): `uv lock --upgrade-package pandas` dropped the now-unneeded `pytz`/`tzdata` transitive deps. `uv run mypy src` and the full test suite pass; live-tested the Streamlit app end-to-end against the fake-model service (chat send/receive, streaming, feedback widget all render correctly under 3.0's Copy-on-Write default).
+- **July 2026 safe-bumps round** (`uv lock --upgrade` plus a few tilde-pin bumps, all within existing majors or transitive-only): `numpy` 2.4.6→2.5.0, `pyowm` 3.3.0→3.5.0, `python-dotenv` 1.0.1→1.2.2 (both the main and `client` dependency groups), `aiosqlite` 0.21.0→0.22.1 (floor-only pin, no `pyproject.toml` change needed), and dev-only `pytest-env` 1.2.0→1.6.0. Plus transitive-only movement `uv lock --upgrade` picked up on its own: `cryptography` 44.0.3→49.0.0, `wrapt` 1.17.3→2.2.2, `sse-starlette` 2.1.3→3.3.4, `pymongo` 4.12.1→4.16.0, `anthropic` 0.113.0→0.115.0, `boto3`/`botocore`, `google-cloud-aiplatform`, `narwhals`, `packaging`, `pillow`, `pyopenssl` (all patch/minor). None of these are imported directly in `src/` except `numpy`/`pyowm`/`python-dotenv`, all with unchanged call sites. `uv run ruff check`/`format --check`, `mypy src`, and the full test suite (126 passed, 2 skipped) all clean; live-tested the FastAPI service (`/health`, `/invoke`, `/history` checkpointer round-trip) and the Streamlit app end-to-end (sent a message through a real browser against the fake-model service — response, streaming, and the feedback widget all rendered correctly).
+- **GitHub Actions + `uv` CLI runtime refresh** (PR #318, landed the same day as the round above): see the coupling-constraints entries above for the Node-runtime-deprecation and `setup-uv` immutable-tag details.
 
 ## Python version policy
 

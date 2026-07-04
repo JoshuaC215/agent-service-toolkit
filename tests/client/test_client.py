@@ -196,6 +196,7 @@ async def test_astream(agent_client):
     mock_response = AsyncMock()
     mock_response.status_code = 200
     mock_response.request = Request("POST", "http://test/stream")
+    mock_response.raise_for_status = Mock()
     mock_response.aiter_lines = Mock(return_value=async_events())
     mock_response.__aenter__ = AsyncMock(return_value=mock_response)
 
