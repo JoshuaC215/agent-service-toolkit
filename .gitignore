@@ -182,6 +182,7 @@ cython_debug/
 # Data
 *.docx
 *.pdf
+chat_histories/
 
 # Chroma db
 *.db

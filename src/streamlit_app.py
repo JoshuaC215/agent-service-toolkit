@@ -1,8 +1,11 @@
 import asyncio
+import json
 import os
 import urllib.parse
 import uuid
 from collections.abc import AsyncGenerator
+from datetime import datetime
+from pathlib import Path
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -27,6 +30,8 @@ from voice import VoiceManager
 APP_TITLE = "Agent Service Toolkit"
 APP_ICON = "🧰"
 USER_ID_COOKIE = "user_id"
+HISTORY_DIR = Path("chat_histories")
+HISTORY_DIR.mkdir(exist_ok=True)
 
 
 def get_or_create_user_id() -> str:
@@ -51,6 +56,36 @@ def get_or_create_user_id() -> str:
     st.query_params[USER_ID_COOKIE] = user_id
 
     return user_id
+
+
+def _history_path(user_id: str) -> Path:
+    return HISTORY_DIR / f"{user_id}.json"
+
+
+def load_user_data(user_id: str) -> dict:
+    path = _history_path(user_id)
+    if not path.exists():
+        return {"history_enabled": False, "history_index": []}
+    try:
+        data = json.loads(path.read_text())
+        data.setdefault("history_enabled", False)
+        data.setdefault("history_index", [])
+        return data
+    except (json.JSONDecodeError, OSError):
+        return {"history_enabled": False, "history_index": []}
+
+
+def save_user_data(user_id: str, history_enabled: bool, history_index: list[dict]) -> None:
+    path = _history_path(user_id)
+    try:
+        path.write_text(
+            json.dumps(
+                {"history_enabled": history_enabled, "history_index": history_index},
+                indent=2,
+            )
+        )
+    except OSError:
+        pass
 
 
 async def main() -> None:
@@ -101,8 +136,8 @@ async def main() -> None:
         st.session_state.voice_manager = VoiceManager.from_env()
     voice = st.session_state.voice_manager
 
-    if "thread_id" not in st.session_state:
-        thread_id = st.query_params.get("thread_id")
+    if "messages" not in st.session_state:
+        thread_id = st.session_state.get("thread_id") or st.query_params.get("thread_id")
         if not thread_id:
             thread_id = str(uuid.uuid4())
             messages = []
@@ -114,6 +149,11 @@ async def main() -> None:
                 messages = []
         st.session_state.messages = messages
         st.session_state.thread_id = thread_id
+
+    if "history_index" not in st.session_state or "history_enabled" not in st.session_state:
+        _user_data = load_user_data(user_id)
+        st.session_state.history_index = _user_data["history_index"]
+        st.session_state.history_enabled = _user_data["history_enabled"]
 
     # Config options
     with st.sidebar:
@@ -198,6 +238,27 @@ async def main() -> None:
         if st.button(":material/upload: Share/resume chat", use_container_width=True):
             share_chat_dialog()
 
+        history_toggle = st.toggle(
+            "Save chat history",
+            value=st.session_state.history_enabled,
+        )
+        if history_toggle != st.session_state.history_enabled:
+            st.session_state.history_enabled = history_toggle
+            save_user_data(user_id, history_toggle, st.session_state.history_index)
+
+        if st.session_state.history_index:
+            with st.expander(":material/history: Past Chats", expanded=False):
+                for entry in reversed(st.session_state.history_index):
+                    if st.button(
+                        entry["label"],
+                        key=f"hist_{entry['thread_id']}",
+                        use_container_width=True,
+                    ):
+                        st.session_state.thread_id = entry["thread_id"]
+                        st.query_params["thread_id"] = entry["thread_id"]
+                        del st.session_state.messages
+                        st.rerun()
+
         "[View the source code](https://github.com/JoshuaC215/agent-service-toolkit)"
         st.caption(
             "Made with :material/favorite: by [Joshua](https://www.linkedin.com/in/joshua-k-carroll/) in Oakland"
@@ -254,6 +315,19 @@ async def main() -> None:
         user_input = st.chat_input()
 
     if user_input:
+        if st.session_state.history_enabled and not any(
+            e["thread_id"] == st.session_state.thread_id for e in st.session_state.history_index
+        ):
+            st.session_state.history_index.append(
+                {
+                    "thread_id": st.session_state.thread_id,
+                    "label": user_input[:40],
+                    "created_at": datetime.now().isoformat(),
+                }
+            )
+            save_user_data(
+                user_id, st.session_state.history_enabled, st.session_state.history_index
+            )
         messages.append(ChatMessage(type="human", content=user_input))
         st.chat_message("human").write(user_input)
         try:
