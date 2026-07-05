@@ -55,6 +55,7 @@ docker compose watch
 1. **LangGraph Agent and latest features**: A customizable agent built using the LangGraph framework. Implements the latest LangGraph v1.0 features including human in the loop with `interrupt()`, flow control with `Command`, long-term memory with `Store`, and `langgraph-supervisor`.
 1. **FastAPI Service**: Serves the agent with both streaming and non-streaming endpoints.
 1. **Advanced Streaming**: A novel approach to support both token-based and message-based streaming.
+1. **AG-UI Protocol Support**: Every agent is also served over the [AG-UI protocol](https://docs.ag-ui.com) for connecting AG-UI compatible frontends like CopilotKit - see [docs](docs/AGUI.md).
 1. **Streamlit Interface**: Provides a user-friendly chat interface for interacting with the agent, including voice input and output.
 1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path. Available agents and models are described in `/info`
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.

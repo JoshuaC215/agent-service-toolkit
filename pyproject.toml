@@ -57,6 +57,7 @@ dependencies = [
     "uvicorn ~=0.49.0",
     "langchain-mcp-adapters>=0.3.0",
     "ddgs>=9.14.4",
+    "ag-ui-langgraph~=0.0.42",
 ]
 
 [dependency-groups]
@@ -106,3 +107,7 @@ follow_untyped_imports = true
 [[tool.mypy.overrides]]
 module = ["langchain_mcp_adapters.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["ag_ui_langgraph.*"]
+follow_untyped_imports = true

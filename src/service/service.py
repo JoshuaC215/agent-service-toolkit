@@ -35,6 +35,7 @@ from schema import (
     StreamInput,
     UserInput,
 )
+from service.agui import router as agui_router
 from service.utils import (
     convert_message_content_to_string,
     langchain_to_chat_message,
@@ -108,6 +109,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
+# AG-UI protocol endpoints inherit the same bearer auth - see service/agui.py
+router.include_router(agui_router)
 
 
 @router.get("/info")

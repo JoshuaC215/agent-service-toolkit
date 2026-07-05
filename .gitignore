@@ -191,3 +191,7 @@ cython_debug/
 # Private Credentials, ignore everything in the folder but the .gitkeep file
 privatecredentials/*
 !privatecredentials/.gitkeep
+
+# Node (scripts/agui-client)
+node_modules/
+package-lock.json
