@@ -46,6 +46,13 @@ interrupt_graph.add_edge("ask", END)
 interrupt_agent = interrupt_graph.compile(checkpointer=MemorySaver())
 
 
+@pytest.fixture(autouse=True)
+def _reset_captured_configurable():
+    """Every test using model_agent writes to this shared dict; reset before each test."""
+    captured_configurable.clear()
+    yield
+
+
 @pytest.fixture
 def mock_agui_agent():
     def agent_lookup(agent_id: str):
@@ -132,7 +139,6 @@ def test_agui_unknown_agent(mock_agui_agent, test_client) -> None:
 
 def test_agui_configurable_passthrough(mock_agui_agent, test_client) -> None:
     """forwardedProps.configurable values reach the agent's configurable."""
-    captured_configurable.clear()
     body = run_input(forwardedProps={"configurable": {"model": "fake", "user_id": "user-123"}})
     collect_events(test_client, "/agui/model-agent/run", body)
     assert captured_configurable.get("model") == "fake"
