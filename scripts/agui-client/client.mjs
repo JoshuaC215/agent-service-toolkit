@@ -33,6 +33,7 @@ console.log(`user: ${message}\n`);
 agent.messages = [{ id: randomUUID(), role: "user", content: message }];
 
 const eventTypes = new Set();
+let printedPrefix = false;
 try {
   await agent.runAgent(
     { runId: randomUUID() },
@@ -40,8 +41,15 @@ try {
       onEvent({ event }) {
         eventTypes.add(event.type);
       },
-      onTextMessageContentEvent({ textMessageBuffer }) {
-        process.stdout.write(`\rassistant: ${textMessageBuffer}`);
+      onTextMessageContentEvent({ event }) {
+        // Print each delta as it arrives rather than re-rendering the full buffer -
+        // an in-place overwrite via \r depends on terminal support that isn't
+        // consistent (e.g. piping through `docker compose logs`).
+        if (!printedPrefix) {
+          process.stdout.write("assistant: ");
+          printedPrefix = true;
+        }
+        process.stdout.write(event.delta);
       },
       onCustomEvent({ event }) {
         if (event.name === "on_interrupt") {
