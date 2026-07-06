@@ -15,7 +15,7 @@ This project offers a template for you to easily build and run your own agents u
 
 ### [Try the app!](https://agent-service-toolkit.streamlit.app/)
 
-<a href="https://agent-service-toolkit.streamlit.app/"><img src="media/app_screenshot.png" width="600"></a>
+<a href="https://agent-service-toolkit.streamlit.app/"><img src="media/app_screenshot.png" width="600" alt="App screenshot"></a>
 
 ### Quickstart
 
@@ -48,7 +48,7 @@ docker compose watch
 
 ### Architecture Diagram
 
-<img src="media/agent_architecture.png" width="600">
+<img src="media/agent_architecture.png" width="600" alt="Agent architecture diagram">
 
 ### Key Features
 
@@ -105,11 +105,9 @@ To customize the agent for your own use case:
 1. Import and add your new agent to the `agents` dictionary in `src/agents/agents.py`. Your agent can be called by `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`.
 1. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
 
-
 ### Handling Private Credential files
 
 If your agents or chosen LLM require file-based credential files or certificates, the `privatecredentials/` has been provided for your development convenience. All contents, excluding the `.gitkeep` files, are ignored by git and docker's build process. See [Working with File-based Credentials](docs/File_Based_Credentials.md) for suggested use.
-
 
 ### Docker Setup
 
@@ -120,6 +118,7 @@ For local development, we recommend using [docker compose watch](https://docs.do
 1. Make sure you have Docker and Docker Compose (>= [v2.23.0](https://docs.docker.com/compose/release-notes/#2230)) installed on your system.
 
 2. Create a `.env` file from the `.env.example`. At minimum, you need to provide an LLM API key (e.g., OPENAI_API_KEY).
+
    ```sh
    cp .env.example .env
    # Edit .env to add your API keys
