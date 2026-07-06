@@ -4,17 +4,18 @@ from client import AgentClient
 
 
 @pytest.mark.docker
-def test_mongo_checkpointer_persists_history():
-    """Confirm the Mongo-backed checkpointer actually persists conversation state.
+def test_checkpointer_persists_history():
+    """Confirm the configured checkpointer persists conversation state across turns.
 
-    Requires the service running with DATABASE_TYPE=mongo against a live MongoDB
-    (see scripts/smoke_test_optional.sh) and USE_FAKE_MODEL=true.
+    Backend-agnostic: exercises whichever DATABASE_TYPE the service was started
+    with. scripts/smoke_test.sh runs this against both postgres and mongo.
+    Requires a running service (USE_FAKE_MODEL=true) backed by a live database.
 
     Uses the default agent (rather than pinning one) because /history always reads
     state through DEFAULT_AGENT regardless of which agent a thread was invoked with.
     """
     client = AgentClient("http://localhost:8080")
-    thread_id = "smoke-test-mongo-thread"
+    thread_id = "smoke-test-persistence-thread"
 
     client.invoke("Tell me a joke?", thread_id=thread_id, model="fake")
     client.invoke("Tell me another?", thread_id=thread_id, model="fake")
