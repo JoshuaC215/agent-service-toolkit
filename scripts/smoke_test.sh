@@ -37,7 +37,8 @@ cd "$(dirname "$0")/.."
 # Unique per run so the backend verification below reflects THIS run's data even
 # if the database volume isn't empty. Exported so the pytest test uses the same
 # thread id (see tests/smoke/test_persistence.py).
-export SMOKE_THREAD_ID="smoke-test-$(date +%s)-$$"
+SMOKE_THREAD_ID="smoke-test-$(date +%s)-$$"
+export SMOKE_THREAD_ID
 
 # LangFuse's self-host compose is fetched from upstream at this pinned tag rather
 # than vendored into the repo. Bump this to move to a newer LangFuse.
@@ -57,8 +58,7 @@ start_service() {
   SERVICE_LOG="$(mktemp)"
   env USE_FAKE_MODEL=true "$@" uv run python src/run_service.py > "$SERVICE_LOG" 2>&1 &
   SERVICE_PID=$!
-  local i
-  for i in $(seq 1 30); do
+  for _ in $(seq 1 30); do
     if curl -sf http://localhost:8080/health >/dev/null 2>&1; then
       return 0
     fi
@@ -185,7 +185,9 @@ smoke_langfuse() {
   local pk="pk-lf-smoke-public" sk="sk-lf-smoke-secret"
 
   # Fetch LangFuse's official self-host compose (pinned) rather than vendoring it.
-  LANGFUSE_COMPOSE="$(mktemp --suffix=.langfuse.yml)"
+  # Bare mktemp (no --suffix) for macOS/BSD portability; `docker compose -f`
+  # doesn't care about the file extension.
+  LANGFUSE_COMPOSE="$(mktemp)"
   echo "  fetching LangFuse compose @ $LANGFUSE_REF"
   if ! curl -sSL "https://raw.githubusercontent.com/langfuse/langfuse/$LANGFUSE_REF/docker-compose.yml" \
     -o "$LANGFUSE_COMPOSE"; then
@@ -204,8 +206,7 @@ smoke_langfuse() {
     docker compose -f "$LANGFUSE_COMPOSE" up -d
 
   echo "  waiting for langfuse-web..."
-  local i
-  for i in $(seq 1 40); do
+  for _ in $(seq 1 40); do
     curl -sf http://localhost:3000/api/public/health >/dev/null 2>&1 && break
     sleep 3
   done
@@ -236,7 +237,7 @@ print('  traced invoke ok')
 "
   echo "  waiting for the trace to land in LangFuse (ingestion is async)..."
   local n=0
-  for i in $(seq 1 20); do
+  for _ in $(seq 1 20); do
     n="$(curl -s -u "$pk:$sk" "http://localhost:3000/api/public/traces?limit=5" \
       | python3 -c 'import sys, json; print(len(json.load(sys.stdin).get("data", [])))' 2>/dev/null || echo 0)"
     [[ "$n" =~ ^[0-9]+$ ]] && (( n > 0 )) && break
