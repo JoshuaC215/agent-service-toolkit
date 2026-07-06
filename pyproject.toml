@@ -70,6 +70,7 @@ dev = [
     "pytest-asyncio",
     "ruff",
     "mypy ~=2.1.0",
+    "pymarkdownlnt",
 ]
 
 # Group for the minimal dependencies to run just the client and Streamlit app.
@@ -95,6 +96,17 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-fake-openai-key"
+
+[tool.pymarkdown]
+# Docs use long, unwrapped prose lines rather than hard-wrapping at a fixed
+# column, so line length isn't enforced.
+plugins.md013.enabled = false
+# Inline HTML (e.g. <img> with width=) is used intentionally in README.md.
+plugins.md033.enabled = false
+# Not every doc needs to start with a top-level heading.
+plugins.md041.enabled = false
+# Allow repeated heading text as long as it's not adjacent siblings.
+plugins.md024.siblings_only = true
 
 [tool.mypy]
 plugins = "pydantic.mypy"

@@ -14,7 +14,7 @@ than upgrading everything blindly.
 ## Where versions live
 
 | What | File |
-|---|---|
+| --- | --- |
 | Runtime deps + version pins | `pyproject.toml` → `[project] dependencies` |
 | Dev tooling (ruff, mypy, pytest, …) | `pyproject.toml` → `[dependency-groups] dev` |
 | Minimal client/Streamlit deps (a subset, **kept in sync** with the main list) | `pyproject.toml` → `[dependency-groups] client` |
@@ -187,6 +187,7 @@ Majors intentionally held out of the safe round, each needing its own PR:
 majors get triaged and held out of a safe-bumps round.
 
 **Landed since the table above was written:**
+
 - **langfuse** 3.15.0 → 4.12.0: previously deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250)
   pending a validated look at v4. Investigated and landed: this repo's entire Langfuse surface is
   `from langfuse.langchain import CallbackHandler` (no-arg `CallbackHandler()`) plus
@@ -228,7 +229,7 @@ The project follows CPython's support cycle: a new minor each October, ~5 years 
 stable release** (2025-10-07).
 
 | Version | Released | Security EOL |
-|---|---|---|
+| --- | --- | --- |
 | 3.10 | Oct 2021 | Oct 2026 |
 | 3.11 | Oct 2022 | Oct 2027 |
 | 3.12 | Oct 2023 | Oct 2028 |
