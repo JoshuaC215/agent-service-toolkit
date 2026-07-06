@@ -99,8 +99,8 @@ network calls, tiny real cost) — run it by hand or from a scheduled trigger wi
 keys populated:
 
 ```sh
-uv run python scripts/check_live_models.py                    # all configured providers
-uv run python scripts/check_live_models.py --provider anthropic google
+PYTHONPATH=src uv run python scripts/check_live_models.py                    # all configured providers
+PYTHONPATH=src uv run python scripts/check_live_models.py --provider anthropic google
 ```
 
 A `SKIP` line means no credentials were present for that provider — that's

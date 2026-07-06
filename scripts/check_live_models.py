@@ -6,9 +6,9 @@ This is a maintainer tool for periodic model-catalog refreshes (see the
 model-refresh skill) -- it is NOT part of the pytest suite, since it makes real
 network calls against provider APIs and costs a small amount of real money.
 
-Usage:
-    uv run python scripts/check_live_models.py
-    uv run python scripts/check_live_models.py --provider anthropic google
+Usage (run from the repo root; PYTHONPATH=src is required, same as src/run_service.py):
+    PYTHONPATH=src uv run python scripts/check_live_models.py
+    PYTHONPATH=src uv run python scripts/check_live_models.py --provider anthropic google
 """
 
 import argparse
@@ -16,11 +16,9 @@ import asyncio
 import sys
 from collections.abc import Callable
 
-sys.path.insert(0, "src")
-
-from core.llm import get_model  # noqa: E402
-from core.settings import settings  # noqa: E402
-from schema.models import (  # noqa: E402
+from core.llm import get_model
+from core.settings import settings
+from schema.models import (
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
