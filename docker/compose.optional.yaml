@@ -1,6 +1,13 @@
 # Optional-dependency add-on for compose.yaml, layered on top rather than merged
 # into the default stack so `docker compose up` stays lightweight.
 #
+# scripts/smoke_test_optional.sh only starts the `mongo` service from this file
+# (docker compose -f compose.yaml -f docker/compose.optional.yaml up -d mongo)
+# and runs the service directly on the host against it, to avoid rebuilding the
+# service image on every run. If you want the fully containerized stack instead
+# (e.g. testing locally where builds are cheap), this file also layers onto
+# agent_service so the following works standalone:
+#
 #   docker compose -f compose.yaml -f docker/compose.optional.yaml up --build
 #
 # Adds a MongoDB checkpointer backend. See scripts/smoke_test_optional.sh for
