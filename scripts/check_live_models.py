@@ -2,8 +2,8 @@
 
 Sends a minimal one-token prompt to every model in schema.models for providers
 whose credentials are present in the environment, and reports pass/fail per model.
-This is a maintainer tool for periodic model-catalog refreshes (see
-docs/Model_Refresh.md) -- it is NOT part of the pytest suite, since it makes real
+This is a maintainer tool for periodic model-catalog refreshes (see the
+model-refresh skill) -- it is NOT part of the pytest suite, since it makes real
 network calls against provider APIs and costs a small amount of real money.
 
 Usage:
