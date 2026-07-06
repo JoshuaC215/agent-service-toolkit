@@ -9,8 +9,11 @@ def test_mongo_checkpointer_persists_history():
 
     Requires the service container running with DATABASE_TYPE=mongo against a live
     MongoDB (see docker/compose.optional.yaml) and USE_FAKE_MODEL=true.
+
+    Uses the default agent (rather than pinning one) because /history always reads
+    state through DEFAULT_AGENT regardless of which agent a thread was invoked with.
     """
-    client = AgentClient("http://0.0.0.0", agent="chatbot")
+    client = AgentClient("http://0.0.0.0")
     thread_id = "smoke-test-mongo-thread"
 
     client.invoke("Tell me a joke?", thread_id=thread_id, model="fake")
