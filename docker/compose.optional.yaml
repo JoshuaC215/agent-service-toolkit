@@ -1,0 +1,33 @@
+\
+# Optional-dependency add-on for compose.yaml, layered on top rather than merged
+# into the default stack so `docker compose up` stays lightweight.
+#
+#   docker compose -f compose.yaml -f docker/compose.optional.yaml up --build
+#
+# Adds a MongoDB checkpointer backend. See scripts/smoke_test_optional.sh for
+# an automated pass that exercises it end-to-end (plus AG-UI).
+services:
+  mongo:
+    image: mongo:8
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  agent_service:
+    environment:
+      - DATABASE_TYPE=mongo
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+      - MONGO_DB=agent_service
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo_data:
