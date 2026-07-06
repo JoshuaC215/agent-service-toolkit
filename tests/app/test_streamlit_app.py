@@ -96,6 +96,32 @@ def test_app_thread_id_history(mock_agent_client):
     assert not at.exception
 
 
+def test_app_resume_with_agent_param(mock_agent_client):
+    """Test that an agent in the resume URL is used to fetch history and kept selected."""
+
+    at = AppTest.from_file("../../src/streamlit_app.py")
+    at.query_params["thread_id"] = "1234"
+    at.query_params["agent"] = "chatbot"
+    HISTORY = [
+        ChatMessage(type="human", content="What is the weather?"),
+        ChatMessage(type="ai", content="The weather is sunny."),
+    ]
+    # Mirror the real client: update_agent() sets the client's selected agent
+    mock_agent_client.update_agent.side_effect = lambda agent, verify=True: setattr(
+        mock_agent_client, "agent", agent
+    )
+    mock_agent_client.get_history.return_value = ChatHistory(messages=HISTORY)
+    at.run()
+    print(at)
+    mock_agent_client.update_agent.assert_called_with("chatbot")
+    mock_agent_client.get_history.assert_called_with(thread_id="1234", agent="chatbot")
+    # The agent from the URL stays selected in the sidebar for the continued conversation
+    assert at.sidebar.selectbox[1].value == "chatbot"
+    assert at.chat_message[0].markdown[0].value == "What is the weather?"
+    assert at.chat_message[1].markdown[0].value == "The weather is sunny."
+    assert not at.exception
+
+
 def test_app_feedback(mock_agent_client):
     """TODO: Can't figure out how to interact with st.feedback"""
 

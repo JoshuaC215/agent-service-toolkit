@@ -102,16 +102,21 @@ async def main() -> None:
     voice = st.session_state.voice_manager
 
     if "thread_id" not in st.session_state:
+        # Honor an agent from the URL (added by the share/resume dialog). Threads are
+        # shared across agents by thread_id (see docs/AGUI.md) and the server keeps no
+        # record of a thread's "owning" agent, so a resumed thread must be read through
+        # the graph that created it — otherwise history comes back empty.
+        if agent_from_url := st.query_params.get("agent"):
+            try:
+                agent_client.update_agent(agent_from_url)
+            except AgentClientError:
+                st.error(f"Unknown agent in URL: {agent_from_url}. Using the default agent.")
         thread_id = st.query_params.get("thread_id")
         if not thread_id:
             thread_id = str(uuid.uuid4())
             messages = []
         else:
             try:
-                # Pass the currently-selected agent so the thread is read through the
-                # graph that created it — threads are shared across agents by thread_id
-                # (see docs/AGUI.md) and reading through the wrong graph returns empty
-                # history.
                 messages: ChatHistory = agent_client.get_history(
                     thread_id=thread_id, agent=agent_client.agent
                 ).messages
@@ -141,7 +146,9 @@ async def main() -> None:
             model_idx = agent_client.info.models.index(agent_client.info.default_model)
             model = st.selectbox("LLM to use", options=agent_client.info.models, index=model_idx)
             agent_list = [a.key for a in agent_client.info.agents]
-            agent_idx = agent_list.index(agent_client.info.default_agent)
+            # Default to the client's current agent (e.g. set from the resume URL)
+            # rather than always resetting to the service default.
+            agent_idx = agent_list.index(agent_client.agent or agent_client.info.default_agent)
             agent_client.agent = st.selectbox(
                 "Agent to use",
                 options=agent_list,
@@ -194,10 +201,10 @@ async def main() -> None:
             # if it's not localhost, switch to https by default
             if not st_base_url.startswith("https") and "localhost" not in st_base_url:
                 st_base_url = st_base_url.replace("http", "https")
-            # Include both thread_id and user_id in the URL for sharing to maintain user identity
-            chat_url = (
-                f"{st_base_url}?thread_id={st.session_state.thread_id}&{USER_ID_COOKIE}={user_id}"
-            )
+            # Include the thread_id, agent and user_id in the URL: the agent so the
+            # thread is resumed through the graph that created it, and the user_id
+            # to maintain user identity.
+            chat_url = f"{st_base_url}?thread_id={st.session_state.thread_id}&agent={agent_client.agent}&{USER_ID_COOKIE}={user_id}"
             st.markdown(f"**Chat URL:**\n```text\n{chat_url}\n```")
             st.info("Copy the above URL to share or revisit this chat")
 
