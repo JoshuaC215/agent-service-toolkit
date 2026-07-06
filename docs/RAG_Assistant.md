@@ -11,11 +11,11 @@ To create a Chroma database:
 3. You can change the database name, chunk size and overlap size.
 4. Assuming you have already followed the [Quickstart](../README.md#quickstart) and activated the virtual environment, to create the database run:
 
-```sh
-python scripts/create_chroma_db.py
-```
+   ```sh
+   python scripts/create_chroma_db.py
+   ```
 
-1. If successful, a Chroma db will be created in the repository root directory.
+5. If successful, a Chroma db will be created in the repository root directory.
 
 ## Configuring the RAG assistant
 
@@ -26,25 +26,25 @@ To create a RAG assistant:
 3. Update the `database_search_func` function description to accurately describe what the purpose and contents of your database is.
 4. Open [`rag_assistant.py` file](../src/agents/rag_assistant.py) and update the agent's instuctions to describe what the assistant's speciality is and what knowledge it has access to, for example:
 
-```python
-instructions = f"""
-    You are a helpful HR assistant with the ability to search a database containing information on our company's policies, benefits and handbook.
-    Today's date is {current_date}.
+   ```python
+   instructions = f"""
+       You are a helpful HR assistant with the ability to search a database containing information on our company's policies, benefits and handbook.
+       Today's date is {current_date}.
 
-    NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.
+       NOTE: THE USER CAN'T SEE THE TOOL RESPONSE.
 
-    A few things to remember:
-    - If you have access to multiple databases, gather information from a diverse range of sources before crafting your response.
-    - Please include the source of the information used in your response.
-    - Use a friendly but professional tone when replying.
-    - Only use information from the database. Do not use information from outside sources.
-    """
-```
+       A few things to remember:
+       - If you have access to multiple databases, gather information from a diverse range of sources before crafting your response.
+       - Please include the source of the information used in your response.
+       - Use a friendly but professional tone when replying.
+       - Only use information from the database. Do not use information from outside sources.
+       """
+   ```
 
-1. Open [`streamlit_app.py` file](../src/streamlit_app.py) and update the agent's welcome message:
+5. Open [`streamlit_app.py` file](../src/streamlit_app.py) and update the agent's welcome message:
 
-```python
-WELCOME = """Hello! I'm your AI-powered HR assistant, here to help you navigate company policies, the employee handbook, and benefits. Ask me anything!""
-```
+   ```python
+   WELCOME = """Hello! I'm your AI-powered HR assistant, here to help you navigate company policies, the employee handbook, and benefits. Ask me anything!""
+   ```
 
-1. Run the application and test your RAG assistant.
+6. Run the application and test your RAG assistant.
