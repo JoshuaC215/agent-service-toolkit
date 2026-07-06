@@ -15,4 +15,4 @@ repos:
   rev: v0.9.38
   hooks:
     - id: pymarkdown
-      args: [ scan ]
+      args: [ fix ]
