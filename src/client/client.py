@@ -340,17 +340,25 @@ class AgentClient:
             except httpx.HTTPError as e:
                 raise AgentClientError(f"Error: {e}")
 
-    def get_history(self, thread_id: str) -> ChatHistory:
+    def get_history(self, thread_id: str, agent: str | None = None) -> ChatHistory:
         """
         Get chat history.
 
         Args:
             thread_id (str, optional): Thread ID for identifying a conversation
+            agent (str, optional): The agent whose graph should interpret the thread.
+                Threads are shared across agents by thread_id and the server keeps no
+                record of a thread's "owning" agent, so the caller must pass the agent
+                that created the thread — reading it through a different agent's graph
+                returns empty/incomplete history. Defaults to the client's selected
+                agent, falling back to the service default agent.
         """
+        agent = agent or self.agent
         request = ChatHistoryInput(thread_id=thread_id)
+        url = f"{self.base_url}/{agent}/history" if agent else f"{self.base_url}/history"
         try:
             response = httpx.post(
-                f"{self.base_url}/history",
+                url,
                 json=request.model_dump(),
                 headers=self._headers,
                 timeout=self.timeout,

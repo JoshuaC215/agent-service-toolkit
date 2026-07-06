@@ -108,7 +108,13 @@ async def main() -> None:
             messages = []
         else:
             try:
-                messages: ChatHistory = agent_client.get_history(thread_id=thread_id).messages
+                # Pass the currently-selected agent so the thread is read through the
+                # graph that created it — threads are shared across agents by thread_id
+                # (see docs/AGUI.md) and reading through the wrong graph returns empty
+                # history.
+                messages: ChatHistory = agent_client.get_history(
+                    thread_id=thread_id, agent=agent_client.agent
+                ).messages
             except AgentClientError:
                 st.error("No message history found for this Thread ID.")
                 messages = []

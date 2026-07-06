@@ -88,7 +88,7 @@ def test_app_thread_id_history(mock_agent_client):
     at.run()
     print(at)
     assert at.session_state.thread_id == "1234"
-    mock_agent_client.get_history.assert_called_with(thread_id="1234")
+    mock_agent_client.get_history.assert_called_with(thread_id="1234", agent="test-agent")
     assert at.chat_message[0].avatar == "user"
     assert at.chat_message[0].markdown[0].value == "What is the weather?"
     assert at.chat_message[1].avatar == "assistant"
