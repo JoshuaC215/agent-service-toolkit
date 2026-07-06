@@ -226,6 +226,26 @@ Contributions are welcome! Please feel free to submit a Pull Request. Currently 
    pytest
    ```
 
+### Smoke testing optional dependencies
+
+Some integrations aren't exercised by the unit suite or the default CI run because they
+need real infrastructure: the Postgres and MongoDB checkpointers, the AG-UI endpoint, and
+LangFuse tracing. `scripts/smoke_test.sh` spins up each dependency in Docker, runs the
+service against it, verifies the integration end-to-end (including a check that the
+intended backend was actually used, not a silent SQLite fallback), and tears it down.
+
+```sh
+./scripts/smoke_test.sh                 # default: postgres, mongo, agui
+./scripts/smoke_test.sh mongo           # a single target
+./scripts/smoke_test.sh langfuse        # heavy: starts LangFuse's full self-host stack
+./scripts/smoke_test.sh all             # everything, including langfuse
+```
+
+These are opt-in confidence checks for a maintainer or agent — not part of CI. Run the
+target that matches what you changed rather than the whole set. The optional add-on
+compose files live in `docker/` (e.g. `docker/compose.mongo.yaml`), layered on top of the
+default `compose.yaml` so the default stack stays lightweight.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
