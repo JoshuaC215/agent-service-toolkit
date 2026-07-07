@@ -405,16 +405,9 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
 @router.post("/history")
 async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> ChatHistory:
     """
-    Get chat history for a thread.
+    Get chat history for a thread and agent.
 
     If agent_id is not provided, the default agent will be used.
-
-    The agent whose graph is used to read the thread state matters: each agent is a
-    distinct LangGraph graph with its own state channels, so reading a thread through
-    the wrong graph returns empty/incomplete history. Threads are shared across agents
-    by thread_id (see docs/AGUI.md) and the server keeps no record of a thread's
-    "owning" agent, so the caller must pass the agent whose graph should interpret the
-    thread — typically the same agent that created it.
     """
     agent: AgentGraph = get_agent(agent_id)
     try:

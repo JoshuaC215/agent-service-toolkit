@@ -102,10 +102,7 @@ async def main() -> None:
     voice = st.session_state.voice_manager
 
     if "thread_id" not in st.session_state:
-        # Honor an agent from the URL (added by the share/resume dialog). Threads are
-        # shared across agents by thread_id (see docs/AGUI.md) and the server keeps no
-        # record of a thread's "owning" agent, so a resumed thread must be read through
-        # the graph that created it — otherwise history comes back empty.
+        # Honor an agent from the URL (added by the share/resume dialog).
         if agent_from_url := st.query_params.get("agent"):
             try:
                 agent_client.update_agent(agent_from_url)
