@@ -191,17 +191,23 @@ async def main() -> None:
 
         @st.dialog("Share/resume chat")
         def share_chat_dialog() -> None:
-            session = st.runtime.get_instance()._session_mgr.list_active_sessions()[0]
-            st_base_url = urllib.parse.urlunparse(
-                [session.client.request.protocol, session.client.request.host, "", "", "", ""]
-            )
-            # if it's not localhost, switch to https by default
-            if not st_base_url.startswith("https") and "localhost" not in st_base_url:
-                st_base_url = st_base_url.replace("http", "https")
+            # st.context.url is the browser's current URL (scheme, host, port, path)
+            # with query/anchor stripped. It comes from the frontend, so it works
+            # regardless of the server transport — unlike the old st.runtime
+            # session-client introspection, which broke when Streamlit moved from
+            # Tornado to Starlette (StarletteSessionClient has no `.request`).
+            st_base_url = (st.context.url or f"http://{os.getenv('HOST', '0.0.0.0')}").rstrip("/")
             # Include the thread_id, agent and user_id in the URL: the agent so the
             # thread is resumed through the graph that created it, and the user_id
             # to maintain user identity.
-            chat_url = f"{st_base_url}?thread_id={st.session_state.thread_id}&agent={agent_client.agent}&{USER_ID_COOKIE}={user_id}"
+            query = urllib.parse.urlencode(
+                {
+                    "thread_id": st.session_state.thread_id,
+                    "agent": agent_client.agent,
+                    USER_ID_COOKIE: user_id,
+                }
+            )
+            chat_url = f"{st_base_url}?{query}"
             st.markdown(f"**Chat URL:**\n```text\n{chat_url}\n```")
             st.info("Copy the above URL to share or revisit this chat")
 
