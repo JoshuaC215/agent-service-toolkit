@@ -107,12 +107,8 @@ async def main() -> None:
             thread_id = str(uuid.uuid4())
             messages = []
         else:
-            # Resuming a shared thread: read the agent from the URL so history is
-            # fetched through the graph that created the thread. Threads are shared
-            # across agents by thread_id and the server keeps no record of a thread's
-            # owning agent, so reading through the wrong graph returns empty history.
-            # The agent selectbox is bound to the same "agent" query param and adopts
-            # this value when it renders below.
+            # Read the agent from the URL so history is fetched through the graph that
+            # created the thread.
             resume_agent = st.query_params.get("agent") or agent_client.agent
             try:
                 messages: ChatHistory = agent_client.get_history(
@@ -124,9 +120,7 @@ async def main() -> None:
         st.session_state.messages = messages
         st.session_state.thread_id = thread_id
 
-    # Keep the browser URL shareable/resumable at all times so the address bar can be
-    # copied directly. thread_id is synced here; the agent is synced by the selectbox's
-    # query-params binding and user_id by get_or_create_user_id.
+    # Keep thread_id in the URL so the address bar is directly shareable.
     st.query_params["thread_id"] = st.session_state.thread_id
 
     # Config options
@@ -150,9 +144,7 @@ async def main() -> None:
             model = st.selectbox("LLM to use", options=agent_client.info.models, index=model_idx)
             agent_list = [a.key for a in agent_client.info.agents]
             agent_idx = agent_list.index(agent_client.info.default_agent)
-            # bind="query-params" syncs the selection to the ?agent= URL param (and
-            # initializes from it on load), so a shared/resumed URL selects the right
-            # agent. The param is dropped from the URL when the default is selected.
+            # Sync the selection to the ?agent= URL param (dropped when it's the default).
             agent_client.agent = st.selectbox(
                 "Agent to use",
                 options=agent_list,
@@ -200,11 +192,11 @@ async def main() -> None:
 
         @st.dialog("Share/resume chat")
         def share_chat_dialog() -> None:
-            # st.context.url is the browser URL (scheme/host/port/path) with the query
-            # string stripped, so rebuild the params explicitly. Include the agent so
-            # the thread is resumed through the graph that created it, and the user_id
-            # to maintain user identity.
-            st_base_url = (st.context.url or f"http://{os.getenv('HOST', '0.0.0.0')}").rstrip("/")
+            # st.context.url is the browser URL (with query string stripped). Rebuild
+            # the params, including the agent so the thread resumes through the right graph.
+            if not st.context.url:
+                st.error("Could not determine the app URL to build a shareable link.")
+                return
             query = urllib.parse.urlencode(
                 {
                     "thread_id": st.session_state.thread_id,
@@ -212,7 +204,7 @@ async def main() -> None:
                     USER_ID_COOKIE: user_id,
                 }
             )
-            chat_url = f"{st_base_url}?{query}"
+            chat_url = f"{st.context.url}?{query}"
             st.markdown(f"**Chat URL:**\n```text\n{chat_url}\n```")
             st.info("Copy the above URL to share or revisit this chat")
 
