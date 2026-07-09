@@ -276,14 +276,21 @@ def test_get_history(agent_client):
         ]
     }
 
-    # Mock successful response
+    # Mock successful response - defaults to the client's selected agent
     mock_response = Response(200, json=HISTORY, request=Request("POST", "http://test/history"))
-    with patch("httpx.post", return_value=mock_response):
+    with patch("httpx.post", return_value=mock_response) as mock_post:
         history = agent_client.get_history(THREAD_ID)
         assert isinstance(history, ChatHistory)
         assert len(history.messages) == 2
         assert history.messages[0].type == "human"
         assert history.messages[1].type == "ai"
+        # The client's selected agent is used to scope the history request
+        assert mock_post.call_args.args[0] == "http://test/test-agent/history"
+
+    # An explicit agent overrides the client's selected agent
+    with patch("httpx.post", return_value=mock_response) as mock_post:
+        agent_client.get_history(THREAD_ID, agent="chatbot")
+        assert mock_post.call_args.args[0] == "http://test/chatbot/history"
 
     # Test error response
     error_response = Response(
