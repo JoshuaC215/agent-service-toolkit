@@ -401,13 +401,15 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
     return FeedbackResponse()
 
 
+@router.post("/{agent_id}/history", operation_id="history_with_agent_id")
 @router.post("/history")
-async def history(input: ChatHistoryInput) -> ChatHistory:
+async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> ChatHistory:
     """
-    Get chat history.
+    Get chat history for a thread and agent.
+
+    If agent_id is not provided, the default agent will be used.
     """
-    # TODO: Hard-coding DEFAULT_AGENT here is wonky
-    agent: AgentGraph = get_agent(DEFAULT_AGENT)
+    agent: AgentGraph = get_agent(agent_id)
     try:
         state_snapshot = await agent.aget_state(
             config=RunnableConfig(configurable={"thread_id": input.thread_id})
