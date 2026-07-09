@@ -347,11 +347,6 @@ class AgentClient:
         Args:
             thread_id (str, optional): Thread ID for identifying a conversation
             agent (str, optional): The agent whose graph should interpret the thread.
-                Threads are shared across agents by thread_id and the server keeps no
-                record of a thread's "owning" agent, so the caller must pass the agent
-                that created the thread — reading it through a different agent's graph
-                returns empty/incomplete history. Defaults to the client's selected
-                agent, falling back to the service default agent.
         """
         agent = agent or self.agent
         request = ChatHistoryInput(thread_id=thread_id)
