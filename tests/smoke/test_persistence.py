@@ -20,8 +20,10 @@ def test_checkpointer_persists_history():
     can't tell the backends apart, since any working checkpointer would pass).
     Requires a running service (USE_FAKE_MODEL=true) backed by a live database.
 
-    Uses the default agent (rather than pinning one) because /history always reads
-    state through DEFAULT_AGENT regardless of which agent a thread was invoked with.
+    Uses the default agent for both invoke and get_history. Since /history is
+    agent-aware and AgentClient scopes it to the client's selected agent, the same
+    graph that created the thread also reads it back — which is what makes the
+    round-trip work now that each agent is a distinct graph with its own state.
     """
     client = AgentClient("http://localhost:8080")
 
