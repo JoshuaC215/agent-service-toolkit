@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v dockerd >/dev/null 2>&1 && ! docker info >/dev/null 2>&1 && sudo -n true 2>/dev/null; then (sudo -n dockerd >/tmp/dockerd.log 2>&1 &); sleep 3; fi; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
