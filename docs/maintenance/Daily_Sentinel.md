@@ -42,15 +42,19 @@ the biweekly maintenance run's digest (`Weekly_Maintenance_Run.md`).
    issues/PRs (plus items closed within the last 7 days — regression reports
    and abuse sometimes land on freshly-closed threads), new PRs on
    JoshuaC215/agent-service-toolkit.
-2. **CI on main:** the most recent run of the test workflow on `main` — is it
-   failing?
+2. **CI on main:** the most recent `test.yml` run on `main` — is it failing?
+   Filter to that workflow (several fire per push, and unfiltered run listings
+   overflow). If the latest run is still in progress, judge from the last
+   *completed* run; if the in-progress run started more than ~15 minutes ago,
+   wait for it rather than skating past the ambiguity.
 3. **Live app:** the egress proxy doesn't support WebSockets, so the browser
    round-trip (`scripts/smoke_live_app.py`) can't run here — it covers
    localhost in the weekly dependency ladder instead. Probe the front-end
    shell: `curl -sL --max-time 30 -c /tmp/st.jar -b /tmp/st.jar
-   https://agent-service-toolkit.streamlit.app/` → expect a final 200 with app
-   HTML (Streamlit Cloud 303s anonymous visitors via `share.streamlit.io`).
-   A wake-up/error page or non-200 is a real signal. One retry; route
+   https://agent-service-toolkit.streamlit.app/` → expect a final 200 with
+   Streamlit shell HTML (a redirect hop via `share.streamlit.io` may or may
+   not appear — the chain varies). A wake-up/error page or non-200 is a real
+   signal. One retry; route
    connection-layer failures (reset/timeout/CONNECT 403) through the proxy
    diagnosis (`/root/.ccr/README.md`) first — those are rule 5, not "app
    down."
@@ -82,9 +86,9 @@ End the session with a short alert message:
 
 - What happened, with links.
 - Why it clears the bar (one line).
-- The suggested next step, and what the sentinel already verified (e.g. "smoke
-  test failed twice, service /health also unreachable — looks like the Azure
-  backend, not Streamlit").
+- The suggested next step, and what the sentinel already verified (e.g. "shell
+  probe returned 5xx twice after retry and proxy checks — looks like Streamlit
+  Cloud or the app container, not repo code").
 
 Diagnose as far as read-only access allows, but do not fix, revert, or reply on
 GitHub — the maintainer decides the response, possibly by continuing this very

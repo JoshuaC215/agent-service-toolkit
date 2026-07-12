@@ -148,8 +148,8 @@ The egress proxy doesn't support WebSockets, so the browser round-trip
 (`scripts/smoke_live_app.py`) can't run against the deployed app from a routine
 session — it runs against **localhost** in Phase F's dependency ladder instead.
 Probe the front-end shell: `curl -sL -c /tmp/st.jar -b /tmp/st.jar
-https://agent-service-toolkit.streamlit.app/` → expect a final 200 with app
-HTML after the `share.streamlit.io` redirect; a wake-up or error page is a
+https://agent-service-toolkit.streamlit.app/` → expect a final 200 with
+Streamlit shell HTML (redirect chain may vary); a wake-up or error page is a
 finding (the visit also keeps the app awake). Report in the digest's Health
 section; route connection-layer failures through the proxy diagnosis
 (`/root/.ccr/README.md`) before calling it an outage.
