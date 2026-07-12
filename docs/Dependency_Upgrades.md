@@ -78,8 +78,23 @@ curl -s -N -XPOST localhost:8080/stream -H 'content-type: application/json' \
 What each check validates: `/health` + `/info` = FastAPI/uvicorn/pydantic boot and agent
 wiring; `/invoke` = a full graph run (langgraph + langchain + langsmith `run_id`); `/stream` =
 the SSE `StreamingResponse` path; `/history` on a reused `thread_id` = the checkpointer
-(langgraph-checkpoint-sqlite/aiosqlite by default). Also start the Streamlit app
-(`streamlit run src/streamlit_app.py`) to confirm the client renders.
+(langgraph-checkpoint-sqlite/aiosqlite by default).
+
+**Streamlit UI e2e (browser).** CI never drives the actual Streamlit interface — pytest mocks
+the transport and the docker CI job only checks health endpoints — so a real browser pass is
+the only thing that catches Streamlit/pandas/pyarrow-level UI breakage from a bump. With the
+fake-model service from above still running:
+
+```sh
+uv run streamlit run src/streamlit_app.py --server.headless true --server.port 8501 &
+uv run --with playwright python scripts/smoke_live_app.py http://localhost:8501
+```
+
+The script sends a chat message and verifies a streamed response renders and settles
+(exit 0 = pass; on failure it saves a diagnostic screenshot). Run this before opening any
+PR that bumps `streamlit`, its rendering stack (pandas, pyarrow, pillow, altair), or the
+client/schema code the UI consumes — and it's cheap enough to include in any refresh PR's
+verification ladder.
 
 **Containerized test.** To validate the image itself (base image + in-image `uv sync`), run
 `docker compose up --build` and hit the same endpoints on the mapped ports — this mirrors the
