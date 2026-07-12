@@ -252,4 +252,151 @@ default `compose.yaml` so the default stack stays lightweight.
 
 ## License
 
+## FAQ
+
+### What is the Agent Service Toolkit?
+
+A full toolkit for running an AI agent service built with LangGraph, FastAPI and Streamlit. It includes a LangGraph agent, a FastAPI service to serve it, a client to interact with the service, and a Streamlit app providing a chat interface.
+
+### How does it compare to LangGraph templates?
+
+| Aspect | Agent Service Toolkit | LangGraph Templates |
+|--------|----------------------|---------------------|
+| **Scope** | Full production stack | Agent focus |
+| **Components** | Service + UI + Client | Agent code |
+| **Streaming** | Token + Message based | Standard |
+| **Deployment** | Docker + FastAPI ready | Manual setup |
+
+This toolkit provides a **complete production setup** from agent definition to user interface, making it easier to get started with LangGraph-based projects.
+
+### What are the key features?
+
+| Feature | Description |
+|---------|-------------|
+| **LangGraph Agent** | Latest v1.0 features: interrupt(), Command, Store, langgraph-supervisor |
+| **FastAPI Service** | Streaming and non-streaming endpoints |
+| **Advanced Streaming** | Both token-based and message-based |
+| **Streamlit Interface** | Voice input/output, chat UI |
+| **Multiple Agents** | Call different agents by URL path |
+| **Async Design** | Efficient concurrent request handling |
+| **Content Moderation** | Safeguard integration (Groq) |
+| **RAG Agent** | ChromaDB-based retrieval |
+| **Feedback Mechanism** | Star-based with LangSmith integration |
+| **Docker Support** | Development and deployment ready |
+
+### What LLM providers are supported?
+
+- **OpenAI** (OPENAI_API_KEY)
+- **Anthropic** (ANTHROPIC_API_KEY)
+- **Groq** (GROQ_API_KEY)
+- **Ollama** (local) - [setup guide](docs/Ollama.md)
+- **VertexAI** (GCP) - [setup guide](docs/VertexAI.md)
+
+At least one LLM API key is required in `.env` file.
+
+### How do I get started?
+
+**Quick Start (Python):**
+```bash
+# Set API key
+echo 'OPENAI_API_KEY=your_key' >> .env
+
+# Install uv
+curl -LsSf https://astral.sh/uv/0.7.19/install.sh | sh
+
+# Install and run
+uv sync --frozen
+source .venv/bin/activate
+python src/run_service.py  # FastAPI service
+
+# In another shell
+streamlit run src/streamlit_app.py  # UI
+```
+
+**Docker Setup:**
+```bash
+echo 'OPENAI_API_KEY=your_key' >> .env
+docker compose watch
+```
+
+Access: Streamlit at `http://localhost:8501`, API at `http://localhost:8080`.
+
+### How do I build my own agent?
+
+1. Add new agent to `src/agents/` directory (copy `research_assistant.py` or `chatbot.py`)
+2. Import and add to `agents` dictionary in `src/agents/agents.py`
+3. Call via `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`
+4. Adjust Streamlit interface in `src/streamlit_app.py` if needed
+
+### What is the project structure?
+
+| Directory | Purpose |
+|-----------|---------|
+| `src/agents/` | Agent definitions (research_assistant, chatbot, rag) |
+| `src/schema/` | Protocol schema definitions |
+| `src/core/` | LLM definition, settings |
+| `src/service/` | FastAPI service |
+| `src/client/` | Client for agent service |
+| `src/streamlit_app.py` | Streamlit UI |
+| `tests/` | Unit and integration tests |
+
+### How do I use the AgentClient?
+
+```python
+from client import AgentClient
+client = AgentClient()
+
+# Simple invoke
+response = client.invoke("Tell me a joke?")
+response.pretty_print()
+
+# Streaming
+for chunk in client.stream("Explain quantum computing"):
+    print(chunk.content)
+```
+
+See `src/run_client.py` for full examples.
+
+### How do I use LangGraph Studio?
+
+```bash
+langgraph dev
+```
+
+Add your `.env` file and customize `langgraph.json`. See [LangGraph Studio docs](https://langchain-ai.github.io/langgraph/concepts/langgraph_studio/).
+
+### How do I set up RAG?
+
+See [docs/RAG_Assistant.md](docs/RAG_Assistant.md) for ChromaDB-based RAG agent configuration.
+
+### What projects are built with this toolkit?
+
+- **[PolyRAG](https://github.com/QuentinFuxa/PolyRAG)**: RAG over PostgreSQL + PDFs
+- **[agent-web-kit](https://github.com/alexrisch/agent-web-kit)**: Next.js frontend
+- **[DAPA](https://github.com/raushan-in/dapa)**: Digital Arrest Protection App
+
+### How do I run tests?
+
+```bash
+uv sync --frozen
+pre-commit install
+pytest
+```
+
+### How do I handle private credential files?
+
+Use the `privatecredentials/` directory - contents are ignored by git and Docker build. See [docs/File_Based_Credentials.md](docs/File_Based_Credentials.md).
+
+### What is the license?
+
+MIT License - see [LICENSE](LICENSE) file.
+
+### Where can I get help?
+
+- **Live Demo**: [agent-service-toolkit.streamlit.app](https://agent-service-toolkit.streamlit.app/)
+- **Video Walkthrough**: [YouTube](https://www.youtube.com/watch?v=pdYVHw_YCNY)
+- **GitHub Issues**: Bug reports and feature requests
+- **Contributing**: Pull requests welcome - see tests requirements above
+
+
 This project is licensed under the MIT License - see the LICENSE file for details.
