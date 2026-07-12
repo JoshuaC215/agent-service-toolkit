@@ -166,7 +166,10 @@ exit codes.
 Use the **model-refresh** skill. Work on a fresh branch, open a PR summarizing
 adds/removals/default changes with provider-doc citations. If provider API keys
 are present in the environment, run `scripts/check_live_models.py` as the skill
-directs; if not, note in the PR that live verification was skipped.
+directs; if not, note in the PR that live verification was skipped. Some
+environments provide a key under a non-standard variable name — the Routine
+prompt (not this public doc) carries any environment-specific mappings, and the
+script's `--anthropic-api-key-env` flag handles remapping (see its docstring).
 
 ## Phase F — Dependency refresh (first run of each month)
 
