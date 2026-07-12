@@ -9,16 +9,46 @@ network calls against provider APIs and costs a small amount of real money.
 Usage (run from the repo root; PYTHONPATH=src is required, same as src/run_service.py):
     PYTHONPATH=src uv run python scripts/check_live_models.py
     PYTHONPATH=src uv run python scripts/check_live_models.py --provider anthropic google
+
+If ANTHROPIC_API_KEY itself isn't settable in your environment, put the key under a
+different variable name and point --anthropic-api-key-env at it:
+    PYTHONPATH=src uv run python scripts/check_live_models.py --anthropic-api-key-env MY_VAR
 """
 
 import argparse
 import asyncio
+import os
 import sys
 from collections.abc import Callable
 
-from core.llm import get_model
-from core.settings import settings
-from schema.models import (
+
+def _remap_anthropic_api_key(argv: list[str]) -> None:
+    """Copy the --anthropic-api-key-env variable to ANTHROPIC_API_KEY, if given.
+
+    Runs before core.settings is imported, since Settings reads env vars at
+    construction time -- so this can't wait for the main argparse pass below.
+    Only acts when the flag is explicitly passed; otherwise ANTHROPIC_API_KEY
+    is left to whatever is (or isn't) already set.
+    """
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        return
+    env_var = None
+    for i, arg in enumerate(argv):
+        if arg == "--anthropic-api-key-env" and i + 1 < len(argv):
+            env_var = argv[i + 1]
+            break
+        if arg.startswith("--anthropic-api-key-env="):
+            env_var = arg.split("=", 1)[1]
+            break
+    if env_var and os.environ.get(env_var):
+        os.environ["ANTHROPIC_API_KEY"] = os.environ[env_var]
+
+
+_remap_anthropic_api_key(sys.argv[1:])
+
+from core.llm import get_model  # noqa: E402
+from core.settings import settings  # noqa: E402
+from schema.models import (  # noqa: E402
     AllModelEnum,
     AnthropicModelName,
     AWSModelName,
@@ -87,6 +117,17 @@ if __name__ == "__main__":
         default=[],
         metavar="PROVIDER",
         help="Limit to these provider values (e.g. anthropic google). Default: all configured.",
+    )
+    parser.add_argument(
+        "--anthropic-api-key-env",
+        default=None,
+        metavar="VAR",
+        help=(
+            "Env var to read the Anthropic key from if ANTHROPIC_API_KEY itself isn't set. "
+            "No fallback is checked unless this is passed. Applied before this script's own "
+            "imports run, so the value here is informational -- set the env var itself before "
+            "invoking the script."
+        ),
     )
     args = parser.parse_args()
     asyncio.run(main(set(args.provider)))
