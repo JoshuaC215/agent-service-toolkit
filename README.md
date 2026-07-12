@@ -209,7 +209,11 @@ The following are a few of the public projects that drew code or inspiration fro
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. Currently the tests need to be run using the local development without Docker setup. To run the tests for the agent service:
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+**A note on how this repo is maintained:** this is a solo-maintainer project, and issues, PRs, and discussions are triaged on a roughly biweekly cycle with help from an AI maintenance agent. Thanks for your patience if responses take a week or two — I will do my best to respond to truly urgent issues (vulnerability reports, etc.) or in-progress PRs within a few days. The full automation playbooks are versioned in [`docs/maintenance/`](docs/maintenance/) if you're curious how it works.
+
+Currently the tests need to be run using the local development without Docker setup. To run the tests for the agent service:
 
 1. Ensure you're in the project root directory and have activated your virtual environment.
 
