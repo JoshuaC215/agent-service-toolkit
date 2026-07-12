@@ -142,28 +142,17 @@ with no prior warning: re-opening is cheap and the invitation makes that clear.
 
 List every close in the digest with a link.
 
-## Phase C — Live app health checks (every run)
+## Phase C — Live app health check (every run)
 
-The cloud egress proxy does not support WebSocket upgrades, so the browser-based
-chat round-trip (`scripts/smoke_live_app.py`) cannot pass against the deployed
-app from a routine session. It still runs against **localhost** in the
-dependency ladder (Phase F / `docs/Dependency_Upgrades.md`) — the deployed app
-gets HTTP probes instead:
-
-- **Backend:** `https://agent-service.azurewebsites.net/health` is blocked by
-  the Web App's Azure access restrictions from this infrastructure (Azure's
-  403 page — verified 2026-07-12, not a proxy issue and not an outage). Skip
-  unless the maintainer opens access, in which case expect `{"status":"ok"}`
-  plus `/info` for agent/model wiring.
-- **Front-end shell:** `curl -sL -c /tmp/st.jar -b /tmp/st.jar
-  https://agent-service-toolkit.streamlit.app/` → expect a final 200 with app
-  HTML after the `share.streamlit.io` anonymous-auth redirect; a wake-up or
-  error page is a finding (and the visit itself keeps the app from sleeping).
-
-Report results in the digest's Health section; on failure, diagnose which layer
-(Streamlit Cloud edge, app container, or the Azure agent service) as far as
-read-only access allows. Route connection-layer failures through the proxy
-diagnosis (`/root/.ccr/README.md`) before classifying them as an outage.
+The egress proxy doesn't support WebSockets, so the browser round-trip
+(`scripts/smoke_live_app.py`) can't run against the deployed app from a routine
+session — it runs against **localhost** in Phase F's dependency ladder instead.
+Probe the front-end shell: `curl -sL -c /tmp/st.jar -b /tmp/st.jar
+https://agent-service-toolkit.streamlit.app/` → expect a final 200 with app
+HTML after the `share.streamlit.io` redirect; a wake-up or error page is a
+finding (the visit also keeps the app awake). Report in the digest's Health
+section; route connection-layer failures through the proxy diagnosis
+(`/root/.ccr/README.md`) before calling it an outage.
 
 ## Phase D — Infra smoke tests (every run)
 
@@ -230,15 +219,11 @@ End the session with **one** message, structured exactly as:
    - Numbered draft replies (full text, verbatim) and any flagged maintainer
      calls, security-sensitive items on top.
 2. **Done autonomously** — stale items closed (links).
-3. **Health** — live app smoke result, infra smoke results (or "skipped: no
-   relevant changes"), anything from CI worth knowing. Also: whenever this run
-   pushes to GitHub, read the remote's push response for a Dependabot
-   vulnerability banner ("GitHub found N vulnerabilities on ... default
-   branch"). If one appears, report the count, severity, and alert link here
-   verbatim — the alert contents aren't readable by this automation, only the
-   banner — and cross-check the repo's open Dependabot PRs: an alert with no
-   corresponding PR has no other path to maintainer attention, so flag it
-   explicitly.
+3. **Health** — live app check, infra smoke results, anything from CI worth
+   knowing. If any `git push` this run printed GitHub's Dependabot
+   vulnerability banner, report it verbatim (count, severity, link — the
+   banner is all this automation can see) and flag any alert with no
+   corresponding Dependabot PR.
 4. **Problems** — phases that failed or were skipped due to missing
    keys/allowlist/etc., each with a one-line cause.
 
