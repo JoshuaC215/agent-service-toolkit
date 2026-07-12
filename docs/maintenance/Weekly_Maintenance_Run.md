@@ -221,7 +221,14 @@ End the session with **one** message, structured exactly as:
      calls, security-sensitive items on top.
 2. **Done autonomously** — stale items closed (links).
 3. **Health** — live app smoke result, infra smoke results (or "skipped: no
-   relevant changes"), anything from CI worth knowing.
+   relevant changes"), anything from CI worth knowing. Also: whenever this run
+   pushes to GitHub, read the remote's push response for a Dependabot
+   vulnerability banner ("GitHub found N vulnerabilities on ... default
+   branch"). If one appears, report the count, severity, and alert link here
+   verbatim — the alert contents aren't readable by this automation, only the
+   banner — and cross-check the repo's open Dependabot PRs: an alert with no
+   corresponding PR has no other path to maintainer attention, so flag it
+   explicitly.
 4. **Problems** — phases that failed or were skipped due to missing
    keys/allowlist/etc., each with a one-line cause.
 
