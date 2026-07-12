@@ -35,11 +35,21 @@ def test_get_model_anthropic():
         assert model.streaming is True
 
 
+def test_get_model_anthropic_sonnet_5_omits_temperature():
+    # Claude Sonnet 5 rejects non-default sampling parameters with a 400 error,
+    # so get_model must not pass temperature for this model.
+    with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test_key"}):
+        model = get_model(AnthropicModelName.SONNET_5)
+        assert isinstance(model, ChatAnthropic)
+        assert model.model == "claude-sonnet-5"
+        assert model.streaming is True
+
+
 def test_get_model_groq():
     with patch.dict(os.environ, {"GROQ_API_KEY": "test_key"}):
         model = get_model(GroqModelName.LLAMA_31_8B)
         assert isinstance(model, ChatGroq)
-        assert model.model_name == "llama-3.1-8b"
+        assert model.model_name == "llama-3.1-8b-instant"
         assert model.temperature == 0.5
 
 
@@ -49,6 +59,15 @@ def test_get_model_groq_guard():
         assert isinstance(model, ChatGroq)
         assert model.model_name == "openai/gpt-oss-safeguard-20b"
         assert model.temperature < 0.01
+
+
+def test_get_model_groq_gpt_oss():
+    with patch.dict(os.environ, {"GROQ_API_KEY": "test_key"}):
+        model = get_model(GroqModelName.GPT_OSS_120B)
+        assert isinstance(model, ChatGroq)
+        assert model.model_name == "openai/gpt-oss-120b"
+        # Only the safeguard variant gets the temperature=0.0 override.
+        assert model.temperature == 0.5
 
 
 def test_get_model_ollama():

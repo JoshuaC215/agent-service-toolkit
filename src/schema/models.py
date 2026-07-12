@@ -22,6 +22,9 @@ class OpenAIModelName(StrEnum):
     GPT_5_NANO = "gpt-5-nano"
     GPT_5_MINI = "gpt-5-mini"
     GPT_5_1 = "gpt-5.1"
+    GPT_56_LUNA = "gpt-5.6-luna"
+    GPT_56_TERRA = "gpt-5.6-terra"
+    GPT_56_SOL = "gpt-5.6-sol"
 
 
 class AzureOpenAIModelName(StrEnum):
@@ -34,7 +37,7 @@ class AzureOpenAIModelName(StrEnum):
 class DeepseekModelName(StrEnum):
     """https://api-docs.deepseek.com/quick_start/pricing"""
 
-    DEEPSEEK_CHAT = "deepseek-chat"
+    DEEPSEEK_V4_FLASH = "deepseek-v4-flash"
 
 
 class AnthropicModelName(StrEnum):
@@ -42,36 +45,35 @@ class AnthropicModelName(StrEnum):
 
     HAIKU_45 = "claude-haiku-4-5"
     SONNET_45 = "claude-sonnet-4-5"
+    SONNET_5 = "claude-sonnet-5"
 
 
 class GoogleModelName(StrEnum):
     """https://ai.google.dev/gemini-api/docs/models/gemini"""
 
-    GEMINI_15_PRO = "gemini-1.5-pro"
-    GEMINI_20_FLASH = "gemini-2.0-flash"
-    GEMINI_20_FLASH_LITE = "gemini-2.0-flash-lite"
-    GEMINI_25_FLASH = "gemini-2.5-flash"
     GEMINI_25_PRO = "gemini-2.5-pro"
+    GEMINI_31_FLASH_LITE = "gemini-3.1-flash-lite"
+    GEMINI_35_FLASH = "gemini-3.5-flash"
     GEMINI_30_PRO = "gemini-3-pro-preview"
 
 
 class VertexAIModelName(StrEnum):
     """https://cloud.google.com/vertex-ai/generative-ai/docs/models"""
 
-    GEMINI_15_PRO = "gemini-1.5-pro"
-    GEMINI_20_FLASH = "gemini-2.0-flash"
-    GEMINI_20_FLASH_LITE = "models/gemini-2.0-flash-lite"
-    GEMINI_25_FLASH = "models/gemini-2.5-flash"
     GEMINI_25_PRO = "gemini-2.5-pro"
+    GEMINI_31_FLASH_LITE = "models/gemini-3.1-flash-lite"
+    GEMINI_35_FLASH = "models/gemini-3.5-flash"
     GEMINI_30_PRO = "gemini-3-pro-preview"
 
 
 class GroqModelName(StrEnum):
     """https://console.groq.com/docs/models"""
 
-    LLAMA_31_8B = "llama-3.1-8b"
-    LLAMA_33_70B = "llama-3.3-70b"
+    LLAMA_31_8B = "llama-3.1-8b-instant"
+    LLAMA_33_70B = "llama-3.3-70b-versatile"
 
+    GPT_OSS_20B = "openai/gpt-oss-20b"
+    GPT_OSS_120B = "openai/gpt-oss-120b"
     GPT_OSS_SAFEGUARD_20B = "openai/gpt-oss-safeguard-20b"
 
 
@@ -91,7 +93,7 @@ class OllamaModelName(StrEnum):
 class OpenRouterModelName(StrEnum):
     """https://openrouter.ai/models"""
 
-    GEMINI_25_FLASH = "google/gemini-2.5-flash"
+    GEMINI_35_FLASH = "google/gemini-3.5-flash"
 
 
 class OpenAICompatibleName(StrEnum):

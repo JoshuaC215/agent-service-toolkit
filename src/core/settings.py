@@ -183,7 +183,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(OpenAICompatibleName))
                 case Provider.DEEPSEEK:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = DeepseekModelName.DEEPSEEK_CHAT
+                        self.DEFAULT_MODEL = DeepseekModelName.DEEPSEEK_V4_FLASH
                     self.AVAILABLE_MODELS.update(set(DeepseekModelName))
                 case Provider.ANTHROPIC:
                     if self.DEFAULT_MODEL is None:
@@ -191,11 +191,11 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(AnthropicModelName))
                 case Provider.GOOGLE:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_20_FLASH
+                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_35_FLASH
                     self.AVAILABLE_MODELS.update(set(GoogleModelName))
                 case Provider.VERTEXAI:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = VertexAIModelName.GEMINI_20_FLASH
+                        self.DEFAULT_MODEL = VertexAIModelName.GEMINI_35_FLASH
                     self.AVAILABLE_MODELS.update(set(VertexAIModelName))
                 case Provider.GROQ:
                     if self.DEFAULT_MODEL is None:
@@ -211,7 +211,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(OllamaModelName))
                 case Provider.OPENROUTER:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = OpenRouterModelName.GEMINI_25_FLASH
+                        self.DEFAULT_MODEL = OpenRouterModelName.GEMINI_35_FLASH
                     self.AVAILABLE_MODELS.update(set(OpenRouterModelName))
                 case Provider.FAKE:
                     if self.DEFAULT_MODEL is None:
