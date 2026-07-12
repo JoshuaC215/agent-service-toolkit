@@ -42,7 +42,7 @@ export SMOKE_THREAD_ID
 
 # LangFuse's self-host compose is fetched from upstream at this pinned tag rather
 # than vendored into the repo. Bump this to move to a newer LangFuse.
-LANGFUSE_REF="v3.205.1"
+LANGFUSE_REF="v3.212.0"
 
 SERVICE_PID=""
 SERVICE_LOG=""

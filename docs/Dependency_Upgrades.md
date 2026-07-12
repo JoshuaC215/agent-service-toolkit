@@ -131,7 +131,7 @@ These are real issues hit during the June/July 2026 refresh — check them first
   `uses:` lines, not just the top-level `runs.using`.
 - **`astral-sh/setup-uv` stopped publishing floating major tags as of v8.0.0** (a deliberate
   supply-chain-hardening move, same motivation as the tj-actions incident). `@v7` still floats;
-  `@v8` requires pinning the exact release, e.g. `astral-sh/setup-uv@v8.2.0`.
+  `@v8` requires pinning the exact release, e.g. `astral-sh/setup-uv@v8.3.2`.
 - **`langchain` ⇄ `langgraph` move in lockstep.** The `langchain` meta-package pins a narrow
   `langgraph` range. e.g. `langchain 1.3.x` requires `langgraph >=1.2.5,<1.3`, while
   `langchain 1.2.18` requires `langgraph >=1.1.10,<1.2`. You cannot bump one past the other.
@@ -199,10 +199,68 @@ These are real issues hit during the June/July 2026 refresh — check them first
 
 Majors intentionally held out of the safe round, each needing its own PR:
 
-*None currently.* Add a table row here (`| Upgrade | From → To | Why deferred / ROI |`) as new
-majors get triaged and held out of a safe-bumps round.
+| Upgrade | From → To | Why deferred / ROI |
+| --- | --- | --- |
+| `postgres` compose/smoke-test image | `postgres:16` → `postgres:17` | Docker Hub's `postgres` image now publishes major 17 (16 remains supported/current). Held out of the July 12 2026 safe-bumps round because a Postgres major changes the on-disk format — anyone running this compose stack in anything more persistent than local/CI throwaway volumes needs an explicit `pg_upgrade`/dump-restore step, not a silent image-tag bump. Low urgency: this repo only uses Postgres as an ephemeral dev/CI checkpointer backend (`compose.yaml`), and 16 isn't EOL. Worth its own PR that also updates `docs/Dependency_Upgrades.md`'s infra-image guidance and confirms `scripts/smoke_test.sh postgres` and the `test-docker` CI job both still pass against 17 before flipping the default. |
+
+Add a table row here (`| Upgrade | From → To | Why deferred / ROI |`) as new majors get triaged
+and held out of a safe-bumps round.
 
 **Landed since the table above was written:**
+
+- **July 12 2026 safe-bumps round** (biweekly maintenance run, branch
+  `claude/dependency-refresh-2026-07-12`): `uv lock --upgrade` plus tilde-pin raises for versions
+  that landed just outside the existing compatible-release window. All within existing majors,
+  zero new lockfile conflicts, zero coupling-constraint hits (`langchain`⇄`langgraph`⇄checkpointer
+  ranges, the `pyarrow`/`langchain-google-vertexai` cap, and the `jiter` floor from
+  `langchain-openai`→`openai` all held with no forced moves).
+  - `pyproject.toml` pin raises: `fastapi` 0.138.2→0.139.0, `streamlit` 1.58.0→1.59.1 (also the
+    `client` dependency group), `uvicorn` 0.49.0→0.51.0, `langsmith` 0.9.4→0.10.2 (0.x minor —
+    checked the release notes: the only breaking change across 0.10.0-0.10.2 was removing the
+    `projects` accessor from `AsyncClient`, which this repo doesn't use — only sync `Client` and
+    `uuid7`, both in `src/service/service.py`), `setuptools` 82.0.1→83.0.0 (major, but not
+    imported anywhere in `src/` — only present as a runtime floor, presumably for a transitive
+    `pkg_resources` need — verified via full test suite + mypy with no issues), `mypy`
+    2.1.0→2.2.0 (no new type errors).
+  - Picked up by `uv lock --upgrade` within existing pins (no `pyproject.toml` edit needed):
+    `langchain` 1.3.11→1.3.13, `langchain-core` 1.4.8→1.4.9, `langchain-aws` 1.6.1→1.6.2,
+    `langchain-google-genai` 4.2.6→4.2.7, `langchain-openai` 1.3.3→1.3.5, `langgraph`
+    1.2.7→1.2.9, `langfuse` 4.12.0→4.14.0 (still within the `~=4.12` pin), `numpy` 2.5.0→2.5.1,
+    plus transitive-only movement (`anthropic`, `boto3`/`botocore`, `openai`, `google-*`,
+    `huggingface-hub`, `typer`, `virtualenv`, `regex`, `croniter`, `cffi`, and others — patch/minor
+    only). `pyopenssl` dropped out of the resolved graph entirely (no longer needed transitively).
+  - Dev-only, unpinned in `pyproject.toml`, picked up by the resolver automatically: `ruff`
+    0.15.20→0.15.21, `pytest`/`pytest-cov`/`pytest-asyncio` already at latest, `langgraph-cli`
+    0.4.30→0.4.31, `pymarkdownlnt` 0.9.38→0.9.39.
+  - GitHub Actions + uv CLI: `astral-sh/setup-uv` v8.2.0→v8.3.2 (exact-pin required per the
+    immutable-tag note above) and the `uv` CLI itself 0.11.26→0.11.28, kept in sync across all
+    four places it's declared — `.github/workflows/test.yml` (both `setup-uv` steps' `version:`),
+    `docker/Dockerfile.app`, `docker/Dockerfile.service`, and the `README.md` quickstart's
+    `curl .../uv/<version>/install.sh` snippet (this last one isn't in the "Where versions live"
+    table's three-file list by name, but is the same sync group — worth adding explicitly next
+    time this doc is edited). All other Actions pins (`actions/checkout@v7`,
+    `actions/setup-python@v6`, `docker/build-push-action@v7`, `docker/setup-buildx-action@v4`,
+    `docker/login-action@v4`, `codecov/codecov-action@v7`, `azure/webapps-deploy@v3`) are floating
+    major tags that already resolve to their latest point release (`v7.0.0`, `v6.3.0`, `v7.3.0`,
+    `v4.2.0`, `v4.4.0`, `v7.0.0`, `v3.0.8` respectively as of this pass) — nothing to edit.
+  - Infra: `LANGFUSE_REF` in `scripts/smoke_test.sh` bumped `v3.205.1`→`v3.212.0` (routine
+    self-host stack refresh, same v3 line); re-ran `./scripts/smoke_test.sh langfuse` against the
+    new ref and it passed (`/health` reports LangFuse connected, a traced `/invoke` call landed
+    and was verified via the LangFuse API). `postgres:16`/`mongo:8` compose tags are unpinned
+    below the major (both already resolve to their latest point release), and `mongo:8` is
+    already the newest published major — no change; see the backlog table above for the deferred
+    `postgres:17` major. Neither Postgres nor MongoDB smoke targets were re-run since neither's
+    pin changed this round (Phase D of this maintenance run already covers the full infra suite
+    against `main`).
+  - Docker base images (`python:3.13.14-slim`) and the Python support range
+    (`>=3.12,<3.15`, matrix 3.12/3.13/3.14) were already current as of the prior round — checked
+    Docker Hub, no newer 3.13.x-slim patch published since.
+  - Verification: `uv run ruff check .` / `ruff format --check .`, `uv run mypy src` (clean),
+    `uv run pytest` (137 passed, 3 skipped), the fake-model live e2e ladder (`/health`, `/info`,
+    `/invoke`, `/stream`, and a two-turn `/history` checkpointer round-trip, all against the
+    native `uv run python src/run_service.py` entrypoint), and the Streamlit browser e2e
+    (`scripts/smoke_live_app.py` against a live `streamlit run` + the fake-model service) all
+    passed.
 
 - **langfuse** 3.15.0 → 4.12.0: previously deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250)
   pending a validated look at v4. Investigated and landed: this repo's entire Langfuse surface is
