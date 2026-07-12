@@ -55,9 +55,14 @@ the biweekly maintenance run's digest (`Weekly_Maintenance_Run.md`).
    the deployed app from a routine session — do not run it here, and do not
    treat its absence as a coverage failure (it runs against localhost in the
    weekly dependency ladder instead). Probe with plain HTTPS:
-   - **Backend (highest value):** `curl -s https://agent-service.azurewebsites.net/health`
-     → expect `{"status":"ok"}`. If this fails, chat is broken regardless of
-     what the front-end renders.
+   - **Backend — currently a documented limitation, not a live check:**
+     `https://agent-service.azurewebsites.net/health` returns Azure's own
+     "Error 403 – Forbidden" page from this infrastructure (verified
+     2026-07-12): the Web App's access restrictions block external probes —
+     this is Azure blocking, not the egress proxy, and not an outage. Treat it
+     as documented-degraded under rule 5; do not alert on it and do not retry
+     into it. If the maintainer ever opens access, expect `{"status":"ok"}`
+     and it becomes the primary probe.
    - **Front-end shell:** `curl -sL --max-time 30 -c /tmp/st.jar -b /tmp/st.jar
      https://agent-service-toolkit.streamlit.app/` → expect a final 200 with
      app HTML (Streamlit Cloud 303s anonymous visitors through

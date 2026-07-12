@@ -150,8 +150,11 @@ app from a routine session. It still runs against **localhost** in the
 dependency ladder (Phase F / `docs/Dependency_Upgrades.md`) — the deployed app
 gets HTTP probes instead:
 
-- **Backend:** `curl -s https://agent-service.azurewebsites.net/health` →
-  expect `{"status":"ok"}`; also `/info` for agent/model wiring.
+- **Backend:** `https://agent-service.azurewebsites.net/health` is blocked by
+  the Web App's Azure access restrictions from this infrastructure (Azure's
+  403 page — verified 2026-07-12, not a proxy issue and not an outage). Skip
+  unless the maintainer opens access, in which case expect `{"status":"ok"}`
+  plus `/info` for agent/model wiring.
 - **Front-end shell:** `curl -sL -c /tmp/st.jar -b /tmp/st.jar
   https://agent-service-toolkit.streamlit.app/` → expect a final 200 with app
   HTML after the `share.streamlit.io` anonymous-auth redirect; a wake-up or
