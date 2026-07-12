@@ -4,9 +4,7 @@ This document is the executable playbook for the scheduled **daily sentinel
 Routine**: a short Claude Code cloud session that runs every morning, checks for
 anything genuinely urgent, and — this is the important part — **stays silent when
 there is nothing urgent**. Routine, non-urgent activity is deliberately left for
-the biweekly maintenance run's digest (`Weekly_Maintenance_Run.md`); the sentinel
-exists so the maintainer can mute GitHub email notifications without worrying
-that something is on fire for two weeks.
+the biweekly maintenance run's digest (`Weekly_Maintenance_Run.md`).
 
 ## Hard rules
 
@@ -39,7 +37,7 @@ that something is on fire for two weeks.
 2. **CI on main:** the most recent run of the test workflow on `main` — is it
    failing?
 3. **Live app:** `uv run --with playwright python scripts/smoke_live_app.py`
-   against https://agent-service-toolkit.streamlit.app/. (One retry on failure
+   against [the live streamlit app](https://agent-service-toolkit.streamlit.app/). (One retry on failure
    before treating it as real — cloud cold starts can flake.)
 
 ## The urgency bar — notify ONLY for
@@ -53,6 +51,9 @@ that something is on fire for two weeks.
   within days of each other (typically after a release/merge or an upstream
   provider change).
 - **Abuse:** spam floods or hostile content that needs same-day moderation.
+- **Replies on active PR reviews:** The maintainer left feedback on a contributor
+  PR in the past few days, and the contributor has responded with meaningful
+  updates.
 
 Everything else — feature requests, questions, single bug reports, review pings,
 routine PR pushes — is **not urgent** by definition here, even when it deserves a
