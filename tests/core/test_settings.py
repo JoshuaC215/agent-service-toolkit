@@ -10,6 +10,7 @@ from core.settings import LogLevel, Settings, check_str_is_http
 from schema.models import (
     AnthropicModelName,
     AzureOpenAIModelName,
+    FakeModelName,
     OpenAIModelName,
     VertexAIModelName,
 )
@@ -84,6 +85,46 @@ def test_settings_with_multiple_api_keys():
         expected_models = set(OpenAIModelName)
         expected_models.update(set(AnthropicModelName))
         assert settings.AVAILABLE_MODELS == expected_models
+
+
+def test_settings_use_fake_model():
+    with patch.dict(os.environ, {"USE_FAKE_MODEL": "true"}, clear=True):
+        settings = Settings(_env_file=None)
+        assert settings.DEFAULT_MODEL == FakeModelName.FAKE
+        assert settings.AVAILABLE_MODELS == set(FakeModelName)
+
+
+def test_settings_use_fake_model_wins_over_ambient_real_keys():
+    # USE_FAKE_MODEL is an explicit testing signal and must win DEFAULT_MODEL
+    # selection even when real provider keys leak into the environment (as they
+    # do when the smoke tests run in a sandbox with ambient keys set). Without
+    # this, the provider dict-order default (OpenAI) would silently take over.
+    with patch.dict(
+        os.environ,
+        {
+            "USE_FAKE_MODEL": "true",
+            "OPENAI_API_KEY": "test_openai_key",
+            "GROQ_API_KEY": "test_groq_key",
+            "GOOGLE_API_KEY": "test_google_key",
+        },
+        clear=True,
+    ):
+        settings = Settings(_env_file=None)
+        assert settings.DEFAULT_MODEL == FakeModelName.FAKE
+        # AVAILABLE_MODELS still unions every active provider, order-independently.
+        assert set(FakeModelName).issubset(settings.AVAILABLE_MODELS)
+        assert set(OpenAIModelName).issubset(settings.AVAILABLE_MODELS)
+
+
+def test_settings_explicit_default_model_overrides_fake():
+    # An explicit DEFAULT_MODEL still takes precedence over the USE_FAKE_MODEL default.
+    with patch.dict(
+        os.environ,
+        {"USE_FAKE_MODEL": "true", "OPENAI_API_KEY": "test_openai_key"},
+        clear=True,
+    ):
+        settings = Settings(_env_file=None, DEFAULT_MODEL=OpenAIModelName.GPT_5_NANO)
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_5_NANO
 
 
 def test_settings_base_url():

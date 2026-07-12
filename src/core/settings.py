@@ -171,6 +171,16 @@ class Settings(BaseSettings):
         if not active_keys:
             raise ValueError("At least one LLM API key must be provided.")
 
+        # USE_FAKE_MODEL is an explicit testing signal (used by the smoke tests and
+        # local dev), so it must win the DEFAULT_MODEL selection even when real
+        # provider keys are also present in the environment. Without this, the loop
+        # below picks a default in provider dict-order and a stray OPENAI_API_KEY /
+        # GROQ_API_KEY / etc. in the shell would silently override the fake model.
+        # An explicit DEFAULT_MODEL still takes precedence over this (the `is None`
+        # guard); AVAILABLE_MODELS is populated order-independently in the loop.
+        if self.USE_FAKE_MODEL and self.DEFAULT_MODEL is None:
+            self.DEFAULT_MODEL = FakeModelName.FAKE
+
         for provider in active_keys:
             match provider:
                 case Provider.OPENAI:
