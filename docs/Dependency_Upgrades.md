@@ -186,6 +186,35 @@ Majors intentionally held out of the safe round, each needing its own PR:
 *None currently.* Add a table row here (`| Upgrade | From → To | Why deferred / ROI |`) as new
 majors get triaged and held out of a safe-bumps round.
 
+### Security advisories blocked on an upstream fix
+
+| Package | Advisory | Status |
+| --- | --- | --- |
+| `chromadb` (transitive, via `langchain-chroma`) | CVE-2026-45829 / GHSA-f4j7-r4q5-qw2c ("ChromaToast"), CVSS 9.3–10.0 | **No fix available** — bump when one ships |
+
+Dependabot flags `chromadb` 1.5.9 (pulled in transitively by `langchain-chroma ~=1.1.0`) for
+CVE-2026-45829: a **pre-authentication code-injection / RCE** in the ChromaDB Python **FastAPI
+server**. An unauthenticated attacker sends a malicious model repository with
+`trust_remote_code=true` to `POST /api/v2/tenants/{tenant}/databases/{db}/collections`, and a
+race between the embedding-model parsing and the auth check lets `sentence-transformers` execute
+attacker-supplied code before authentication.
+
+- **Not exploitable as this repo uses chromadb.** The affected surface is the *HTTP server* (`chroma
+  run` / the FastAPI app). This project only ever uses chromadb as an **embedded, in-process
+  persistent client** — `Chroma(persist_directory="./chroma_db", ...)` in `src/agents/tools.py`
+  (the RAG `Database_Search` tool) and `scripts/create_chroma_db.py`. It never starts the Chroma
+  server, never calls `HttpClient`, and nothing in the compose files runs a Chroma service, so the
+  vulnerable `/api/v2/.../collections` endpoint is never exposed. On GitHub this warrants dismissing
+  the Dependabot alert as *"Vulnerable code is not actually used"* rather than waiting on a bump.
+- **No upgrade target exists yet.** As of this writing chromadb **1.5.9 is the latest PyPI release**
+  and it's inside the affected range (`>=1.0.0`, unpatched through 1.5.9), so there is nothing to
+  bump to. `langchain-chroma 1.1.0` accepts `chromadb <2.0.0,>=1.3.5`, so once a patched chromadb
+  ships it should slot in with a plain `uv lock --upgrade-package chromadb` and no `langchain-chroma`
+  change. Re-check PyPI for the first patched chromadb and bump then; drop this row once resolved.
+- **If you ever do run the Chroma server** (this repo doesn't), the upstream mitigations are to serve
+  via the Rust implementation instead of the Python FastAPI server and to disable `trust_remote_code`
+  in the server config.
+
 **Landed since the table above was written:**
 
 - **langfuse** 3.15.0 → 4.12.0: previously deliberately pinned to v3 (`~=3.10`, PR #309 / issue #250)
