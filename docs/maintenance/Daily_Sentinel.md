@@ -43,7 +43,9 @@ the biweekly maintenance run's digest (`Weekly_Maintenance_Run.md`).
 ## The urgency bar — notify ONLY for
 
 - **Security:** a reported vulnerability, exposed secret, or clearly
-  security-relevant bug in the repo or the deployed app.
+  security-relevant bug in the repo or the deployed app. A new **Dependabot
+  security-update PR** counts (Dependabot *alerts* without a PR are not visible
+  to this run's tooling — only alert-generated PRs are).
 - **Main is broken:** CI failing on `main` itself (not on a PR).
 - **The live app is down:** the smoke test fails twice, or users report the
   deployed app erroring.

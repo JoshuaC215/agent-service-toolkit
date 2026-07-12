@@ -25,6 +25,7 @@ than upgrading everything blindly.
 | Supported Python range + classifiers | `pyproject.toml` → `requires-python`, `classifiers` |
 | GitHub Actions versions (`actions/checkout`, `setup-python`, `setup-uv`, `docker/*`, `codecov-action`, …) | `.github/workflows/*.yml` (`uses:`) |
 | `uv` CLI version — CI, quickstart docs, and Docker images (**keep all three in sync**) | `.github/workflows/test.yml` (`astral-sh/setup-uv` → `version:`), `README.md` install snippet, `docker/Dockerfile.app`/`docker/Dockerfile.service` (`pip install uv==`) |
+| Infra images used by compose + smoke tests (`postgres`, `mongo` tags; LangFuse self-host stack ref) | `compose.yaml` (`postgres:16`), `docker/compose.mongo.yaml` (`mongo:8`), `scripts/smoke_test.sh` (`LANGFUSE_REF`) |
 
 ## Upgrade workflow (the recipe)
 

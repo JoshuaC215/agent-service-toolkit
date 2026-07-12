@@ -21,17 +21,16 @@ if [ $(( (days / 7) % 2 )) -eq 1 ]; then echo "OFF-WEEK"; else echo "ON-WEEK"; f
 A fixed anchor date is used deliberately instead of ISO week numbers — week-number
 parity breaks across 53-week years; days-since-anchor never does.
 
-## Step 1 — Calendar gates (which extra phases run today?)
+## Step 1 — Calendar gate (which extra phases run today?)
 
 ```sh
 this_month=$(date -u +%Y-%m); prior_month=$(date -u -d '14 days ago' +%Y-%m)
 [ "$this_month" != "$prior_month" ] && echo "FIRST-RUN-OF-MONTH"
-this_q=$(date -u +%Y)-Q$(( ($(date -u +%-m)-1)/3 + 1 )); prior_q=$(date -u -d '14 days ago' +%Y)-Q$(( ($(date -u -d '14 days ago' +%-m)-1)/3 + 1 ))
-[ "$this_q" != "$prior_q" ] && echo "FIRST-RUN-OF-QUARTER"
 ```
 
-- **FIRST-RUN-OF-MONTH** → also run Phase E (model refresh).
-- **FIRST-RUN-OF-QUARTER** → also run Phase F (dependency refresh).
+- **FIRST-RUN-OF-MONTH** → also run Phase E (model refresh) **and** Phase F
+  (dependency refresh). Exactly one on-week run per calendar month satisfies
+  this, regardless of which Sundays land on-week.
 
 ## Ground rules (apply to every phase)
 
@@ -100,8 +99,14 @@ Use the **maintainer-response** skill (`.claude/skills/maintainer-response/`).
 
 - Window: everything since the last on-week run — **14 days** (overlap is fine;
   skip items already resolved).
-- Collect: new issues, new PRs, new comments on open items, and replies to threads
-  where the maintainer (JoshuaC215) was the last responder before the window.
+- Collect: new issues, new PRs, **new Discussions and replies on existing
+  Discussions**, new comments on open items, and replies to threads where the
+  maintainer (JoshuaC215) was the last responder before the window.
+- **Dependabot security-update PRs are triage items** — flag them prominently
+  (they're security-relevant). Note: Dependabot *alerts* that haven't produced a
+  PR are invisible to this automation — the GitHub MCP toolset has no
+  Dependabot-alerts API, so alert visibility depends on the repo's "Dependabot
+  security updates" setting being enabled (alerts then arrive as PRs).
 - For each item needing a response, produce a draft reply per the skill's rules
   (research first, cite code, match scope to effort). Number the drafts in the
   digest so the maintainer can reply "post 1 and 3".
@@ -145,14 +150,16 @@ log output and screenshot findings, and diagnose as far as read-only access
 allows (is it the Streamlit front end, or the Azure-hosted agent service behind
 it?).
 
-## Phase D — Infra smoke tests (conditional)
+## Phase D — Infra smoke tests (every run)
 
-Only if commits landed on `main` in the window that touch the paths listed in the
-**smoke-test** skill's table (checkpointers/memory, AG-UI adapter, LangFuse
-wiring, service lifespan, or bumps to those deps): run the narrowest relevant
-`scripts/smoke_test.sh` targets. The SessionStart hook starts the Docker daemon;
-if it isn't up, `(sudo dockerd >/tmp/dockerd.log 2>&1 &)` and wait a few seconds.
-Otherwise skip with one digest line.
+Run the full suite every run: `./scripts/smoke_test.sh all` (Postgres, MongoDB,
+AG-UI, and the LangFuse self-host stack). Biweekly cadence means this doubles as
+a drift detector for the infra side — upstream image changes, egress/allowlist
+regressions, and Docker-in-cloud breakage all surface here even when no repo
+code changed. The SessionStart hook starts the Docker daemon; if it isn't up,
+`(sudo dockerd >/tmp/dockerd.log 2>&1 &)` and wait a few seconds. Interpret
+results per the **smoke-test** skill — trust the `✓ verified:` lines, not just
+exit codes.
 
 ## Phase E — Model catalog refresh (first run of each month)
 
@@ -161,20 +168,27 @@ adds/removals/default changes with provider-doc citations. If provider API keys
 are present in the environment, run `scripts/check_live_models.py` as the skill
 directs; if not, note in the PR that live verification was skipped.
 
-## Phase F — Dependency refresh (first run of each quarter)
+## Phase F — Dependency refresh (first run of each month)
 
 Use the **dependency-refresh** skill (playbook: `docs/Dependency_Upgrades.md`).
 Safe bumps in one PR; deferred majors recorded in the doc's backlog table with
-ROI notes. Run the full verification ladder including the fake-model live e2e,
-and the relevant infra smoke targets when checkpointer/AG-UI/LangFuse deps moved.
+ROI notes. Scope includes the infra images the smoke tests and compose files pin
+(`postgres`/`mongo` tags, `LANGFUSE_REF` in `scripts/smoke_test.sh`) per the
+doc's "Where versions live" table. Run the full verification ladder including
+the fake-model live e2e; Phase D's full smoke pass already covers the infra
+integrations, so re-run only the targets whose dependencies this phase bumped.
 
 ## Final step — The digest
 
 End the session with **one** message, structured exactly as:
 
-1. **Needs your decision** — numbered draft replies (full text, verbatim) and any
-   flagged maintainer calls. This section first; it's why the human is reading.
-2. **Done autonomously** — stale items closed (links), PRs opened (links).
+1. **Needs your decision** — first, because it's why the human is reading:
+   - **PRs opened by this run** (model refresh, dependency refresh) — these
+     await maintainer review and merge, so they lead this section, with links
+     and a one-line summary each.
+   - Numbered draft replies (full text, verbatim) and any flagged maintainer
+     calls, security-sensitive items on top.
+2. **Done autonomously** — stale items closed (links).
 3. **Health** — live app smoke result, infra smoke results (or "skipped: no
    relevant changes"), anything from CI worth knowing.
 4. **Problems** — phases that failed or were skipped due to missing
