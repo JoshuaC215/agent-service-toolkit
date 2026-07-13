@@ -87,14 +87,20 @@ fake-model service from above still running:
 
 ```sh
 uv run streamlit run src/streamlit_app.py --server.headless true --server.port 8501 &
+# quick single-message smoke:
 uv run --with playwright python scripts/smoke_live_app.py http://localhost:8501
+# wider coverage (multi-turn resume, settings selectors, feedback widget, streaming toggle, ...):
+uv run --with playwright python scripts/e2e_ui_tests.py http://localhost:8501
 ```
 
-The script sends a chat message and verifies a streamed response renders and settles
-(exit 0 = pass; on failure it saves a diagnostic screenshot). Run this before opening any
-PR that bumps `streamlit`, its rendering stack (pandas, pyarrow, pillow, altair), or the
-client/schema code the UI consumes — and it's cheap enough to include in any refresh PR's
-verification ladder.
+`smoke_live_app.py` sends one chat message and verifies a streamed response renders and
+settles. `e2e_ui_tests.py` is a small suite of key user journeys built on the same idea —
+run `--list` to see them, or pass names to run a subset. Both exit 0 on pass and save a
+diagnostic screenshot on failure, and both are URL-parameterized so the same commands also
+run against the deployed app (omit the URL, or set `LIVE_APP_URL`). Run at least the smoke
+before opening any PR that bumps `streamlit`, its rendering stack (pandas, pyarrow, pillow,
+altair), or the client/schema code the UI consumes; run the fuller suite when a bump could
+plausibly touch chat history, settings, or the feedback/streaming paths.
 
 **Containerized test.** To validate the image itself (base image + in-image `uv sync`), run
 `docker compose up --build` and hit the same endpoints on the mapped ports — this mirrors the
