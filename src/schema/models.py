@@ -28,10 +28,17 @@ class OpenAIModelName(StrEnum):
 
 
 class AzureOpenAIModelName(StrEnum):
-    """Azure OpenAI model names"""
+    """https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure
 
-    AZURE_GPT_4O = "azure-gpt-4o"
-    AZURE_GPT_4O_MINI = "azure-gpt-4o-mini"
+    Azure is deployment-based: these values are used as Azure deployment names and
+    are cross-checked against AZURE_OPENAI_DEPLOYMENT_MAP / the required_models set
+    in settings.py. Renaming a value is a breaking change for existing deployment
+    maps. The GPT-5 generation is reasoning-based and rejects sampling parameters
+    like temperature (see llm.py).
+    """
+
+    AZURE_GPT_5 = "azure-gpt-5"
+    AZURE_GPT_5_MINI = "azure-gpt-5-mini"
 
 
 class DeepseekModelName(StrEnum):

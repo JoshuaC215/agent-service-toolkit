@@ -105,13 +105,13 @@ def test_settings_with_azure_openai_key():
         {
             "AZURE_OPENAI_API_KEY": "test_key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
-            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deployment-1", "gpt-4o-mini": "deployment-2"}',
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-5": "deployment-1", "gpt-5-mini": "deployment-2"}',
         },
         clear=True,
     ):
         settings = Settings(_env_file=None)
         assert settings.AZURE_OPENAI_API_KEY.get_secret_value() == "test_key"
-        assert settings.DEFAULT_MODEL == AzureOpenAIModelName.AZURE_GPT_4O_MINI
+        assert settings.DEFAULT_MODEL == AzureOpenAIModelName.AZURE_GPT_5_MINI
         assert settings.AVAILABLE_MODELS == set(AzureOpenAIModelName)
 
 
@@ -122,7 +122,7 @@ def test_settings_with_both_openai_and_azure():
             "OPENAI_API_KEY": "test_openai_key",
             "AZURE_OPENAI_API_KEY": "test_azure_key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
-            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deployment-1", "gpt-4o-mini": "deployment-2"}',
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-5": "deployment-1", "gpt-5-mini": "deployment-2"}',
         },
         clear=True,
     ):
@@ -161,14 +161,14 @@ def test_settings_azure_deployment_map():
         {
             "AZURE_OPENAI_API_KEY": "test_key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
-            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deploy1", "gpt-4o-mini": "deploy2"}',
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-5": "deploy1", "gpt-5-mini": "deploy2"}',
         },
         clear=True,
     ):
         settings = Settings(_env_file=None)
         assert settings.AZURE_OPENAI_DEPLOYMENT_MAP == {
-            "gpt-4o": "deploy1",
-            "gpt-4o-mini": "deploy2",
+            "gpt-5": "deploy1",
+            "gpt-5-mini": "deploy2",
         }
 
 
@@ -178,7 +178,7 @@ def test_settings_azure_invalid_deployment_map():
         {
             "AZURE_OPENAI_API_KEY": "test_key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
-            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deploy1"}',  # Missing required model
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-5": "deploy1"}',  # Missing required model
         },
         clear=True,
     ):
@@ -188,7 +188,7 @@ def test_settings_azure_invalid_deployment_map():
 
 def test_settings_azure_openai():
     """Test Azure OpenAI settings."""
-    deployment_map = {"gpt-4o": "deployment1", "gpt-4o-mini": "deployment2"}
+    deployment_map = {"gpt-5": "deployment1", "gpt-5-mini": "deployment2"}
     with patch.dict(
         os.environ,
         {

@@ -219,7 +219,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(FakeModelName))
                 case Provider.AZURE_OPENAI:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = AzureOpenAIModelName.AZURE_GPT_4O_MINI
+                        self.DEFAULT_MODEL = AzureOpenAIModelName.AZURE_GPT_5_MINI
                     self.AVAILABLE_MODELS.update(set(AzureOpenAIModelName))
                     # Validate Azure OpenAI settings if Azure provider is available
                     if not self.AZURE_OPENAI_API_KEY:
@@ -239,7 +239,7 @@ class Settings(BaseSettings):
                             raise ValueError(f"Invalid AZURE_OPENAI_DEPLOYMENT_MAP JSON: {e}")
 
                     # Validate required deployments exist
-                    required_models = {"gpt-4o", "gpt-4o-mini"}
+                    required_models = {"gpt-5", "gpt-5-mini"}
                     missing_models = required_models - set(self.AZURE_OPENAI_DEPLOYMENT_MAP.keys())
                     if missing_models:
                         raise ValueError(f"Missing required Azure deployments: {missing_models}")

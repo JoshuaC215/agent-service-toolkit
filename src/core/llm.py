@@ -88,11 +88,13 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         if not settings.AZURE_OPENAI_API_KEY or not settings.AZURE_OPENAI_ENDPOINT:
             raise ValueError("Azure OpenAI API key and endpoint must be configured")
 
+        # Azure's GPT-5 generation is reasoning-based and rejects non-default
+        # sampling parameters (temperature, top_p, ...) with a 400, so don't set
+        # temperature here -- mirrors the OpenAI direct path above.
         return AzureChatOpenAI(
             azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
             deployment_name=api_model_name,
             api_version=settings.AZURE_OPENAI_API_VERSION,
-            temperature=0.5,
             streaming=True,
             timeout=60,
             max_retries=3,
