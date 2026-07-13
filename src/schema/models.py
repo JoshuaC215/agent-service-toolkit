@@ -78,10 +78,19 @@ class GroqModelName(StrEnum):
 
 
 class AWSModelName(StrEnum):
-    """https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html"""
+    """https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
 
-    BEDROCK_HAIKU = "bedrock-3.5-haiku"
-    BEDROCK_SONNET = "bedrock-3.5-sonnet"
+    Values are Bedrock cross-region inference profile IDs, not bare foundation
+    model IDs. The latest Claude models on Bedrock reject on-demand invocation of
+    the base model ID ("on-demand throughput isn't supported") and must be called
+    through an inference profile prefixed with a geo (``us.``/``eu.``/``apac.``)
+    or ``global.``. ``global.`` routes dynamically and is the most portable
+    default; single-region deployments not enrolled in Global cross-Region
+    inference should swap it for their geo prefix (e.g. ``us.``).
+    """
+
+    BEDROCK_HAIKU = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+    BEDROCK_SONNET = "global.anthropic.claude-sonnet-5"
 
 
 class OllamaModelName(StrEnum):

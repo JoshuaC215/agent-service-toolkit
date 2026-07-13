@@ -121,6 +121,11 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             return ChatGroq(model=api_model_name, temperature=0.0)  # type: ignore[call-arg]
         return ChatGroq(model=api_model_name, temperature=0.5)  # type: ignore[call-arg]
     if model_name in AWSModelName:
+        if model_name == AWSModelName.BEDROCK_SONNET:
+            # Claude Sonnet 5 rejects non-default sampling parameters (temperature,
+            # top_p, top_k) with a 400 -- adaptive thinking is on by default. This
+            # holds on Bedrock too, same as the direct Anthropic API above.
+            return ChatBedrock(model_id=api_model_name)
         return ChatBedrock(model_id=api_model_name, temperature=0.5)
     if model_name in OllamaModelName:
         if settings.OLLAMA_BASE_URL:
