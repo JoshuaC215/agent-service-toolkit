@@ -59,12 +59,6 @@ are no session-opened PRs and the follow-through is skipped.
 
 ## Runtime discipline (anti-stall)
 
-Why this section exists: one run stalled for ~6 hours because a phase subagent
-started its command under a background watcher and then repeatedly ended its
-turn "waiting" for results, while the orchestrator — with no deadline forcing
-it to ship — kept accepting "not done yet" and re-arming wake-ups. Both layers
-get explicit rules.
-
 ### The deadline
 
 - The orchestrator's **first action** on an on-week run is to record the wall
@@ -100,7 +94,11 @@ get explicit rules.
 3. **Waiting on external events** (e.g. CI runs) uses a small, bounded number
    of scheduled wake-ups that all land before the deadline; on each wake-up,
    check the clock before doing anything else. Never busy-poll, and never
-   re-arm an open-ended chain of "check again later."
+   re-arm an open-ended chain of "check again later." Use a **scheduled
+   wake-up tool** — one that ends the turn now and re-invokes the session at a
+   set time (`ScheduleWakeup`, or `send_later` from the claude-code-remote MCP
+   server). Do **not** use `Monitor` (a background watcher is not a wake-up
+   and is the tool that caused a past stall) and do not `sleep` in a shell.
 4. **Finishing a straggler's last step yourself** (bounded and synchronous) is
    preferable to re-dispatching a stuck subagent — but only if it fits inside
    the deadline; otherwise it goes to Problems.
