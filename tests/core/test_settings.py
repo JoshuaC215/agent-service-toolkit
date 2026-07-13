@@ -95,10 +95,7 @@ def test_settings_use_fake_model():
 
 
 def test_settings_use_fake_model_wins_over_ambient_real_keys():
-    # USE_FAKE_MODEL is an explicit testing signal and must win DEFAULT_MODEL
-    # selection even when real provider keys leak into the environment (as they
-    # do when the smoke tests run in a sandbox with ambient keys set). Without
-    # this, the provider dict-order default (OpenAI) would silently take over.
+    # USE_FAKE_MODEL must win the default even when real provider keys are present.
     with patch.dict(
         os.environ,
         {
@@ -111,13 +108,13 @@ def test_settings_use_fake_model_wins_over_ambient_real_keys():
     ):
         settings = Settings(_env_file=None)
         assert settings.DEFAULT_MODEL == FakeModelName.FAKE
-        # AVAILABLE_MODELS still unions every active provider, order-independently.
+        # AVAILABLE_MODELS still unions every active provider.
         assert set(FakeModelName).issubset(settings.AVAILABLE_MODELS)
         assert set(OpenAIModelName).issubset(settings.AVAILABLE_MODELS)
 
 
 def test_settings_explicit_default_model_overrides_fake():
-    # An explicit DEFAULT_MODEL still takes precedence over the USE_FAKE_MODEL default.
+    # An explicit DEFAULT_MODEL takes precedence over USE_FAKE_MODEL.
     with patch.dict(
         os.environ,
         {"USE_FAKE_MODEL": "true", "OPENAI_API_KEY": "test_openai_key"},
