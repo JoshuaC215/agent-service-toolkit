@@ -7,6 +7,9 @@ from collections.abc import AsyncGenerator
 import streamlit as st
 from dotenv import load_dotenv
 from pydantic import ValidationError
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.routing import Route
 
 from client import AgentClient, AgentClientError
 from schema import ChatHistory, ChatMessage
@@ -591,5 +594,31 @@ async def handle_sub_agent_msgs(messages_agen, status, is_new):
                         nested_popovers[tc["id"]] = popover
 
 
+async def _e2e_ping(request: Request) -> JSONResponse:
+    """Lightweight custom HTTP endpoint (SPIKE).
+
+    Answers the open question: does Streamlit Community Cloud's ingress forward
+    arbitrary, non-Streamlit paths to a custom route defined via ``st.App``?
+    If a plain HTTPS GET to this path returns this JSON (rather than a 404 or the
+    app's HTML shell), then custom endpoints are reachable on Community Cloud and
+    we can build a real end-to-end health route here that drives a chat round-trip
+    through the agent service (server-side, no browser/WebSocket needed).
+
+    Test once deployed:
+        curl https://agent-service-toolkit.streamlit.app/app/e2e-ping
+    """
+    return JSONResponse({"ok": True, "spike": "streamlit-custom-endpoint", "path": request.url.path})
+
+
 if __name__ == "__main__":
+    # Streamlit's ScriptRunner runs this file per session with __name__ == "__main__".
     asyncio.run(main())
+else:
+    # SPIKE: When launched via `streamlit run`, Streamlit's app discovery AST-scans
+    # this file, finds the module-level `app = st.App(...)` (even inside this else
+    # branch), and boots in ASGI mode via Starlette/Uvicorn -- registering our custom
+    # route alongside the normal Streamlit app. This branch runs only at import time
+    # (uvicorn importing the module), so `app` is constructed exactly once and main()
+    # above is unaffected. Remove this block (and the two starlette imports) to revert.
+    # Requires Streamlit >= 1.57 (Tornado removed, Starlette/st.App is the server).
+    app = st.App(__file__, routes=[Route("/app/e2e-ping", _e2e_ping)])
