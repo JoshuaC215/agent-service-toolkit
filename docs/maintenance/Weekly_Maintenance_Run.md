@@ -199,8 +199,8 @@ List every close in the digest with a link.
 The egress proxy doesn't support WebSockets, so the browser tests
 (`scripts/smoke_live_app.py` and the fuller `scripts/e2e_ui_tests.py` suite)
 can't run against the deployed app from a routine session — they run against
-**localhost** in Phase F's dependency ladder instead.
-Probe the front-end shell: `curl -sL -c /tmp/st.jar -b /tmp/st.jar
+**localhost** in Phase D (every run) and Phase F's dependency ladder instead.
+Here, probe the deployed front-end shell only: `curl -sL -c /tmp/st.jar -b /tmp/st.jar
 https://agent-service-toolkit.streamlit.app/` → expect a final 200 with
 Streamlit shell HTML (redirect chain may vary); a wake-up or error page is a
 finding (the visit also keeps the app awake). Report in the digest's Health
@@ -217,6 +217,35 @@ code changed. The SessionStart hook starts the Docker daemon; if it isn't up,
 `(sudo dockerd >/tmp/dockerd.log 2>&1 &)` and wait a few seconds. Interpret
 results per the **smoke-test** skill — trust the `✓ verified:` lines, not just
 exit codes.
+
+**Browser UI e2e (every run).** CI never drives the real Streamlit interface
+(pytest mocks the transport; the docker CI job only hits health endpoints), and
+the deployed app can't be browser-tested from here (WebSocket proxy — see Phase
+C), so this localhost pass is the only routine signal that a merged change or a
+Streamlit-stack bump hasn't broken the UI — the same drift-detector logic as the
+infra smoke above. Stand up the app against a fake-model service; one service
+covers both checks because `DEFAULT_MODEL=fake` keeps the default deterministic
+and free while real keys stay available for the live-model scenario:
+
+```sh
+USE_FAKE_MODEL=true DEFAULT_MODEL=fake uv run python src/run_service.py &   # wait for :8080/health
+AGENT_URL=http://localhost:8080 \
+  uv run streamlit run src/streamlit_app.py --server.headless true --server.port 8501 &  # wait for :8501
+# 1) full fake-model suite (defaults to localhost:8501) — deterministic, no LLM cost:
+uv run --with playwright python scripts/e2e_ui_tests.py
+# 2) live-model check — one cheap real call through the UI (best-effort, see below):
+uv run --with playwright python scripts/e2e_ui_tests.py \
+  --model=<current cheap model, e.g. gpt-5-nano — confirm against src/schema/models.py> live_model
+```
+
+Wait for each server (bounded, ~60s each) before the step that needs it, and
+kill both background processes when done. Step 1 is a **hard signal**: a failure
+is a real finding — report the scenario name and the `e2e_<scenario>_failure.png`
+it saves next to the CWD. Step 2 hits a real provider, so it's **best-effort**:
+retry once, and report a failure as a Health-section finding (usually a provider
+blip or a stale model name, not a UI regression), never a phase abort. On
+monthly runs Phase F re-runs step 1 against the freshly bumped dependencies —
+that's additional post-bump verification, not a duplicate of this baseline pass.
 
 ## Phase E — Model catalog refresh (first run of each month)
 
