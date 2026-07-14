@@ -46,6 +46,12 @@ per-provider `DEFAULT_MODEL` fallbacks point at a model that still exists.
      vs `gemini-2.5-flash`) — check both columns. Ollama takes a user-supplied
      model name at runtime, so there's nothing to add there; just confirm the
      generic pass-through in `llm.py` still works.
+   - **`docs.aws.amazon.com` returns HTTP 403 to `WebFetch`** (it blocks the
+     fetcher's user agent — this is not an egress-policy denial). Use `WebSearch`
+     for Bedrock model IDs instead; it reads the same doc pages server-side and
+     surfaces the model-card and inference-profile-support pages. The per-model
+     card pages (`.../model-card-anthropic-claude-<model>.html`) list the exact
+     `modelId` and profile IDs.
 2. **Classify each gap:**
    - *New model, generally available* → add it.
    - *New model, preview/experimental* → use judgment; this repo has taken preview
@@ -89,6 +95,47 @@ per-provider `DEFAULT_MODEL` fallbacks point at a model that still exists.
    for existing deployments pinning the old enum value in `DEFAULT_MODEL`/
    `AVAILABLE_MODELS` env config, not something to swap silently. Commit and push
    per the repo's normal git workflow; open a PR only if asked.
+
+## Providers you can't live-verify (Bedrock, Azure, Vertex service-account, DeepSeek, OpenRouter)
+
+Not having a key for a provider is **not** a reason to skip it — a stale or
+broken catalog entry is worse than a doc-sourced one. Update these from docs
+just like the rest, and in the PR mark them explicitly as **doc-only /
+unverified**, citing the provider page and calling out any caveat below so the
+next person with a key knows exactly what to spot-check. Only leave a provider
+untouched when the docs themselves are ambiguous *and* the change would be a
+product decision (e.g. adding a whole new pricing tier), not a freshness update.
+
+- **AWS Bedrock** — the enum *value* is passed straight to `ChatBedrock(model_id=...)`,
+  so it must be a real Bedrock ID, not a friendly label. Two gotchas:
+  1. The latest Claude models are **not invocable on-demand by their base model
+     ID** — a bare `anthropic.claude-...` call 400s with "on-demand throughput
+     isn't supported." They must go through a cross-region **inference profile**:
+     the base ID prefixed with a geo (`us.`/`eu.`/`apac.`) or `global.`. Prefer
+     `global.` (routes dynamically, region-agnostic — the best fit for a catalog
+     value with no region context) and note in the PR that single-region
+     deployments not enrolled in Global CRIS should swap the prefix for their geo.
+  2. Bedrock inherits the same **sampling-parameter restrictions** as the direct
+     Anthropic API — e.g. a Sonnet-5-class model rejects `temperature`. If you
+     point a Bedrock entry at such a model, mirror the no-`temperature` branch
+     that already exists for it in `llm.py`'s Anthropic and Bedrock dispatch.
+  If AWS credentials happen to be present, `boto3.client("bedrock").list_foundation_models()`
+  is the fastest way to confirm real IDs — but note that Bedrock access is a
+  separate enablement from plain AWS creds, so this can fail with an auth error
+  even when other AWS calls would work.
+- **Azure OpenAI** is the one genuinely heavier lift, because it's deployment-based
+  and the catalog is coupled in more places than the enum:
+  - `settings.py` `model_post_init` hardcodes a `required_models` set (currently
+    `{"gpt-4o", "gpt-4o-mini"}`) that it validates the `AZURE_OPENAI_DEPLOYMENT_MAP`
+    against — bumping the enum means bumping that set and the `.env.example`
+    deployment-map sample and the ~7 Azure cases in `tests/core/test_settings.py`.
+  - `llm.py` hardcodes `temperature=0.5` for the Azure path, but Azure's GPT-5-era
+    **reasoning** variants reject `temperature` (400). If you move Azure onto one,
+    add a no-`temperature` branch like the Anthropic/Bedrock Sonnet-5 handling.
+  - Changing an Azure enum value is a **breaking change** to every user's
+    deployment map (they name deployments after these keys). Treat an Azure
+    generation bump as its own reviewed change, and flag the deployment-map break
+    loudly — don't fold it silently into a routine refresh.
 
 ## Live testing
 

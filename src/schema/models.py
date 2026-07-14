@@ -28,10 +28,11 @@ class OpenAIModelName(StrEnum):
 
 
 class AzureOpenAIModelName(StrEnum):
-    """Azure OpenAI model names"""
+    """https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure"""
 
-    AZURE_GPT_4O = "azure-gpt-4o"
-    AZURE_GPT_4O_MINI = "azure-gpt-4o-mini"
+    # Values double as Azure deployment names / required_models keys; renaming breaks existing deployment maps.
+    AZURE_GPT_5 = "azure-gpt-5"
+    AZURE_GPT_5_MINI = "azure-gpt-5-mini"
 
 
 class DeepseekModelName(StrEnum):
@@ -80,8 +81,9 @@ class GroqModelName(StrEnum):
 class AWSModelName(StrEnum):
     """https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html"""
 
-    BEDROCK_HAIKU = "bedrock-3.5-haiku"
-    BEDROCK_SONNET = "bedrock-3.5-sonnet"
+    # Values are global cross-region inference profile IDs; latest Claude on Bedrock rejects bare on-demand model IDs. Single-region deployments may need a us./eu. prefix instead.
+    BEDROCK_HAIKU = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+    BEDROCK_SONNET = "global.anthropic.claude-sonnet-5"
 
 
 class OllamaModelName(StrEnum):
