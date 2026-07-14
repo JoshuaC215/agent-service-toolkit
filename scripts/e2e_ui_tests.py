@@ -10,22 +10,31 @@ Usage:
     uv run --with playwright python scripts/e2e_ui_tests.py [URL] [scenario ...]
 
 Run everything (the default), or only named scenarios:
-    uv run --with playwright python scripts/e2e_ui_tests.py http://localhost:8501
-    uv run --with playwright python scripts/e2e_ui_tests.py http://localhost:8501 chat feedback
+    uv run --with playwright python scripts/e2e_ui_tests.py            # all, vs localhost
+    uv run --with playwright python scripts/e2e_ui_tests.py chat feedback
+    uv run --with playwright python scripts/e2e_ui_tests.py https://my-app.example.com
     uv run --with playwright python scripts/e2e_ui_tests.py --list
 
-The URL defaults to the deployed app, or set ``LIVE_APP_URL``. Like the smoke
-script, every scenario is URL-parameterized, so the same suite gates PRs locally
-(point it at a ``USE_FAKE_MODEL=true`` service + ``streamlit run``) and monitors
-production (point it at the deployed URL).
+The scenarios don't hardcode an app URL - they take it as an argument - so the
+same suite works against any deployment. It defaults to a locally running app
+(http://localhost:8501); pass a different URL (or set ``LIVE_APP_URL``) to point
+it at a deployed one. So one suite serves both: run it against a local
+``USE_FAKE_MODEL=true`` service + ``streamlit run`` before a PR, and against the
+deployed URL to check production.
 
-Design notes for running against the live app:
-  - Scenarios send only short prompts, and never switch the model away from its
-    default, so a production run stays to a handful of cheap LLM calls.
+The default scenarios use the ``fake`` model, so a local run needs no API keys
+and makes no real LLM calls. To sanity-check a real model end to end, run the
+opt-in ``live_model`` scenario with ``--model=<name>`` (or ``E2E_LIVE_MODEL``);
+it selects that model in Settings and sends one short prompt (one cheap LLM call):
+    uv run --with playwright python scripts/e2e_ui_tests.py --model=gpt-5-nano live_model
+
+Notes:
+  - Scenarios send only short prompts, so even a live run stays cheap.
   - The feedback scenario verifies the widget renders and is interactive (the part
     a Streamlit bump breaks) but does not submit a rating - clicking a star writes
     to LangSmith through the backend, which would pollute the production project on
-    every monitoring run.
+    every monitoring run. (Nothing else in the suite touches LangSmith: plain
+    chat/history don't trace unless tracing is explicitly enabled.)
 
 Requires a Chromium Playwright can find: either ``playwright install chromium``,
 or a pre-provisioned browser via PLAYWRIGHT_BROWSERS_PATH (as in Claude Code
@@ -41,7 +50,7 @@ import urllib.parse
 from playwright.sync_api import Browser, Page, sync_playwright
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
-DEFAULT_URL = "https://agent-service-toolkit.streamlit.app/"
+DEFAULT_URL = "http://localhost:8501"
 # Stable symlink to the pre-provisioned browser in Claude Code cloud environments,
 # used as a fallback when the installed playwright's own browser build is absent.
 CLOUD_CHROMIUM = "/opt/pw-browsers/chromium"
@@ -50,6 +59,11 @@ CLOUD_CHROMIUM = "/opt/pw-browsers/chromium"
 # assistant message per turn) so count-based waits are reliable regardless of the
 # model behind it. Scenarios that specifically test agent selection override this.
 CHAT_AGENT = "chatbot"
+
+# The resume scenario needs full multi-turn history to survive a checkpoint round
+# trip. The @entrypoint-style chatbot only exposes its last reply via /history, so
+# use a StateGraph agent (whose messages channel accumulates every turn) instead.
+HISTORY_AGENT = "research-assistant"
 
 WAKE_TIMEOUT_S = 180
 RESPONSE_TIMEOUT_S = 120
@@ -190,15 +204,17 @@ def scenario_multi_turn_resume(browser: Browser, base_url: str) -> None:
     Share/resume dialog - the dialog regression that #330 fixed would fail here
     because building the share URL would error instead of rendering a link.
     """
-    page = open_app(browser, base_url, agent=CHAT_AGENT)
+    turn1 = "First turn: remember the number 7"
+    turn2 = "Second turn: what number did I mention?"
+    page = open_app(browser, base_url, agent=HISTORY_AGENT)
     thread_id = query_param(page, "thread_id")
     if not thread_id:
         raise E2EError("thread_id was not published to the URL on load")
 
-    send_message(page, "First turn: remember the number 7")
-    wait_for_response(page, "First turn: remember the number 7", min_count=2)
-    send_message(page, "Second turn: what number did I mention?")
-    wait_for_response(page, "Second turn: what number did I mention?", min_count=4)
+    send_message(page, turn1)
+    wait_for_response(page, turn1, min_count=2)
+    send_message(page, turn2)
+    wait_for_response(page, turn2, min_count=4)
 
     # Open the Share/resume dialog and read the shareable URL it builds. The
     # dialog frame appears before Streamlit streams in its markdown, so wait for
@@ -220,19 +236,17 @@ def scenario_multi_turn_resume(browser: Browser, base_url: str) -> None:
     log(f"share URL: {share_url}")
 
     # Resume in a brand-new session (no shared state) and confirm the thread is
-    # rehydrated from history rather than starting fresh. A fresh thread renders
-    # the agent's "...Ask me anything!" welcome and nothing else; a resumed one
-    # replays the persisted conversation instead. (We don't assert an exact count:
-    # the fake model used for local runs persists only its reply, while a real
-    # backend persists every human+assistant turn.)
+    # rehydrated from history: a StateGraph agent persists every turn, so both of
+    # our prompts should replay. (A fresh/empty thread would instead show only the
+    # agent's welcome message.)
     resumed = open_app(browser, share_url)
     if query_param(resumed, "thread_id") != thread_id:
         raise E2EError("resumed session did not carry the original thread_id from the share URL")
-    texts = message_texts(resumed)
-    joined = "\n".join(texts)
-    if not texts or "Ask me anything" in joined:
-        raise E2EError(f"resume did not replay the thread - it looks empty/fresh: {texts}")
-    log(f"resumed thread {thread_id} replayed {len(texts)} message(s) from history")
+    joined = "\n".join(message_texts(resumed))
+    for needle in (turn1, turn2):
+        if needle not in joined:
+            raise E2EError(f"resumed thread did not replay {needle!r} - history not restored")
+    log(f"resumed thread {thread_id} replayed both prior turns from history")
 
 
 def scenario_settings_selectors(browser: Browser, base_url: str) -> None:
@@ -334,6 +348,40 @@ def scenario_new_chat(browser: Browser, base_url: str) -> None:
     log(f"New Chat reset thread {old_thread} -> {new_thread} and cleared the conversation")
 
 
+def scenario_live_model(browser: Browser, base_url: str) -> None:
+    """Opt-in: select a real model in Settings and confirm it answers end to end.
+
+    Unlike the other scenarios (which run on the ``fake`` model), this exercises a
+    live LLM, so it needs a backend that offers the model and the credentials for
+    it. Name the model with ``--model=<name>`` or ``E2E_LIVE_MODEL``. It sends one
+    short prompt - a single cheap LLM call - and checks the reply is a real one,
+    not the fake-model placeholder.
+    """
+    model = os.environ.get("E2E_LIVE_MODEL", "").strip()
+    if not model:
+        raise E2EError("live_model needs a model - pass --model=<name> or set E2E_LIVE_MODEL")
+    page = open_app(browser, base_url, agent=CHAT_AGENT)
+    open_settings(page)
+    box = page.locator('[data-testid="stSelectbox"]').filter(has_text="LLM to use")
+    box.get_by_role("combobox").click()
+    option = page.get_by_role("option", name=model, exact=True)
+    if not option.count():
+        available = page.locator('[role="option"]').all_inner_texts()
+        raise E2EError(f"model {model!r} is not offered by this app; available: {available}")
+    option.first.click()
+    page.keyboard.press("Escape")  # dismiss the popover so the chat input is reachable
+    page.wait_for_timeout(500)
+
+    prompt = "Reply with only the word: pong"
+    send_message(page, prompt)
+    reply = wait_for_response(page, prompt, min_count=2)
+    if "fake model" in reply.lower():
+        raise E2EError(f"expected a reply from {model!r} but got the fake-model placeholder")
+    log(f"live model {model!r} replied ({len(reply)} chars): {reply[:80]!r}")
+
+
+# The default suite runs on the fake model and needs no API keys; live_model is
+# opt-in (it hits a real LLM) and only runs when named or when --model is given.
 SCENARIOS = {
     "chat": scenario_chat,
     "multi_turn_resume": scenario_multi_turn_resume,
@@ -341,7 +389,9 @@ SCENARIOS = {
     "feedback": scenario_feedback,
     "streaming_toggle": scenario_streaming_toggle,
     "new_chat": scenario_new_chat,
+    "live_model": scenario_live_model,
 }
+DEFAULT_SCENARIOS = [name for name in SCENARIOS if name != "live_model"]
 
 
 # --------------------------------------------------------------------------- #
@@ -358,12 +408,18 @@ def main() -> None:
     for arg in args:
         if arg in SCENARIOS:
             names.append(arg)
+        elif arg.startswith("--model="):
+            os.environ["E2E_LIVE_MODEL"] = arg.split("=", 1)[1]
         elif arg.startswith(("http://", "https://")):
             url = arg
         else:
             print(f"unknown argument: {arg!r} (scenarios: {', '.join(SCENARIOS)})")
             sys.exit(2)
-    names = names or list(SCENARIOS)
+    if not names:
+        # Default run: the fake-model suite, plus live_model only if a model is set.
+        names = list(DEFAULT_SCENARIOS)
+        if os.environ.get("E2E_LIVE_MODEL"):
+            names.append("live_model")
 
     log(f"target: {url}")
     log(f"scenarios: {', '.join(names)}")
