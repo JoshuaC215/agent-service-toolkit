@@ -192,3 +192,10 @@ chat_histories/
 # Private Credentials, ignore everything in the folder but the .gitkeep file
 privatecredentials/*
 !privatecredentials/.gitkeep
+
+# Node (scripts/agui-client)
+node_modules/
+package-lock.json
+
+# Live-app smoke test failure screenshot (scripts/smoke_live_app.py)
+smoke_live_app_failure.png

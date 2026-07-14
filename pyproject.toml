@@ -19,7 +19,7 @@ dependencies = [
     "aiosqlite >=0.20",
     "docx2txt ~=0.8",
     "duckduckgo-search>=8.1.1",
-    "fastapi ~=0.138.2",
+    "fastapi ~=0.139.0",
     "httpx ~=0.28.1",
     "jiter ~=0.16.0",
     "langchain ~=1.3.11",
@@ -39,7 +39,7 @@ dependencies = [
     "langgraph-checkpoint-postgres ~=3.1.0",
     "langgraph-checkpoint-sqlite ~=3.1.0",
     "langgraph-supervisor ~=0.0.31",
-    "langsmith ~=0.9.4",
+    "langsmith ~=0.10.2",
     "numexpr ~=2.14.1",
     "numpy ~=2.5.0",
     "onnxruntime ~= 1.27.0",
@@ -51,12 +51,13 @@ dependencies = [
     "pypdf ~=6.14.2",
     "pyowm ~=3.5.0",
     "python-dotenv ~=1.2.2",
-    "setuptools ~=82.0.1",
-    "streamlit ~=1.58.0",
+    "setuptools ~=83.0.0",
+    "streamlit ~=1.59.1",
     "tiktoken >=0.13.0",
-    "uvicorn ~=0.49.0",
+    "uvicorn ~=0.51.0",
     "langchain-mcp-adapters>=0.3.0",
     "ddgs>=9.14.4",
+    "ag-ui-langgraph~=0.0.42",
 ]
 
 [dependency-groups]
@@ -68,7 +69,8 @@ dev = [
     "pytest-env",
     "pytest-asyncio",
     "ruff",
-    "mypy ~=2.1.0",
+    "mypy ~=2.2.0",
+    "pymarkdownlnt",
 ]
 
 # Group for the minimal dependencies to run just the client and Streamlit app.
@@ -78,7 +80,7 @@ client = [
     "httpx~=0.28.1",
     "pydantic ~=2.13.4",
     "python-dotenv ~=1.2.2",
-    "streamlit~=1.58.0",
+    "streamlit~=1.59.1",
 ]
 
 [tool.ruff]
@@ -95,6 +97,17 @@ asyncio_default_fixture_loop_scope = "function"
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-fake-openai-key"
 
+[tool.pymarkdown]
+# Docs use long, unwrapped prose lines rather than hard-wrapping at a fixed
+# column, so line length isn't enforced.
+plugins.md013.enabled = false
+# Inline HTML (e.g. <img> with width=) is used intentionally in README.md.
+plugins.md033.enabled = false
+# Not every doc needs to start with a top-level heading.
+plugins.md041.enabled = false
+# Allow repeated heading text as long as it's not adjacent siblings.
+plugins.md024.siblings_only = true
+
 [tool.mypy]
 plugins = "pydantic.mypy"
 exclude = "src/streamlit_app.py"
@@ -106,3 +119,7 @@ follow_untyped_imports = true
 [[tool.mypy.overrides]]
 module = ["langchain_mcp_adapters.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["ag_ui_langgraph.*"]
+follow_untyped_imports = true

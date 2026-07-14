@@ -10,6 +10,7 @@ from core.settings import LogLevel, Settings, check_str_is_http
 from schema.models import (
     AnthropicModelName,
     AzureOpenAIModelName,
+    FakeModelName,
     OpenAIModelName,
     VertexAIModelName,
 )
@@ -62,7 +63,7 @@ def test_settings_with_vertexai_credentials_file():
     with patch.dict(os.environ, {"GOOGLE_APPLICATION_CREDENTIALS": "test_key"}, clear=True):
         settings = Settings(_env_file=None)
         assert settings.GOOGLE_APPLICATION_CREDENTIALS == SecretStr("test_key")
-        assert settings.DEFAULT_MODEL == VertexAIModelName.GEMINI_20_FLASH
+        assert settings.DEFAULT_MODEL == VertexAIModelName.GEMINI_35_FLASH
         assert settings.AVAILABLE_MODELS == set(VertexAIModelName)
 
 
@@ -86,6 +87,43 @@ def test_settings_with_multiple_api_keys():
         assert settings.AVAILABLE_MODELS == expected_models
 
 
+def test_settings_use_fake_model():
+    with patch.dict(os.environ, {"USE_FAKE_MODEL": "true"}, clear=True):
+        settings = Settings(_env_file=None)
+        assert settings.DEFAULT_MODEL == FakeModelName.FAKE
+        assert settings.AVAILABLE_MODELS == set(FakeModelName)
+
+
+def test_settings_use_fake_model_wins_over_ambient_real_keys():
+    # USE_FAKE_MODEL must win the default even when real provider keys are present.
+    with patch.dict(
+        os.environ,
+        {
+            "USE_FAKE_MODEL": "true",
+            "OPENAI_API_KEY": "test_openai_key",
+            "GROQ_API_KEY": "test_groq_key",
+            "GOOGLE_API_KEY": "test_google_key",
+        },
+        clear=True,
+    ):
+        settings = Settings(_env_file=None)
+        assert settings.DEFAULT_MODEL == FakeModelName.FAKE
+        # AVAILABLE_MODELS still unions every active provider.
+        assert set(FakeModelName).issubset(settings.AVAILABLE_MODELS)
+        assert set(OpenAIModelName).issubset(settings.AVAILABLE_MODELS)
+
+
+def test_settings_explicit_default_model_overrides_fake():
+    # An explicit DEFAULT_MODEL takes precedence over USE_FAKE_MODEL.
+    with patch.dict(
+        os.environ,
+        {"USE_FAKE_MODEL": "true", "OPENAI_API_KEY": "test_openai_key"},
+        clear=True,
+    ):
+        settings = Settings(_env_file=None, DEFAULT_MODEL=OpenAIModelName.GPT_5_NANO)
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_5_NANO
+
+
 def test_settings_base_url():
     settings = Settings(HOST="0.0.0.0", PORT=8000, _env_file=None)
     assert settings.BASE_URL == "http://0.0.0.0:8000"
@@ -105,13 +143,13 @@ def test_settings_with_azure_openai_key():
         {
             "AZURE_OPENAI_API_KEY": "test_key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
-            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deployment-1", "gpt-4o-mini": "deployment-2"}',
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-5": "deployment-1", "gpt-5-mini": "deployment-2"}',
         },
         clear=True,
     ):
         settings = Settings(_env_file=None)
         assert settings.AZURE_OPENAI_API_KEY.get_secret_value() == "test_key"
-        assert settings.DEFAULT_MODEL == AzureOpenAIModelName.AZURE_GPT_4O_MINI
+        assert settings.DEFAULT_MODEL == AzureOpenAIModelName.AZURE_GPT_5_MINI
         assert settings.AVAILABLE_MODELS == set(AzureOpenAIModelName)
 
 
@@ -122,7 +160,7 @@ def test_settings_with_both_openai_and_azure():
             "OPENAI_API_KEY": "test_openai_key",
             "AZURE_OPENAI_API_KEY": "test_azure_key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
-            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deployment-1", "gpt-4o-mini": "deployment-2"}',
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-5": "deployment-1", "gpt-5-mini": "deployment-2"}',
         },
         clear=True,
     ):
@@ -161,14 +199,14 @@ def test_settings_azure_deployment_map():
         {
             "AZURE_OPENAI_API_KEY": "test_key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
-            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deploy1", "gpt-4o-mini": "deploy2"}',
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-5": "deploy1", "gpt-5-mini": "deploy2"}',
         },
         clear=True,
     ):
         settings = Settings(_env_file=None)
         assert settings.AZURE_OPENAI_DEPLOYMENT_MAP == {
-            "gpt-4o": "deploy1",
-            "gpt-4o-mini": "deploy2",
+            "gpt-5": "deploy1",
+            "gpt-5-mini": "deploy2",
         }
 
 
@@ -178,7 +216,7 @@ def test_settings_azure_invalid_deployment_map():
         {
             "AZURE_OPENAI_API_KEY": "test_key",
             "AZURE_OPENAI_ENDPOINT": "https://test.openai.azure.com",
-            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-4o": "deploy1"}',  # Missing required model
+            "AZURE_OPENAI_DEPLOYMENT_MAP": '{"gpt-5": "deploy1"}',  # Missing required model
         },
         clear=True,
     ):
@@ -188,7 +226,7 @@ def test_settings_azure_invalid_deployment_map():
 
 def test_settings_azure_openai():
     """Test Azure OpenAI settings."""
-    deployment_map = {"gpt-4o": "deployment1", "gpt-4o-mini": "deployment2"}
+    deployment_map = {"gpt-5": "deployment1", "gpt-5-mini": "deployment2"}
     with patch.dict(
         os.environ,
         {

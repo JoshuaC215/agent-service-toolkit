@@ -24,9 +24,9 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install uv
-      uses: astral-sh/setup-uv@v8.2.0
+      uses: astral-sh/setup-uv@v8.3.2
       with:
-        version: "0.11.26"
+        version: "0.11.28"
     - name: Install dependencies with uv
       run: |
         uv sync --frozen
@@ -49,6 +49,28 @@ jobs:
       uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+
+  lint-markdown:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: "pyproject.toml"
+    - name: Install uv
+      uses: astral-sh/setup-uv@v8.3.2
+      with:
+        version: "0.11.28"
+    - name: Install dependencies with uv
+      run: |
+        uv sync --frozen --only-group dev
+      env:
+        UV_SYSTEM_PYTHON: 1
+    - name: Lint markdown with pymarkdown
+      run: |
+        uv run pymarkdown scan README.md docs/
 
   test-docker:
     runs-on: ubuntu-latest
@@ -124,9 +146,9 @@ jobs:
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv
-        uses: astral-sh/setup-uv@v8.2.0
+        uses: astral-sh/setup-uv@v8.3.2
         with:
-          version: "0.11.26"
+          version: "0.11.28"
       - name: Install ONLY CLIENT dependencies with uv
         run: |
           uv sync --frozen --only-group client --only-group dev

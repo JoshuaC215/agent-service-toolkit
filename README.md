@@ -15,7 +15,7 @@ This project offers a template for you to easily build and run your own agents u
 
 ### [Try the app!](https://agent-service-toolkit.streamlit.app/)
 
-<a href="https://agent-service-toolkit.streamlit.app/"><img src="media/app_screenshot.png" width="600"></a>
+<a href="https://agent-service-toolkit.streamlit.app/"><img src="media/app_screenshot.png" width="600" alt="App screenshot"></a>
 
 ### Quickstart
 
@@ -27,7 +27,7 @@ echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 
 # uv is the recommended way to install agent-service-toolkit, but "pip install ." also works
 # For uv installation options, see: https://docs.astral.sh/uv/getting-started/installation/
-curl -LsSf https://astral.sh/uv/0.11.26/install.sh | sh
+curl -LsSf https://astral.sh/uv/0.11.28/install.sh | sh
 
 # Install dependencies. "uv sync" creates .venv automatically
 uv sync --frozen
@@ -48,13 +48,14 @@ docker compose watch
 
 ### Architecture Diagram
 
-<img src="media/agent_architecture.png" width="600">
+<img src="media/agent_architecture.png" width="600" alt="Agent architecture diagram">
 
 ### Key Features
 
 1. **LangGraph Agent and latest features**: A customizable agent built using the LangGraph framework. Implements the latest LangGraph v1.0 features including human in the loop with `interrupt()`, flow control with `Command`, long-term memory with `Store`, and `langgraph-supervisor`.
 1. **FastAPI Service**: Serves the agent with both streaming and non-streaming endpoints.
 1. **Advanced Streaming**: A novel approach to support both token-based and message-based streaming.
+1. **AG-UI Protocol Support**: Every agent is also served over the [AG-UI protocol](https://docs.ag-ui.com) for connecting AG-UI compatible frontends like CopilotKit - see [docs](docs/AGUI.md).
 1. **Streamlit Interface**: Provides a user-friendly chat interface for interacting with the agent, including voice input and output.
 1. **Multiple Agent Support**: Run multiple agents in the service and call by URL path. Available agents and models are described in `/info`
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
@@ -104,11 +105,9 @@ To customize the agent for your own use case:
 1. Import and add your new agent to the `agents` dictionary in `src/agents/agents.py`. Your agent can be called by `/<your_agent_name>/invoke` or `/<your_agent_name>/stream`.
 1. Adjust the Streamlit interface in `src/streamlit_app.py` to match your agent's capabilities.
 
-
 ### Handling Private Credential files
 
 If your agents or chosen LLM require file-based credential files or certificates, the `privatecredentials/` has been provided for your development convenience. All contents, excluding the `.gitkeep` files, are ignored by git and docker's build process. See [Working with File-based Credentials](docs/File_Based_Credentials.md) for suggested use.
-
 
 ### Docker Setup
 
@@ -119,6 +118,7 @@ For local development, we recommend using [docker compose watch](https://docs.do
 1. Make sure you have Docker and Docker Compose (>= [v2.23.0](https://docs.docker.com/compose/release-notes/#2230)) installed on your system.
 
 2. Create a `.env` file from the `.env.example`. At minimum, you need to provide an LLM API key (e.g., OPENAI_API_KEY).
+
    ```sh
    cp .env.example .env
    # Edit .env to add your API keys
@@ -209,7 +209,11 @@ The following are a few of the public projects that drew code or inspiration fro
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. Currently the tests need to be run using the local development without Docker setup. To run the tests for the agent service:
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+**A note on how this repo is maintained:** this is a solo-maintainer project, and issues, PRs, and discussions are triaged on a roughly biweekly cycle with help from an AI maintenance agent. Thanks for your patience if responses take a week or two — I will do my best to respond to truly urgent issues (vulnerability reports, etc.) or in-progress PRs within a few days. The full automation playbooks are versioned in [`docs/maintenance/`](docs/maintenance/) if you're curious how it works.
+
+Currently the tests need to be run using the local development without Docker setup. To run the tests for the agent service:
 
 1. Ensure you're in the project root directory and have activated your virtual environment.
 
@@ -225,6 +229,26 @@ Contributions are welcome! Please feel free to submit a Pull Request. Currently 
    ```sh
    pytest
    ```
+
+### Smoke testing optional dependencies
+
+Some integrations aren't exercised by the unit suite or the default CI run because they
+need real infrastructure: the Postgres and MongoDB checkpointers, the AG-UI endpoint, and
+LangFuse tracing. `scripts/smoke_test.sh` spins up each dependency in Docker, runs the
+service against it, verifies the integration end-to-end (including a check that the
+intended backend was actually used, not a silent SQLite fallback), and tears it down.
+
+```sh
+./scripts/smoke_test.sh                 # default: postgres, mongo, agui
+./scripts/smoke_test.sh mongo           # a single target
+./scripts/smoke_test.sh langfuse        # heavy: starts LangFuse's full self-host stack
+./scripts/smoke_test.sh all             # everything, including langfuse
+```
+
+These are opt-in confidence checks for a maintainer or agent — not part of CI. Run the
+target that matches what you changed rather than the whole set. The optional add-on
+compose files live in `docker/` (e.g. `docker/compose.mongo.yaml`), layered on top of the
+default `compose.yaml` so the default stack stays lightweight.
 
 ## License
 

@@ -142,8 +142,13 @@ async def main() -> None:
             thread_id = str(uuid.uuid4())
             messages = []
         else:
+            # Read the agent from the URL so history is fetched through the graph that
+            # created the thread.
+            resume_agent = st.query_params.get("agent") or agent_client.agent
             try:
-                messages: ChatHistory = agent_client.get_history(thread_id=thread_id).messages
+                messages: ChatHistory = agent_client.get_history(
+                    thread_id=thread_id, agent=resume_agent
+                ).messages
             except AgentClientError:
                 st.error("No message history found for this Thread ID.")
                 messages = []
@@ -154,6 +159,8 @@ async def main() -> None:
         _user_data = load_user_data(user_id)
         st.session_state.history_index = _user_data["history_index"]
         st.session_state.history_enabled = _user_data["history_enabled"]
+    # Keep thread_id in the URL so the address bar is directly shareable.
+    st.query_params["thread_id"] = st.session_state.thread_id
 
     # Config options
     with st.sidebar:
@@ -176,10 +183,13 @@ async def main() -> None:
             model = st.selectbox("LLM to use", options=agent_client.info.models, index=model_idx)
             agent_list = [a.key for a in agent_client.info.agents]
             agent_idx = agent_list.index(agent_client.info.default_agent)
+            # Sync the selection to the ?agent= URL param (dropped when it's the default).
             agent_client.agent = st.selectbox(
                 "Agent to use",
                 options=agent_list,
                 index=agent_idx,
+                key="agent",
+                bind="query-params",
             )
             use_streaming = st.toggle("Stream results", value=True)
             # Audio toggle with callback: clears cached audio when toggled off
@@ -221,17 +231,19 @@ async def main() -> None:
 
         @st.dialog("Share/resume chat")
         def share_chat_dialog() -> None:
-            session = st.runtime.get_instance()._session_mgr.list_active_sessions()[0]
-            st_base_url = urllib.parse.urlunparse(
-                [session.client.request.protocol, session.client.request.host, "", "", "", ""]
+            # st.context.url is the browser URL (with query string stripped). Rebuild
+            # the params, including the agent so the thread resumes through the right graph.
+            if not st.context.url:
+                st.error("Could not determine the app URL to build a shareable link.")
+                return
+            query = urllib.parse.urlencode(
+                {
+                    "thread_id": st.session_state.thread_id,
+                    "agent": agent_client.agent,
+                    USER_ID_COOKIE: user_id,
+                }
             )
-            # if it's not localhost, switch to https by default
-            if not st_base_url.startswith("https") and "localhost" not in st_base_url:
-                st_base_url = st_base_url.replace("http", "https")
-            # Include both thread_id and user_id in the URL for sharing to maintain user identity
-            chat_url = (
-                f"{st_base_url}?thread_id={st.session_state.thread_id}&{USER_ID_COOKIE}={user_id}"
-            )
+            chat_url = f"{st.context.url}?{query}"
             st.markdown(f"**Chat URL:**\n```text\n{chat_url}\n```")
             st.info("Copy the above URL to share or revisit this chat")
 

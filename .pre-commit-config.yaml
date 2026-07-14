@@ -11,3 +11,13 @@ repos:
     - id: ruff
       args: [ --fix ]
     - id: ruff-format
+- repo: https://github.com/jackdewinter/pymarkdown
+  rev: v0.9.38
+  hooks:
+    - id: pymarkdown
+      alias: pymarkdown-fix
+      args: [ fix ]
+      files: ^(README\.md|docs/.*\.md)$
+    - id: pymarkdown
+      args: [ scan ]
+      files: ^(README\.md|docs/.*\.md)$
