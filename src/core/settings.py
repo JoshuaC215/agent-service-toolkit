@@ -171,6 +171,10 @@ class Settings(BaseSettings):
         if not active_keys:
             raise ValueError("At least one LLM API key must be provided.")
 
+        # USE_FAKE_MODEL must win the default even when real provider keys are present.
+        if self.USE_FAKE_MODEL and self.DEFAULT_MODEL is None:
+            self.DEFAULT_MODEL = FakeModelName.FAKE
+
         for provider in active_keys:
             match provider:
                 case Provider.OPENAI:
