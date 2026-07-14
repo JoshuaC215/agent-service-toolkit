@@ -88,11 +88,11 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         if not settings.AZURE_OPENAI_API_KEY or not settings.AZURE_OPENAI_ENDPOINT:
             raise ValueError("Azure OpenAI API key and endpoint must be configured")
 
+        # GPT-5 generation is reasoning-based and rejects temperature (400); omit it.
         return AzureChatOpenAI(
             azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
             deployment_name=api_model_name,
             api_version=settings.AZURE_OPENAI_API_VERSION,
-            temperature=0.5,
             streaming=True,
             timeout=60,
             max_retries=3,
@@ -121,6 +121,9 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             return ChatGroq(model=api_model_name, temperature=0.0)  # type: ignore[call-arg]
         return ChatGroq(model=api_model_name, temperature=0.5)  # type: ignore[call-arg]
     if model_name in AWSModelName:
+        if model_name == AWSModelName.BEDROCK_SONNET:
+            # Sonnet 5 rejects non-default sampling params (400); omit temperature.
+            return ChatBedrock(model_id=api_model_name)
         return ChatBedrock(model_id=api_model_name, temperature=0.5)
     if model_name in OllamaModelName:
         if settings.OLLAMA_BASE_URL:
