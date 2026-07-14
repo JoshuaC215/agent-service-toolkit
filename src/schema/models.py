@@ -28,15 +28,9 @@ class OpenAIModelName(StrEnum):
 
 
 class AzureOpenAIModelName(StrEnum):
-    """https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure
+    """https://learn.microsoft.com/en-us/azure/foundry/foundry-models/concepts/models-sold-directly-by-azure"""
 
-    Azure is deployment-based: these values are used as Azure deployment names and
-    are cross-checked against AZURE_OPENAI_DEPLOYMENT_MAP / the required_models set
-    in settings.py. Renaming a value is a breaking change for existing deployment
-    maps. The GPT-5 generation is reasoning-based and rejects sampling parameters
-    like temperature (see llm.py).
-    """
-
+    # Values double as Azure deployment names / required_models keys; renaming breaks existing deployment maps.
     AZURE_GPT_5 = "azure-gpt-5"
     AZURE_GPT_5_MINI = "azure-gpt-5-mini"
 
@@ -85,17 +79,9 @@ class GroqModelName(StrEnum):
 
 
 class AWSModelName(StrEnum):
-    """https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html
+    """https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html"""
 
-    Values are Bedrock cross-region inference profile IDs, not bare foundation
-    model IDs. The latest Claude models on Bedrock reject on-demand invocation of
-    the base model ID ("on-demand throughput isn't supported") and must be called
-    through an inference profile prefixed with a geo (``us.``/``eu.``/``apac.``)
-    or ``global.``. ``global.`` routes dynamically and is the most portable
-    default; single-region deployments not enrolled in Global cross-Region
-    inference should swap it for their geo prefix (e.g. ``us.``).
-    """
-
+    # Values are global cross-region inference profile IDs; latest Claude on Bedrock rejects bare on-demand model IDs. Single-region deployments may need a us./eu. prefix instead.
     BEDROCK_HAIKU = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
     BEDROCK_SONNET = "global.anthropic.claude-sonnet-5"
 
