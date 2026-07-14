@@ -48,8 +48,9 @@ the biweekly maintenance run's digest (`Weekly_Maintenance_Run.md`).
    *completed* run; if the in-progress run started more than ~15 minutes ago,
    wait for it rather than skating past the ambiguity.
 3. **Live app:** the egress proxy doesn't support WebSockets, so the browser
-   round-trip (`scripts/smoke_live_app.py`) can't run here — it covers
-   localhost in the weekly dependency ladder instead. Probe the front-end
+   tests (`scripts/smoke_live_app.py` and the fuller `scripts/e2e_ui_tests.py`
+   suite) can't run here — they cover localhost in the weekly dependency ladder
+   instead. Probe the front-end
    shell: `curl -sL --max-time 30 -c /tmp/st.jar -b /tmp/st.jar
    https://agent-service-toolkit.streamlit.app/` → expect a final 200 with
    Streamlit shell HTML (a redirect hop via `share.streamlit.io` may or may
