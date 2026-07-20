@@ -129,7 +129,7 @@ landing it. Non-key majors need no 3-month wait — just ordinary triage.
 | What | File |
 | --- | --- |
 | Runtime deps + version pins | `pyproject.toml` → `[project] dependencies` |
-| Dev tooling (ruff, mypy, pytest, …) | `pyproject.toml` → `[dependency-groups] dev` |
+| Dev tooling (ruff, pyrefly, pytest, …) | `pyproject.toml` → `[dependency-groups] dev` |
 | Minimal client/Streamlit deps (a subset, **kept in sync** with the main list) | `pyproject.toml` → `[dependency-groups] client` |
 | Fully resolved versions (source of truth for what installs) | `uv.lock` |
 | Resolver cooldown | `pyproject.toml` → `[tool.uv] exclude-newer` |
@@ -164,7 +164,7 @@ landing it. Non-key majors need no 3-month wait — just ordinary triage.
    package's block in `uv.lock` for reverse-dep `specifier`s) — otherwise a
    floor nothing needs can block a future upgrade.
 7. **Sync + static verify:** `uv sync --frozen`, then `uv run ruff check .`,
-   `uv run ruff format --check .`, `uv run mypy src`, `uv run pytest`.
+   `uv run ruff format --check .`, `uv run pyrefly check`, `uv run pytest`.
 8. **Live e2e:** follow `references/live-e2e.md` (fake-model HTTP ladder;
    Streamlit browser smoke when the UI stack moved). If a bump touches
    checkpointers, AG-UI, or LangFuse, also run the relevant

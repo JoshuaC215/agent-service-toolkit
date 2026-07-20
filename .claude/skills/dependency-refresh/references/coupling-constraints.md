@@ -56,9 +56,9 @@ and release notes.
 
 - **`ruff` formatter output can change on minor bumps** — expect one-time
   `ruff format` diffs, not just new lint rules.
-- **Uncapped dev-tool majors flood in via `uv lock --upgrade`** (this bit with
-  mypy). Cap temporarily to keep a disruptive major out of a routine round,
-  and lift the cap in a focused pass.
+- **Uncapped dev-tool majors flood in via `uv lock --upgrade`.** Cap
+  temporarily to keep a disruptive major out of a routine round, and lift the
+  cap in a focused pass.
 - **`numpy` leads Python-version drops** — its floor is usually the first hard
   constraint when deciding when to drop an old Python minor.
 - **Don't write resolver picks down as requirements.** Pin-reconciliation once

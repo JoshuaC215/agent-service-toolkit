@@ -37,9 +37,9 @@ jobs:
         uv run ruff format --check
         uv run ruff check --output-format github
 
-    - name: Run mypy
+    - name: Type check with pyrefly
       run: |
-        uv run mypy src/
+        uv run pyrefly check
 
     - name: Test with pytest
       run: |

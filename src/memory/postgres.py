@@ -66,7 +66,7 @@ async def get_postgres_saver():
         check=AsyncConnectionPool.check_connection,
     ) as pool:
         try:
-            checkpointer = AsyncPostgresSaver(pool)
+            checkpointer = AsyncPostgresSaver(pool)  # type: ignore[bad-argument-type]
             await checkpointer.setup()
             yield checkpointer
         finally:
@@ -95,7 +95,7 @@ async def get_postgres_store():
         check=AsyncConnectionPool.check_connection,
     ) as pool:
         try:
-            store = AsyncPostgresStore(pool)
+            store = AsyncPostgresStore(pool)  # type: ignore[bad-argument-type]
             await store.setup()
             yield store
         finally:

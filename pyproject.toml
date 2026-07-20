@@ -75,7 +75,7 @@ dev = [
     "pytest-env",
     "pytest-asyncio",
     "ruff",
-    "mypy ~=2.2.0",
+    "pyrefly ~=1.1.1",
     "pymarkdownlnt",
 ]
 
@@ -114,18 +114,13 @@ plugins.md041.enabled = false
 # Allow repeated heading text as long as it's not adjacent siblings.
 plugins.md024.siblings_only = true
 
-[tool.mypy]
-plugins = "pydantic.mypy"
-exclude = "src/streamlit_app.py"
+[tool.pyrefly]
+project-includes = ["src"]
+project-excludes = ["src/streamlit_app.py"]
+preset = "default"
 
-[[tool.mypy.overrides]]
-module = ["numexpr.*"]
-follow_untyped_imports = true
-
-[[tool.mypy.overrides]]
-module = ["langchain_mcp_adapters.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["ag_ui_langgraph.*"]
-follow_untyped_imports = true
+[tool.pyrefly.errors]
+# LangGraph's StateGraph(state_schema) generic bound rejects MessagesState
+# subclasses, so this fires on every agent's StateGraph(AgentState). It's a gap
+# in LangGraph's typing, not a real error, so disable it project-wide.
+bad-specialization = false
