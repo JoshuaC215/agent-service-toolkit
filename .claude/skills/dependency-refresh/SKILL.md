@@ -14,7 +14,7 @@ description: >-
 # Dependency & Version Refresh
 
 This skill is the complete playbook. There is no separate doc: the former
-`docs/Dependency_Upgrades.md` is deprecated (its journal is preserved in git
+`docs/Dependency_Upgrades.md` was removed (its journal survives in git
 history), and running state lives in **refresh PR descriptions**, not in a file.
 
 Supporting references in this skill's directory — read them at the step that
