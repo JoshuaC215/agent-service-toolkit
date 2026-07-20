@@ -259,16 +259,19 @@ script's `--anthropic-api-key-env` flag handles remapping (see its docstring).
 
 ## Phase F — Dependency refresh (first run of each month)
 
-Use the **dependency-refresh** skill (playbook: `docs/Dependency_Upgrades.md`).
-Safe bumps in one PR; deferred majors recorded in the doc's backlog table with
-ROI notes. Scope includes the infra images the smoke tests and compose files pin
-(`postgres`/`mongo` tags, `LANGFUSE_REF` in `scripts/smoke_test.sh`) per the
-doc's "Where versions live" table. Run the full verification ladder including
-the fake-model live e2e — the `smoke_live_app.py` round-trip and, when a bump
-could touch chat history, settings, or the feedback/streaming paths, the wider
+Use the **dependency-refresh** skill — it is the complete playbook, including
+where prior state lives (the previous refresh PR's description, found per its
+Step 0). Safe bumps in one PR; deferred majors and their cooldown dates carried
+forward in the PR description per the skill's template. Scope includes the
+infra images the smoke tests and compose files pin (`postgres`/`mongo` tags,
+`LANGFUSE_REF` in `scripts/smoke_test.sh`) per the skill's "Where versions
+live" table. Run the full verification ladder including the fake-model live
+e2e — the `smoke_live_app.py` round-trip and, when a bump could touch chat
+history, settings, or the feedback/streaming paths, the wider
 `e2e_ui_tests.py` suite (both against a local `streamlit run` + fake-model
-service, per the playbook). Phase D's full smoke pass already covers the infra
-integrations, so re-run only the targets whose dependencies this phase bumped.
+service, per the skill's live-e2e reference). Phase D's full smoke pass
+already covers the infra integrations, so re-run only the targets whose
+dependencies this phase bumped.
 
 ## CI follow-through on PRs this run opened (monthly runs)
 
