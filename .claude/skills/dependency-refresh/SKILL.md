@@ -13,9 +13,8 @@ description: >-
 
 # Dependency & Version Refresh
 
-This skill is the complete playbook. There is no separate doc: the former
-`docs/Dependency_Upgrades.md` was removed (its journal survives in git
-history), and running state lives in **refresh PR descriptions**, not in a file.
+This skill is the complete playbook. Running state — what moved each round and
+which majors are deferred — lives in **refresh PR descriptions**, not in a file.
 
 Supporting references in this skill's directory — read them at the step that
 needs them, not up front:
@@ -68,9 +67,6 @@ Before touching any pin, find the most recent refresh PR and read its body:
 2. Fallback: search by head-branch prefix `head:claude/dependency-refresh`.
 3. Last resort: `git log` on `main` for commits touching `uv.lock`, then look up
    their PRs.
-
-PRs merged before 2026-07-20 predate the title convention (e.g. #312, #336
-"chore(deps): … safe-bumps refresh") — the branch-prefix fallback finds them.
 
 From the latest one (or two, if the latest was narrow), extract: the deferred
 majors table, anything "deliberately held back", and verification caveats
@@ -165,9 +161,8 @@ landing it. Non-key majors need no 3-month wait — just ordinary triage.
    written pin (common for `>=` floors), raise the written pin to match — after
    which `uv lock` must report no changes. **Sanity-check each reconciled floor
    against what actual dependents require** before writing it down (grep the
-   package's block in `uv.lock` for reverse-dep `specifier`s) — a past refresh
-   wrote an unneeded `grpcio` floor this way and it later blocked Python 3.14
-   (details in the coupling reference).
+   package's block in `uv.lock` for reverse-dep `specifier`s) — otherwise a
+   floor nothing needs can block a future upgrade.
 7. **Sync + static verify:** `uv sync --frozen`, then `uv run ruff check .`,
    `uv run ruff format --check .`, `uv run mypy src`, `uv run pytest`.
 8. **Live e2e:** follow `references/live-e2e.md` (fake-model HTTP ladder;
@@ -205,5 +200,4 @@ minor once the dependency stack resolves and passes on it; drop a minor when
 it nears security-EOL or a needed dependency drops it first (numpy is usually
 the leading indicator). Verify support claims on a real interpreter of that
 version (`uv python install 3.X`, then the full check ladder) — and use a
-stable patch release, not an `rc` (a past rc-only sandbox hit an
-already-fixed CPython/pydantic bug; see the coupling reference).
+stable patch release, not an `rc` (see the coupling reference).
