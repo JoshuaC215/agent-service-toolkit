@@ -236,7 +236,7 @@ async def message_generator(
 
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
-        async for stream_event in agent.astream(
+        async for stream_event in agent.astream(  # type: ignore[no-matching-overload]
             **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
         ):
             if not isinstance(stream_event, tuple):
@@ -248,7 +248,7 @@ async def message_generator(
             else:
                 # Without subgraphs: (stream_mode, event)
                 stream_mode, event = stream_event
-            new_messages = []
+            new_messages: list[Any] = []
             if stream_mode == "updates":
                 for node, updates in event.items():
                     # A simple approach to handle agent interrupts.
