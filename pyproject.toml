@@ -60,6 +60,12 @@ dependencies = [
     "ag-ui-langgraph~=0.0.42",
 ]
 
+# Supply-chain cooldown: resolution only considers releases >=7 days old. Needs the
+# repo's pinned uv version (older uv ignores this and strips it from uv.lock on re-lock).
+# Policy and override procedure: .claude/skills/dependency-refresh/SKILL.md
+[tool.uv]
+exclude-newer = "7 days"
+
 [dependency-groups]
 dev = [
     "langgraph-cli[inmem]",
