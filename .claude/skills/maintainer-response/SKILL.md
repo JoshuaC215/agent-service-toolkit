@@ -83,13 +83,13 @@ separate, follow-up instruction.
 
 ## The lint/CI ask (use verbatim when a PR needs cleanup)
 
-CI runs ruff format check, ruff check, mypy, and pytest (+docker) on every PR to `main`
+CI runs ruff format check, ruff check, pyrefly, and pytest (+docker) on every PR to `main`
 (`.github/workflows/test.yml`). When a contributor's PR is failing or unformatted:
 
 ```sh
 uv run ruff format
 uv run ruff check --output-format github
-uv run mypy src/
+uv run pyrefly check
 ```
 
 Ask them to run these and push the fixes. For test expectations, point to `tests/` and
