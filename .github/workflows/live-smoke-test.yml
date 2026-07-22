@@ -23,6 +23,8 @@ concurrency:
 
 jobs:
   smoke:
+    # Only run against the maintainer's deployed app, not in template clones/forks
+    if: github.repository == 'JoshuaC215/agent-service-toolkit'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
