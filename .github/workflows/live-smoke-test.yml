@@ -46,11 +46,31 @@ jobs:
         run: |
           # On scheduled runs there is no dispatch input, so LIVE_APP_URL is the
           # empty string; unset it so the script falls back to its default URL.
-          [ -z "${LIVE_APP_URL}" ] && unset LIVE_APP_URL
-          uv run --with playwright python scripts/smoke_live_app.py
+          # Use an explicit if (not `&& unset`) so a set URL doesn't trip `bash -e`.
+          if [ -z "${LIVE_APP_URL}" ]; then unset LIVE_APP_URL; fi
+          set -o pipefail
+          uv run --with playwright python scripts/smoke_live_app.py 2>&1 | tee smoke_run.log
+      - name: Failure summary
+        if: failure()
+        run: |
+          {
+            echo "## ❌ Live smoke test failed"
+            echo ""
+            echo "Target: \`${LIVE_APP_URL:-script default}\`"
+            echo ""
+            echo "Diagnostics (page title, iframe count, data-testid inventory, visible text):"
+            echo '```'
+            diag=$(grep '\[smoke_live_app\]' smoke_run.log 2>/dev/null | tail -n 40)
+            echo "${diag:-(no diagnostic lines captured)}"
+            echo '```'
+            echo ""
+            echo "📸 Full-page screenshot: download the **smoke-live-app-failure** artifact below."
+          } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          LIVE_APP_URL: ${{ github.event.inputs.url }}
       - name: Upload failure screenshot
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-live-app-failure
           path: smoke_live_app_failure.png

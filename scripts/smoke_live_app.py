@@ -33,6 +33,7 @@ DEFAULT_URL = "https://agent-service-toolkit.streamlit.app/"
 # used as a fallback when the installed playwright's own browser build is absent.
 CLOUD_CHROMIUM = "/opt/pw-browsers/chromium"
 TEST_MESSAGE = "Reply with the single word: pong"
+CHAT_INPUT_SELECTOR = '[data-testid="stChatInput"] textarea'
 WAKE_TIMEOUT_S = 180
 RESPONSE_TIMEOUT_S = 120
 STREAM_SETTLE_S = 4
@@ -42,8 +43,40 @@ def log(msg: str) -> None:
     print(f"[smoke_live_app] {msg}", flush=True)
 
 
+def _dump_testids(ctx, label: str) -> None:
+    try:
+        ids = ctx.locator("[data-testid]").evaluate_all(
+            "els => Array.from(new Set(els.map(e => e.getAttribute('data-testid')))).slice(0, 40)"
+        )
+        log(f"data-testids in {label} ({len(ids)}): {ids}")
+    except Exception as e:
+        log(f"data-testids in {label} unavailable: {e}")
+
+
+def dump_diagnostics(page) -> None:
+    """Text diagnostics for a failed run, readable straight from the CI logs."""
+    try:
+        log(f"page title: {page.title()!r}  url: {page.url}")
+    except Exception:
+        pass
+    n_iframes = page.locator("iframe").count()
+    log(f"iframes present: {n_iframes}")
+    _dump_testids(page, "top frame")
+    for i in range(n_iframes):
+        _dump_testids(page.frame_locator("iframe").nth(i), f"iframe[{i}]")
+    try:
+        body = (page.locator("body").inner_text(timeout=2_000) or "").strip()
+        log(f"top-frame visible text ({len(body)} chars): {body[:600]!r}")
+    except Exception:
+        pass
+
+
 def fail(page, reason: str) -> None:
     log(f"FAIL: {reason}")
+    try:
+        dump_diagnostics(page)
+    except Exception as e:
+        log(f"diagnostics unavailable: {e}")
     try:
         page.screenshot(path="smoke_live_app_failure.png", full_page=True)
         log("screenshot saved to smoke_live_app_failure.png")
@@ -61,6 +94,24 @@ def wake_if_sleeping(page) -> None:
         return  # not sleeping
     log("app is asleep - clicking wake-up button")
     wake_button.first.click()
+
+
+def find_app_root(page, timeout_s: int):
+    """Return the page or iframe context that holds the app's chat input.
+
+    Local runs render the app at the top level; Streamlit Community Cloud wraps it
+    in an iframe that page.locator() can't see into, so probe iframes as well.
+    """
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if page.locator(CHAT_INPUT_SELECTOR).count():
+            return page
+        for i in range(page.locator("iframe").count()):
+            frame = page.frame_locator("iframe").nth(i)
+            if frame.locator(CHAT_INPUT_SELECTOR).count():
+                return frame
+        time.sleep(1)
+    return None
 
 
 def main() -> None:
@@ -82,15 +133,16 @@ def main() -> None:
         wake_if_sleeping(page)
 
         # The chat input appearing means Streamlit booted, the websocket is up,
-        # and the app script ran (it renders after agent/model init).
-        chat_input = page.locator('[data-testid="stChatInput"] textarea')
-        try:
-            chat_input.wait_for(state="visible", timeout=WAKE_TIMEOUT_S * 1_000)
-        except PlaywrightTimeoutError:
+        # and the app script ran (it renders after agent/model init). Resolve
+        # whether it lives at the top level (local) or inside the Community Cloud
+        # iframe, and run every app interaction against that context.
+        root = find_app_root(page, WAKE_TIMEOUT_S)
+        if root is None:
             fail(page, f"chat input never appeared within {WAKE_TIMEOUT_S}s")
-        log("app loaded, chat input visible")
+        log(f"app loaded, chat input visible ({'top-level' if root is page else 'iframe'})")
 
-        messages = page.locator('[data-testid="stChatMessage"]')
+        chat_input = root.locator(CHAT_INPUT_SELECTOR)
+        messages = root.locator('[data-testid="stChatMessage"]')
         # The welcome message only renders on an empty thread and disappears on
         # the rerun after sending, so detection is text-based, not count-based.
         pre_send_last = (messages.last.inner_text() or "").strip() if messages.count() else ""
