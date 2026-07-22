@@ -9,7 +9,7 @@ from langgraph.types import Interrupt
 
 from agents.agents import Agent
 from schema import ChatHistory, ChatMessage, ServiceMetadata
-from schema.models import OpenAIModelName
+from schema.models import AnthropicModelName, OpenAIModelName
 
 
 def test_invoke(test_client, mock_agent) -> None:
@@ -71,7 +71,7 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     """Test that the model parameter is correctly passed to the agent if specified."""
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is sunny."
-    CUSTOM_MODEL = "claude-sonnet-4-5"
+    CUSTOM_MODEL = OpenAIModelName.GPT_5_MINI
     mock_agent.ainvoke.return_value = [("values", {"messages": [AIMessage(content=ANSWER)]})]
 
     response = test_client.post("/invoke", json={"message": QUESTION, "model": CUSTOM_MODEL})
@@ -87,7 +87,13 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     assert output.type == "ai"
     assert output.content == ANSWER
 
-    # Verify an invalid model throws a validation error
+    # Verify a valid enum outside the configured allowlist returns a 400.
+    unavailable_model = AnthropicModelName.SONNET_45
+    response = test_client.post("/invoke", json={"message": QUESTION, "model": unavailable_model})
+    assert response.status_code == 400
+    assert "not available" in response.json()["detail"]
+
+    # Verify a malformed model string still fails request validation.
     INVALID_MODEL = "gpt-7-notreal"
     response = test_client.post("/invoke", json={"message": QUESTION, "model": INVALID_MODEL})
     assert response.status_code == 422
