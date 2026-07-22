@@ -1,0 +1,55 @@
+name: Live smoke test
+
+# Weekly browser round-trip against the deployed Streamlit demo: loads the app,
+# sends one chat message, and verifies an assistant response streams back
+# (browser -> Streamlit websocket -> agent service -> LLM -> back). Runs an hour
+# before the Sunday maintenance run so that run has a fresh result to report.
+on:
+  schedule:
+    - cron: "0 9 * * 0"
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Target app URL to smoke test (leave blank to use the script default)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-smoke-test
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: "pyproject.toml"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.2
+        with:
+          version: "0.11.28"
+      - name: Install Playwright Chromium
+        run: uv run --with playwright playwright install --with-deps chromium
+      - name: Run live smoke test
+        env:
+          LIVE_APP_URL: ${{ github.event.inputs.url }}
+        run: |
+          # On scheduled runs there is no dispatch input, so LIVE_APP_URL is the
+          # empty string; unset it so the script falls back to its default URL.
+          [ -z "${LIVE_APP_URL}" ] && unset LIVE_APP_URL
+          uv run --with playwright python scripts/smoke_live_app.py
+      - name: Upload failure screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-live-app-failure
+          path: smoke_live_app_failure.png
+          if-no-files-found: warn

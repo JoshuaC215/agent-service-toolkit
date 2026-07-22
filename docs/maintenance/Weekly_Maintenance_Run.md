@@ -207,6 +207,33 @@ finding (the visit also keeps the app awake). Report in the digest's Health
 section; route connection-layer failures through the proxy diagnosis
 (`/root/.ccr/README.md`) before calling it an outage.
 
+**Full browser round-trip — read the `live-smoke-test.yml` workflow result.**
+The curl probe above only proves the SPA shell loads; the actual chat round-trip
+(browser → Streamlit websocket → agent service → LLM → back) is exercised by the
+scheduled **Live smoke test** workflow (`.github/workflows/live-smoke-test.yml`),
+which runs `scripts/smoke_live_app.py` on a GitHub-hosted runner every Sunday at
+09:00 UTC — an hour before this run — because that runner has no WebSocket-egress
+restriction. This session is a **consumer** of that result: do **not** try to run
+Playwright or open a WebSocket here.
+
+- Look up the workflow's latest **completed** run by its file id, not by scanning
+  all runs: `mcp__github__actions_list` for workflow `live-smoke-test.yml`
+  (`status: completed`, newest first), or `gh run list --workflow live-smoke-test.yml`
+  if the check-in uses `gh`. Read the top run's `conclusion`, `html_url`, and
+  `created_at`.
+- **Staleness / false-green guard:** the workflow fires weekly, so a healthy
+  signal is a completed run **< 8 days old**. If the latest completed run is
+  older than that, the schedule didn't fire — report "**no fresh signal** (last
+  live smoke run was <date>, older than the weekly cadence)" and do **not** pass
+  off the stale `conclusion` as current. Optionally kick a fresh run with
+  `mcp__github__actions_run_trigger` (`workflow_dispatch` on `live-smoke-test.yml`)
+  and read that instead — only if a bounded wait fits this run's 90-minute
+  deadline; otherwise just flag the staleness.
+- Report inline in the digest's Health section alongside the curl probe: pass/fail,
+  the run's `html_url`, and when it ran. On **failure**, point at the run's
+  uploaded `smoke-live-app-failure` artifact (the `smoke_live_app_failure.png`
+  screenshot) so the screenshot is one click away without re-running anything.
+
 ## Phase D — Infra smoke tests (every run)
 
 Run the full suite every run: `./scripts/smoke_test.sh all` (Postgres, MongoDB,
