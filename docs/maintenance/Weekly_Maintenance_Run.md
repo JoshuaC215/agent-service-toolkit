@@ -3,10 +3,12 @@
 This document is the executable playbook for the scheduled **biweekly maintenance
 Routine** on this repo. A Claude Code cloud session is triggered every Sunday at
 10:00 UTC (3am Pacific in summer, 2am in winter), reads this file, and follows it.
-The parity gate below makes it effectively run **every other Sunday**. Edit this
-file (via PR) to change the run's behavior — the trigger itself only points here.
+The parity gate below makes the **full** run happen **every other Sunday**; on
+the in-between Sundays the session does only a lightweight weekly "I'm alive"
+check that reports the live smoke-test result (see Step 0). Edit this file (via
+PR) to change the run's behavior — the trigger itself only points here.
 
-## Step 0 — Parity gate (run or skip?)
+## Step 0 — Parity gate (full run, or off-week alive check?)
 
 The anchor date is **Sunday 2026-07-12** (an "on" week). Compute:
 
@@ -15,8 +17,26 @@ days=$(( ( $(date -u +%s) - $(date -u -d 2026-07-12 +%s) ) / 86400 ))
 if [ $(( (days / 7) % 2 )) -eq 1 ]; then echo "OFF-WEEK"; else echo "ON-WEEK"; fi
 ```
 
-**If OFF-WEEK: stop immediately.** End the session with the single line
-"Off-week — skipped." Do not run any phase, do not notify, do not post anything.
+**If ON-WEEK:** run the full playbook below (Phases A–D on every on-week run;
+E/F monthly). The live smoke-test result is reported in the digest's Health
+section as usual.
+
+**If OFF-WEEK: run only the weekly "I'm alive" check, then stop.** The full
+maintenance cadence stays every other week — do **not** run any phase (A–F), open
+a PR, post a comment, or close anything on an off-week. Do exactly this and
+nothing more:
+
+1. Read the latest live smoke-test result via the **"Full browser round-trip"**
+   procedure in Phase C (the `live-smoke-test.yml` consumer). That workflow runs
+   on its own weekly GitHub Actions cron, independent of this parity gate, so a
+   fresh result exists on off-weeks too. Apply its staleness guard.
+2. End the session with a brief **"I'm alive" notification** — this is the
+   session's one message and routes to the maintainer's email like the digest.
+   State the smoke test's pass/fail, a link to the run, and when it ran; add the
+   staleness note if the latest run is older than the weekly cadence, and the
+   `smoke-live-app-failure` artifact link on failure. Two or three lines, nothing
+   else — no phases, no digest sections. Send it even when green: the point of
+   the off-week check is a positive proof-of-life, not just failure alerting.
 
 A fixed anchor date is used deliberately instead of ISO week numbers — week-number
 parity breaks across 53-week years; days-since-anchor never does.
