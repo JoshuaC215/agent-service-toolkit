@@ -63,7 +63,7 @@ def test_settings_with_vertexai_credentials_file():
     with patch.dict(os.environ, {"GOOGLE_APPLICATION_CREDENTIALS": "test_key"}, clear=True):
         settings = Settings(_env_file=None)
         assert settings.GOOGLE_APPLICATION_CREDENTIALS == SecretStr("test_key")
-        assert settings.DEFAULT_MODEL == VertexAIModelName.GEMINI_35_FLASH
+        assert settings.DEFAULT_MODEL == VertexAIModelName.GEMINI_36_FLASH
         assert settings.AVAILABLE_MODELS == set(VertexAIModelName)
 
 
