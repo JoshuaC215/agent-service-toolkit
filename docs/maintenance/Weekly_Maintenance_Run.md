@@ -17,26 +17,49 @@ days=$(( ( $(date -u +%s) - $(date -u -d 2026-07-12 +%s) ) / 86400 ))
 if [ $(( (days / 7) % 2 )) -eq 1 ]; then echo "OFF-WEEK"; else echo "ON-WEEK"; fi
 ```
 
+Both cadences surface the **live smoke-test result**, and the way to read it is
+the same either way, so it is defined once here.
+
+**Reading the live smoke-test result (`live-smoke-test.yml` consumer).** The chat
+round-trip (browser → Streamlit websocket → agent service → LLM → back) is
+exercised by the scheduled **Live smoke test** workflow
+(`.github/workflows/live-smoke-test.yml`), which runs `scripts/smoke_live_app.py`
+on a GitHub-hosted runner every Sunday at 09:00 UTC — an hour before this run —
+because that runner has no WebSocket-egress restriction. It runs on its own weekly
+cron, independent of this parity gate, so a fresh result exists on off-weeks too.
+This session is only a **consumer**: do **not** run Playwright or open a WebSocket
+here.
+
+- Look up the workflow's latest **completed** run by its file id, not by scanning
+  all runs: `mcp__github__actions_list` for workflow `live-smoke-test.yml`
+  (`status: completed`, newest first), or `gh run list --workflow live-smoke-test.yml`
+  if the check-in uses `gh`. Read the top run's `conclusion`, `html_url`, and
+  `created_at`.
+- **Staleness / false-green guard:** the workflow fires weekly, so a healthy
+  signal is a completed run **< 8 days old**. If the latest completed run is
+  older than that, the schedule didn't fire — report "**no fresh signal** (last
+  live smoke run was <date>, older than the weekly cadence)" and do **not** pass
+  off the stale `conclusion` as current. Optionally kick a fresh run with
+  `mcp__github__actions_run_trigger` (`workflow_dispatch` on `live-smoke-test.yml`)
+  and read that instead — only if a bounded wait fits this run's 90-minute
+  deadline; otherwise just flag the staleness.
+- On **failure**, grab the run's uploaded `smoke-live-app-failure` artifact (the
+  `smoke_live_app_failure.png` screenshot) link so it's one click away without
+  re-running anything.
+
 **If ON-WEEK:** run the full playbook below (Phases A–D on every on-week run;
-E/F monthly). The live smoke-test result is reported in the digest's Health
-section as usual.
+E/F monthly). Report the smoke result — read as above — in the digest's Health
+section (Phase C), alongside the curl shell probe.
 
-**If OFF-WEEK: run only the weekly "I'm alive" check, then stop.** The full
-maintenance cadence stays every other week — do **not** run any phase (A–F), open
-a PR, post a comment, or close anything on an off-week. Do exactly this and
-nothing more:
-
-1. Read the latest live smoke-test result via the **"Full browser round-trip"**
-   procedure in Phase C (the `live-smoke-test.yml` consumer). That workflow runs
-   on its own weekly GitHub Actions cron, independent of this parity gate, so a
-   fresh result exists on off-weeks too. Apply its staleness guard.
-2. End the session with a brief **"I'm alive" notification** — this is the
-   session's one message and routes to the maintainer's email like the digest.
-   State the smoke test's pass/fail, a link to the run, and when it ran; add the
-   staleness note if the latest run is older than the weekly cadence, and the
-   `smoke-live-app-failure` artifact link on failure. Two or three lines, nothing
-   else — no phases, no digest sections. Send it even when green: the point of
-   the off-week check is a positive proof-of-life, not just failure alerting.
+**If OFF-WEEK: emit only the weekly "I'm alive" notification, then stop.** The
+full maintenance cadence stays every other week — do **not** run any phase (A–F),
+open a PR, post a comment, or close anything on an off-week. Read the smoke result
+as above and end the session with a brief notification — this is the session's one
+message and routes to the maintainer's email like the digest: the pass/fail, a
+link to the run, and when it ran, plus the staleness note and failure-artifact
+link if applicable. Two or three lines, nothing else — no phases, no digest
+sections. Send it even when green: the point of the off-week check is a positive
+proof-of-life, not just failure alerting.
 
 A fixed anchor date is used deliberately instead of ISO week numbers — week-number
 parity breaks across 53-week years; days-since-anchor never does.
@@ -246,32 +269,12 @@ finding (the visit also keeps the app awake). Report in the digest's Health
 section; route connection-layer failures through the proxy diagnosis
 (`/root/.ccr/README.md`) before calling it an outage.
 
-**Full browser round-trip — read the `live-smoke-test.yml` workflow result.**
-The curl probe above only proves the SPA shell loads; the actual chat round-trip
-(browser → Streamlit websocket → agent service → LLM → back) is exercised by the
-scheduled **Live smoke test** workflow (`.github/workflows/live-smoke-test.yml`),
-which runs `scripts/smoke_live_app.py` on a GitHub-hosted runner every Sunday at
-09:00 UTC — an hour before this run — because that runner has no WebSocket-egress
-restriction. This session is a **consumer** of that result: do **not** try to run
-Playwright or open a WebSocket here.
-
-- Look up the workflow's latest **completed** run by its file id, not by scanning
-  all runs: `mcp__github__actions_list` for workflow `live-smoke-test.yml`
-  (`status: completed`, newest first), or `gh run list --workflow live-smoke-test.yml`
-  if the check-in uses `gh`. Read the top run's `conclusion`, `html_url`, and
-  `created_at`.
-- **Staleness / false-green guard:** the workflow fires weekly, so a healthy
-  signal is a completed run **< 8 days old**. If the latest completed run is
-  older than that, the schedule didn't fire — report "**no fresh signal** (last
-  live smoke run was <date>, older than the weekly cadence)" and do **not** pass
-  off the stale `conclusion` as current. Optionally kick a fresh run with
-  `mcp__github__actions_run_trigger` (`workflow_dispatch` on `live-smoke-test.yml`)
-  and read that instead — only if a bounded wait fits this run's 90-minute
-  deadline; otherwise just flag the staleness.
-- Report inline in the digest's Health section alongside the curl probe: pass/fail,
-  the run's `html_url`, and when it ran. On **failure**, point at the run's
-  uploaded `smoke-live-app-failure` artifact (the `smoke_live_app_failure.png`
-  screenshot) so the screenshot is one click away without re-running anything.
+**Full browser round-trip.** The curl probe above only proves the SPA shell
+loads; the real chat round-trip is exercised by the `live-smoke-test.yml`
+workflow. Read its latest result per the **"Reading the live smoke-test result"**
+procedure in Step 0, and report it inline in the Health section alongside the curl
+probe: pass/fail, the run's `html_url`, when it ran, and — on failure — the
+`smoke-live-app-failure` screenshot artifact link.
 
 ## Phase D — Infra smoke tests (every run)
 
