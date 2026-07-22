@@ -21,7 +21,10 @@ separate, follow-up instruction.
    merging, and labeling require an explicit go-ahead naming the specific item.
 2. **Research before drafting.** Read the full issue/PR body, every existing comment,
    and the actual code/diff being discussed. Confirm whether Joshua has already replied —
-   if he has, you are continuing a thread, not opening one.
+   if he has, you are continuing a thread, not opening one. **Also pull the item's
+   cross-references (linked issues/PRs, siblings tackling the same thing) and read
+   Joshua's prior comments across all of them before drafting — see "Relate items before
+   drafting" below.** An item is never triaged in isolation.
 3. **Never fabricate technical claims.** If you assert a file behaves a certain way,
    verify it in the repo first (cite `path:line`). If you can't verify or can't
    reproduce, say so and ask for a repro — that is what Joshua does. **For fork PRs whose
@@ -44,6 +47,44 @@ separate, follow-up instruction.
    defense-in-depth, the real fix is JWTs," don't restate that at them — a 3-word
    acknowledgment plus the actual ask is the whole comment). If a draft for a simple accept or
    change-request runs more than a few sentences, cut it.
+
+## Relate items before drafting (clusters, not silos)
+
+Issues and PRs on this repo cluster: one feature request usually spawns one or more PRs,
+and multiple contributors often attack the same problem from different angles. **Treating
+each number as an isolated ticket is the single most common failure here** — it produces
+drafts that suggest closing an issue whose linked PR moved last week, or reply to a PR in
+a way that ignores or contradicts feedback Joshua already left on the parent issue. In a
+batch, do the mapping *first*, before you draft a single reply.
+
+**Build the cluster map first.** For every item in scope, pull cross-references both
+directions:
+- **PR → issue:** `Fixes/Closes/Resolves #NNN`, plus any `#NNN` referenced in the body or
+  clearly implied by what the diff does.
+- **Issue → PRs:** PRs that reference it, *and* PRs touching the same feature/files even
+  with no explicit link (e.g. two different chat-history PRs against one chat-history issue).
+- **Sibling PRs:** two or more PRs implementing the same request are a cluster even when
+  they never reference each other.
+
+**Then treat each cluster as one thing:**
+1. An issue plus its PRs and their siblings is **one cluster with one coherent position** —
+   not N independent drafts that can contradict each other or the maintainer's earlier call.
+2. **Read Joshua's prior comments across the whole cluster before drafting any member.** A
+   design preference or decision he already stated on the issue (or on a sibling PR) is
+   authoritative: every draft in the cluster must be **consistent with it and build on it** —
+   don't re-open a question he already answered, and don't reply to a PR as if the issue's
+   discussion didn't happen. If a draft would contradict his earlier stance, you misread the
+   thread — re-read it. When two contributors are mid-flight on the same feature, say so and
+   steer them to converge ("you and @other are both on this — let's settle on #NNN's approach")
+   rather than reviewing each PR as if it were the only one.
+3. **Cluster-aware staleness.** Nothing is stale in isolation. Before you suggest closing an
+   issue for inactivity, check whether a linked PR has recent activity (and vice-versa): an
+   issue whose parent PR moved last week is *live*. Judge activity across the cluster, not the
+   single number. If the item's own metadata looks stale but a linked item is active, that's a
+   flag-for-the-maintainer, not a close.
+
+Draft per cluster, then split into per-item comments only where each contributor needs a
+different concrete ask — and cross-link those drafts so the relationship is visible.
 
 ## Voice & tone
 
@@ -201,12 +242,19 @@ the issue surfaces if it isn't already demonstrated.
 
 1. **Identify** the item(s) and pull full context (body, all comments, code/diff, CI
    status, whether it's a fork, whether Joshua already replied).
-2. **Classify** category + accept/decline/defer disposition.
-3. **Draft** the reply in Joshua's voice, grounded in verified facts.
-4. **Report** for each item: a 1-2 line summary of the request, your research assessment
+2. **Relate** — build the cluster map (see "Relate items before drafting"): link each
+   item to its issues/PRs/siblings and read Joshua's prior comments across the whole
+   cluster. Do this for the entire batch before drafting anything.
+3. **Classify** category + accept/decline/defer disposition — per cluster, so members
+   don't contradict each other.
+4. **Draft** the reply in Joshua's voice, grounded in verified facts and consistent with
+   his earlier stance anywhere in the cluster.
+5. **Report** for each item: a 1-2 line summary of the request, your research assessment
    (is the claim true? does it reproduce? CI state?), the decision the human needs to make
    with a clear recommendation, and the draft reply in a quoted block ready to paste.
-5. **Wait** for the human's decision. Only post if explicitly told to, for the named item.
+   Group items in the same cluster together under a shared header so the relationship is
+   obvious at a glance.
+6. **Wait** for the human's decision. Only post if explicitly told to, for the named item.
 
 ## Output format for a batch
 
@@ -222,6 +270,12 @@ text itself, where GitHub auto-links `#NNN` natively.)
 block (e.g. the ` ```sh ` lint ask), fence the *outer* draft block with **four backticks**
 ` ```` ` so the inner triple-backtick block doesn't close it early — otherwise every section
 after it renders broken. Verify fences are balanced before delivering the report.
+
+**Group clustered items together.** When an issue and its PRs (or sibling PRs) form a
+cluster, present them under one short cluster header that states the shared decision and
+Joshua's governing prior stance, then list the per-item drafts beneath it — so the human
+sees one holistic position, not scattered contradictory drafts. Standalone items just get
+their own entry.
 
 For each item produce:
 
