@@ -140,7 +140,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
             raise HTTPException(
                 status_code=400,
                 detail=f"Model '{user_input.model}' is not available. "
-                       f"Allowed: {[m.value for m in settings.AVAILABLE_MODELS]}",
+                f"Allowed: {[m.value for m in settings.AVAILABLE_MODELS]}",
             )
         configurable["model"] = user_input.model
 
