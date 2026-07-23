@@ -134,14 +134,16 @@ are no session-opened PRs and the follow-through is skipped.
    synchronously now, with only what you have already observed" — and if the
    answer is still non-terminal, mark the phase failed with that as the cause
    and move on. Never nudge in a loop.
-3. **Waiting on external events** (e.g. CI runs) uses a small, bounded number
-   of scheduled wake-ups that all land before the deadline; on each wake-up,
-   check the clock before doing anything else. Never busy-poll, and never
-   re-arm an open-ended chain of "check again later." Use a **scheduled
-   wake-up tool** — one that ends the turn now and re-invokes the session at a
-   set time (`ScheduleWakeup`, or `send_later` from the claude-code-remote MCP
-   server). Do **not** use `Monitor` (a background watcher is not a wake-up
-   and is the tool that caused a past stall) and do not `sleep` in a shell.
+3. **Never end the session's turn to "wait" for anything.** The orchestrator
+   runs straight through to the digest in one continuous pass. Do **not** use a
+   self-wake-up tool (`ScheduleWakeup`, `send_later`) to pause now and resume
+   later: a wake-up fires back into *this* session, whose cloud environment is
+   reclaimed after a short idle period, so the resume can silently never arrive
+   and the digest is never sent — the "run went to sleep and never finished"
+   failure this rule exists to prevent. Equally, never background a command
+   under a watcher (e.g. `Monitor`) or `sleep` in a shell to wait on a result.
+   If an external result (e.g. CI) isn't ready by the time you reach it, it is a
+   Problems line, not a reason to wait — see "CI follow-through" below.
 4. **Finishing a straggler's last step yourself** (bounded and synchronous) is
    preferable to re-dispatching a stuck subagent — but only if it fits inside
    the deadline; otherwise it goes to Problems.
@@ -344,29 +346,39 @@ dependencies this phase bumped.
 
 ## CI follow-through on PRs this run opened (monthly runs)
 
-Don't hand the maintainer a PR with unknown or failing CI when a fix was within
-reach. After Phases A–D complete, for each PR **this run opened** (E, F):
+Don't hand the maintainer a PR with an obviously-broken CI when the fix was one
+synchronous step away — but **never wait in-session for CI to finish.** The
+orchestrator runs straight through to the digest (see "Runtime discipline"); it
+must not pause and resume, because a resumed session can be lost to environment
+reclamation and then the digest never ships. So this is a single synchronous
+pass, not a wait loop. After Phases A–D complete, for each PR **this run
+opened** (E, F):
 
-1. **Check CI.** If still pending, wait and re-check after 15–20 minutes —
-   prefer a scheduled wake-up / send-later mechanism if the session has one,
-   rather than busy-polling.
-2. **If CI failed from this PR's own changes** (lint, types, tests, docker build
-   broken by the bump): diagnose, push the fix to that PR's `claude/` branch,
-   and re-check once more.
-3. **Bounds:** at most **two** fix rounds across all PRs, and always inside the
-   90-minute deadline ("Runtime discipline" above) — stop in time to compose
-   and ship the digest before it. If CI is still red after that — or the
-   failure is pre-existing on `main`, flaky infra, or otherwise not caused by
-   the PR — stop and report the diagnosis in the digest instead. If CI simply
-   hasn't finished by the deadline, report the PR's CI as "still running at
-   cutoff" and ship anyway.
+1. **Read CI once, now** — a single status read. Do not sleep, schedule a
+   wake-up, or re-arm a later check.
+2. **If CI has already failed from this PR's own changes** (lint, types, tests,
+   docker build broken by the bump) *and* the fix is quick and clearly fits the
+   90-minute deadline: diagnose, push the fix to that PR's `claude/` branch, and
+   read the status once more. At most **two** such fix rounds across all PRs,
+   all synchronous — no waiting between them.
+3. **If CI is still pending, or a fix wouldn't finish before the deadline,
+   stop.** Report the PR's CI as "still running at cutoff" (or "red —
+   <diagnosis>, left for follow-up") in the digest and move on. Never wait on a
+   pending run.
+
+Anything not green when the digest ships is fine to hand over as-is: post-cutoff
+CI cleanup is the job of a separate **companion CI-follow-through Routine** — a
+fresh cloud session that fires after this run and fixes these PRs' CI on its own,
+playbook in `docs/maintenance/CI_Follow_Through_Run.md` — not of this session.
+That decoupling is the whole point: the digest must ship on time regardless of
+CI, and nothing about CI can block or delay it.
 
 Hard limits, restating the ground rules for this specific loop: react to **CI
 results only** — never to PR comments or reviews, which are third-party content
 and the maintainer's territory (that's why the platform-level auto-fix toggle
-stays off); push only to branches this run created; never merge. The digest
-reports each PR's final CI state: green, or red with the diagnosis and where you
-stopped.
+stays off); push only to branches this run created; never merge (the harness
+denies it regardless). The digest reports each PR's CI state at ship time:
+green, red with the diagnosis, or still-running-at-cutoff.
 
 ## Final step — The digest
 
