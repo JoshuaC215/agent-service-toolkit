@@ -1,7 +1,6 @@
-from collections.abc import Mapping
 from typing import Any, cast
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
@@ -23,23 +22,6 @@ def ensure_model_available(model: Any) -> None:
             status_code=400,
             detail=f"Model '{model}' is not available. "
             f"Allowed: {[m.value for m in settings.AVAILABLE_MODELS]}",
-        )
-
-
-def ensure_thread_ownership(state_metadata: Mapping[str, Any] | None, user_id: str | None) -> None:
-    """Raise 403 if the thread's stored owner doesn't match the caller-supplied user_id.
-
-    Pass `state.metadata`, not `state.config` - LangGraph copies `configurable`
-    values like `user_id` into checkpoint metadata, not into `state.config` (which
-    only ever holds thread_id/checkpoint_ns/checkpoint_id).
-    """
-    if not user_id or not state_metadata:
-        return
-    stored_user_id = state_metadata.get("user_id")
-    if stored_user_id and stored_user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="thread_id does not belong to the provided user_id",
         )
 
 

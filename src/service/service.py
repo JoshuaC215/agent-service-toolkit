@@ -39,7 +39,6 @@ from service.agui import router as agui_router
 from service.utils import (
     convert_message_content_to_string,
     ensure_model_available,
-    ensure_thread_ownership,
     langchain_to_chat_message,
     remove_tool_calls,
 )
@@ -166,9 +165,6 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
 
     # Check for interrupts that need to be resumed
     state = await agent.aget_state(config=config)
-
-    # Validate that the caller owns this thread
-    ensure_thread_ownership(state.metadata, user_id)
 
     interrupted_tasks = [
         task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
@@ -421,15 +417,9 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
         state_snapshot = await agent.aget_state(
             config=RunnableConfig(configurable={"thread_id": input.thread_id})
         )
-
-        # Validate that the caller owns this thread
-        ensure_thread_ownership(state_snapshot.metadata, input.user_id)
-
         messages: list[AnyMessage] = state_snapshot.values["messages"]
         chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
         return ChatHistory(messages=chat_messages)
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")

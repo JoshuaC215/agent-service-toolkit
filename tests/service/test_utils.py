@@ -1,49 +1,6 @@
-import pytest
-from fastapi import HTTPException
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolCall, ToolMessage
-from langchain_core.runnables import RunnableConfig
-from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import END, MessagesState, StateGraph
 
-from service.utils import ensure_thread_ownership, langchain_to_chat_message
-
-
-@pytest.mark.asyncio
-async def test_ensure_thread_ownership_against_real_checkpointer() -> None:
-    """Regression test for the #305 bug: the stored user_id must be read from
-    checkpoint metadata, not state.config. A real checkpointer (not a hand-built
-    mock) is required to catch this - #305's own mock-based tests placed user_id
-    under `config`, which a real checkpointer never does, so they passed while the
-    shipped check was dead code. This also pins the LangGraph contract itself, so
-    it fails loudly (here) rather than silently (as a live 403 that never fires) if
-    a future LangGraph version changes where configurable values end up.
-    """
-    graph = StateGraph(MessagesState)
-    graph.add_node("noop", lambda state: {})
-    graph.set_entry_point("noop")
-    graph.add_edge("noop", END)
-    compiled = graph.compile(checkpointer=MemorySaver())
-
-    write_config = RunnableConfig(
-        configurable={"thread_id": "ownership-thread", "user_id": "owner-id"}
-    )
-    await compiled.ainvoke({"messages": []}, config=write_config)
-
-    read_config = RunnableConfig(configurable={"thread_id": "ownership-thread"})
-    state = await compiled.aget_state(read_config)
-
-    # Pin the actual contract ensure_thread_ownership relies on.
-    assert state.config.get("configurable", {}).get("user_id") is None
-    assert state.metadata is not None
-    assert state.metadata.get("user_id") == "owner-id"
-
-    # And exercise the real behavior against that real state.
-    ensure_thread_ownership(state.metadata, "owner-id")  # no raise: matching owner
-    ensure_thread_ownership(state.metadata, None)  # no raise: no user_id supplied
-
-    with pytest.raises(HTTPException) as exc_info:
-        ensure_thread_ownership(state.metadata, "different-user-id")
-    assert exc_info.value.status_code == 403
+from service.utils import langchain_to_chat_message
 
 
 def test_messages_from_langchain() -> None:

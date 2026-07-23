@@ -12,7 +12,6 @@ See docs/AGUI.md for usage, including how to connect a client.
 import logging
 from collections.abc import AsyncGenerator
 from typing import Any
-from uuid import uuid4
 
 from ag_ui.core import EventType, RunAgentInput
 from ag_ui.encoder import EventEncoder
@@ -24,7 +23,7 @@ from langfuse.langchain import CallbackHandler  # type: ignore[import-untyped]
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent
 from core import settings
-from service.utils import ensure_model_available, ensure_thread_ownership
+from service.utils import ensure_model_available
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +34,13 @@ router = APIRouter(prefix="/agui")
 RESERVED_CONFIGURABLE_KEYS = {"thread_id", "checkpoint_id", "checkpoint_ns"}
 
 
-async def _base_config(input_data: RunAgentInput, graph: AgentGraph) -> RunnableConfig:
+def _base_config(input_data: RunAgentInput) -> RunnableConfig:
     """Build the base RunnableConfig for an AG-UI run.
 
     Clients can pass configurable values (e.g. `model`, `user_id`, or custom agent
     config) in `forwardedProps.configurable` - the AG-UI equivalent of the vanilla
     API's `model` / `user_id` / `agent_config` fields. `thread_id` is taken from
     the AG-UI input by the `ag-ui-langgraph` package itself.
-
-    Applies the same allowlist and thread-ownership checks as the vanilla API's
-    `_handle_input` (see service.py) - both endpoints accept the same kind of
-    caller-supplied `model` / `user_id`, so both need the same guards.
     """
     forwarded: dict[str, Any] = input_data.forwarded_props or {}
     configurable = forwarded.get("configurable") or {}
@@ -59,12 +54,6 @@ async def _base_config(input_data: RunAgentInput, graph: AgentGraph) -> Runnable
 
     if (model := configurable.get("model")) is not None:
         ensure_model_available(model)
-
-    thread_id = input_data.thread_id or str(uuid4())
-    state = await graph.aget_state(
-        RunnableConfig(configurable={**configurable, "thread_id": thread_id})
-    )
-    ensure_thread_ownership(state.metadata, configurable.get("user_id"))
 
     callbacks: list[Any] = []
     if settings.LANGFUSE_TRACING:
@@ -110,7 +99,7 @@ async def agui_run(
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
 
-    config = await _base_config(input_data, graph)
+    config = _base_config(input_data)
     encoder = EventEncoder(accept=request.headers.get("accept", ""))
     return StreamingResponse(
         _event_stream(agent_id, graph, input_data, config, encoder),
