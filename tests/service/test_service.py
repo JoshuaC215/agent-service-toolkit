@@ -218,6 +218,64 @@ def test_history(test_client, mock_agent) -> None:
     assert output.messages[1].content == ANSWER
 
 
+def test_history_rejects_mismatched_user_id(test_client, mock_agent) -> None:
+    mock_agent.aget_state.return_value = StateSnapshot(
+        values={"messages": []},
+        next=(),
+        config={"configurable": {"user_id": "owner-id"}},
+        metadata=None,
+        created_at=None,
+        parent_config=None,
+        tasks=(),
+        interrupts=(),
+    )
+
+    response = test_client.post(
+        "/history",
+        json={
+            "thread_id": "7bcc7cc1-99d7-4b1d-bdb5-e6f90ed44de6",
+            "user_id": "different-user-id",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "detail": "thread_id does not belong to the provided user_id",
+    }
+
+
+def test_history_allows_matching_user_id(test_client, mock_agent) -> None:
+    QUESTION = "What is the weather in Tokyo?"
+    ANSWER = "The weather in Tokyo is 70 degrees."
+    user_question = HumanMessage(content=QUESTION)
+    agent_response = AIMessage(content=ANSWER)
+    mock_agent.aget_state.return_value = StateSnapshot(
+        values={"messages": [user_question, agent_response]},
+        next=(),
+        config={"configurable": {"user_id": "owner-id"}},
+        metadata=None,
+        created_at=None,
+        parent_config=None,
+        tasks=(),
+        interrupts=(),
+    )
+
+    response = test_client.post(
+        "/history",
+        json={
+            "thread_id": "7bcc7cc1-99d7-4b1d-bdb5-e6f90ed44de6",
+            "user_id": "owner-id",
+        },
+    )
+    assert response.status_code == 200
+
+    output = ChatHistory.model_validate(response.json())
+    assert output.messages[0].type == "human"
+    assert output.messages[0].content == QUESTION
+    assert output.messages[1].type == "ai"
+    assert output.messages[1].content == ANSWER
+
+
 def test_history_custom_agent(test_client) -> None:
     """Test that /{agent_id}/history reads the thread through the requested agent's graph."""
     CUSTOM_AGENT = "custom_agent"
