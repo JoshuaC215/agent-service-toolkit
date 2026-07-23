@@ -1,5 +1,7 @@
+from collections.abc import Mapping
 from typing import Any, cast
 
+from fastapi import HTTPException, status
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
@@ -10,7 +12,41 @@ from langchain_core.messages import (
     ChatMessage as LangchainChatMessage,
 )
 
+from core import settings
 from schema import ChatMessage
+
+
+def ensure_model_available(model: Any) -> None:
+    """Raise 400 if `model` isn't in the operator's AVAILABLE_MODELS allowlist."""
+    if model not in settings.AVAILABLE_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Model '{model}' is not available. "
+            f"Allowed: {[m.value for m in settings.AVAILABLE_MODELS]}",
+        )
+
+
+def ensure_thread_ownership(state_metadata: Mapping[str, Any] | None, user_id: str | None) -> None:
+    """Raise 403 if the thread's stored owner doesn't match the caller-supplied user_id.
+
+    The stored owner lives in checkpoint *metadata*, not `state.config`: LangGraph
+    copies scalar `configurable` values (like `user_id`) into checkpoint metadata at
+    write time (see `get_checkpoint_metadata` in langgraph's checkpoint base), while
+    `state.config` only ever holds the checkpoint-addressing thread_id/checkpoint_ns/
+    checkpoint_id triple - confirmed against both MemorySaver and the Postgres
+    checkpointer. Pass `state.metadata`, not `state.config`.
+
+    No-op if the caller didn't supply a user_id, or the thread has no stored owner
+    (e.g. it predates ownership tracking, or doesn't exist yet).
+    """
+    if not user_id or not state_metadata:
+        return
+    stored_user_id = state_metadata.get("user_id")
+    if stored_user_id and stored_user_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="thread_id does not belong to the provided user_id",
+        )
 
 
 def convert_message_content_to_string(content: str | list[str | dict]) -> str:

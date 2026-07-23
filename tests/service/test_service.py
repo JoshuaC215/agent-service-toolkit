@@ -222,8 +222,8 @@ def test_history_rejects_mismatched_user_id(test_client, mock_agent) -> None:
     mock_agent.aget_state.return_value = StateSnapshot(
         values={"messages": []},
         next=(),
-        config={"configurable": {"user_id": "owner-id"}},
-        metadata=None,
+        config={},
+        metadata={"user_id": "owner-id"},
         created_at=None,
         parent_config=None,
         tasks=(),
@@ -252,8 +252,8 @@ def test_history_allows_matching_user_id(test_client, mock_agent) -> None:
     mock_agent.aget_state.return_value = StateSnapshot(
         values={"messages": [user_question, agent_response]},
         next=(),
-        config={"configurable": {"user_id": "owner-id"}},
-        metadata=None,
+        config={},
+        metadata={"user_id": "owner-id"},
         created_at=None,
         parent_config=None,
         tasks=(),
