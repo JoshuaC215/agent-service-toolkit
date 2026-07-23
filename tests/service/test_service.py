@@ -4,8 +4,7 @@ from unittest.mock import AsyncMock, patch
 import langsmith
 import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
-from langgraph.pregel.types import StateSnapshot
-from langgraph.types import Interrupt
+from langgraph.types import Interrupt, StateSnapshot
 
 from agents.agents import Agent
 from schema import ChatHistory, ChatMessage, ServiceMetadata
@@ -269,6 +268,62 @@ def test_history_allows_matching_user_id(test_client, mock_agent) -> None:
     assert output.messages[0].content == QUESTION
     assert output.messages[1].type == "ai"
     assert output.messages[1].content == ANSWER
+
+
+def test_history_custom_agent(test_client) -> None:
+    """Test that /{agent_id}/history reads the thread through the requested agent's graph."""
+    CUSTOM_AGENT = "custom_agent"
+    QUESTION = "What is the weather in Tokyo?"
+    ANSWER = "The weather in Tokyo is 70 degrees."
+
+    custom_snapshot = StateSnapshot(
+        values={"messages": [HumanMessage(content=QUESTION), AIMessage(content=ANSWER)]},
+        next=(),
+        config={},
+        metadata=None,
+        created_at=None,
+        parent_config=None,
+        tasks=(),
+        interrupts=(),
+    )
+    # The default agent's graph doesn't know about this thread, so it returns no messages.
+    default_snapshot = StateSnapshot(
+        values={"messages": []},
+        next=(),
+        config={},
+        metadata=None,
+        created_at=None,
+        parent_config=None,
+        tasks=(),
+        interrupts=(),
+    )
+
+    custom_mock = AsyncMock()
+    custom_mock.aget_state.return_value = custom_snapshot
+    default_mock = AsyncMock()
+    default_mock.aget_state.return_value = default_snapshot
+
+    def agent_lookup(agent_id):
+        if agent_id == CUSTOM_AGENT:
+            return custom_mock
+        return default_mock
+
+    with patch("service.service.get_agent", side_effect=agent_lookup):
+        response = test_client.post(
+            f"/{CUSTOM_AGENT}/history",
+            json={"thread_id": "7bcc7cc1-99d7-4b1d-bdb5-e6f90ed44de6"},
+        )
+        assert response.status_code == 200
+
+        # The custom agent's graph was used, not the default one.
+        custom_mock.aget_state.assert_awaited_once()
+        default_mock.aget_state.assert_not_awaited()
+
+        output = ChatHistory.model_validate(response.json())
+        assert output.messages[0].type == "human"
+        assert output.messages[0].content == QUESTION
+        assert output.messages[1].type == "ai"
+        assert output.messages[1].content == ANSWER
 
 
 @pytest.mark.asyncio

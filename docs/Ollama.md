@@ -4,7 +4,7 @@
 
 You can also use [Ollama](https://ollama.com) to run the LLM powering the agent service.
 
-1. Install Ollama using instructions from https://github.com/ollama/ollama
+1. Install Ollama using instructions from <https://github.com/ollama/ollama>
 1. Install any model you want to use, e.g. `ollama pull llama3.2` and set the `OLLAMA_MODEL` environment variable to the model you want to use, e.g. `OLLAMA_MODEL=llama3.2`
 
 If you are running the service locally (e.g. `python src/run_service.py`), you should be all set!

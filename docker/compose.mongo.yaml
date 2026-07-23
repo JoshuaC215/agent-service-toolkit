@@ -1,0 +1,27 @@
+# Adds a MongoDB checkpointer backend, layered on top of the default stack:
+#   docker compose -f compose.yaml -f docker/compose.mongo.yaml up
+services:
+  mongo:
+    image: mongo:8
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  agent_service:
+    environment:
+      - DATABASE_TYPE=mongo
+      - MONGO_HOST=mongo
+      - MONGO_PORT=27017
+      - MONGO_DB=agent_service
+    depends_on:
+      mongo:
+        condition: service_healthy
+
+volumes:
+  mongo_data:

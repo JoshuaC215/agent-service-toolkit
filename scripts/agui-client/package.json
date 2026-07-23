@@ -1,0 +1,9 @@
+{
+  "name": "agui-client-example",
+  "private": true,
+  "type": "module",
+  "description": "Minimal AG-UI client for manually validating the agent service's /agui endpoints",
+  "dependencies": {
+    "@ag-ui/client": "^0.0.57"
+  }
+}

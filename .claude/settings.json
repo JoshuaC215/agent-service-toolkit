@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "deny": [
+      "mcp__github__merge_pull_request",
+      "mcp__github__enable_pr_auto_merge",
+      "mcp__github__pull_request_review_write",
+      "mcp__github__create_repository",
+      "mcp__github__fork_repository"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v dockerd >/dev/null 2>&1 && ! docker info >/dev/null 2>&1 && sudo -n true 2>/dev/null; then (sudo -n dockerd >/tmp/dockerd.log 2>&1 &); sleep 3; fi; exit 0"
+          },
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/ensure-pinned-uv.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
