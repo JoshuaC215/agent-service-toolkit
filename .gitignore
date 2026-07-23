@@ -158,11 +158,6 @@ venv.bak/
 # mkdocs documentation
 /site
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
-
 # Pyre type checker
 .pyre/
 
@@ -191,3 +186,13 @@ cython_debug/
 # Private Credentials, ignore everything in the folder but the .gitkeep file
 privatecredentials/*
 !privatecredentials/.gitkeep
+
+# Node (scripts/agui-client)
+node_modules/
+package-lock.json
+
+# Live-app smoke test failure screenshot (scripts/smoke_live_app.py)
+smoke_live_app_failure.png
+
+# Claude Code agent worktrees (ephemeral, per-agent git checkouts)
+.claude/worktrees/

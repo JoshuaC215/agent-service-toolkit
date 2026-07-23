@@ -26,4 +26,6 @@ def mock_agent_client(mock_env):
     ):
         mock_agent_client_instance = mock_agent_client.return_value
         mock_agent_client_instance.info = mock_info
+        # Give the mock a deterministic selected agent.
+        mock_agent_client_instance.agent = "test-agent"
         yield mock_agent_client_instance

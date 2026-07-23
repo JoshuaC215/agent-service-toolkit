@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Any
+from typing import Any, cast
 
 from langchain_aws import AmazonKnowledgeBasesRetriever
 from langchain_core.language_models.chat_models import BaseChatModel
@@ -91,7 +91,7 @@ async def retrieve_documents(state: AgentState, config: RunnableConfig) -> Agent
         return {"messages": [], "retrieved_documents": []}
 
     # Use the last human message as the query
-    query = human_messages[-1].content
+    query = cast(str, human_messages[-1].content)
 
     try:
         # Initialize the retriever

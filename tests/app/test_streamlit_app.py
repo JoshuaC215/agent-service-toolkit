@@ -88,10 +88,32 @@ def test_app_thread_id_history(mock_agent_client):
     at.run()
     print(at)
     assert at.session_state.thread_id == "1234"
-    mock_agent_client.get_history.assert_called_with(thread_id="1234")
+    # No agent in the URL, so history is read through the client's selected agent.
+    mock_agent_client.get_history.assert_called_with(thread_id="1234", agent="test-agent")
     assert at.chat_message[0].avatar == "user"
     assert at.chat_message[0].markdown[0].value == "What is the weather?"
     assert at.chat_message[1].avatar == "assistant"
+    assert at.chat_message[1].markdown[0].value == "The weather is sunny."
+    assert not at.exception
+
+
+def test_app_resume_with_agent_param(mock_agent_client):
+    """An ?agent= URL param scopes the resumed history to that agent's graph."""
+
+    at = AppTest.from_file("../../src/streamlit_app.py")
+    at.query_params["thread_id"] = "1234"
+    at.query_params["agent"] = "chatbot"
+    HISTORY = [
+        ChatMessage(type="human", content="What is the weather?"),
+        ChatMessage(type="ai", content="The weather is sunny."),
+    ]
+    mock_agent_client.get_history.return_value = ChatHistory(messages=HISTORY)
+    at.run()
+    print(at)
+    assert at.session_state.thread_id == "1234"
+    # History is fetched through the agent named in the URL, not the default.
+    mock_agent_client.get_history.assert_called_with(thread_id="1234", agent="chatbot")
+    assert at.chat_message[0].markdown[0].value == "What is the weather?"
     assert at.chat_message[1].markdown[0].value == "The weather is sunny."
     assert not at.exception
 

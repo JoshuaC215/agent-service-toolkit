@@ -35,6 +35,7 @@ from schema import (
     StreamInput,
     UserInput,
 )
+from service.agui import router as agui_router
 from service.utils import (
     convert_message_content_to_string,
     langchain_to_chat_message,
@@ -79,6 +80,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             if hasattr(store, "setup"):  # ignore: union-attr
                 await store.setup()
 
+            if not settings.AUTH_SECRET:
+                logger.warning(
+                    "AUTH_SECRET is not configured — all API endpoints are unauthenticated. "
+                    "Set AUTH_SECRET in your environment to enable bearer token authentication."
+                )
+
             # Configure agents with both memory components and async loading
             agents = get_all_agent_info()
             for a in agents:
@@ -102,6 +109,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
+# AG-UI protocol endpoints inherit the same bearer auth - see service/agui.py
+router.include_router(agui_router)
 
 
 @router.get("/info")
@@ -233,7 +242,7 @@ async def message_generator(
 
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
-        async for stream_event in agent.astream(
+        async for stream_event in agent.astream(  # type: ignore[no-matching-overload]
             **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
         ):
             if not isinstance(stream_event, tuple):
@@ -245,7 +254,7 @@ async def message_generator(
             else:
                 # Without subgraphs: (stream_mode, event)
                 stream_mode, event = stream_event
-            new_messages = []
+            new_messages: list[Any] = []
             if stream_mode == "updates":
                 for node, updates in event.items():
                     # A simple approach to handle agent interrupts.
@@ -398,13 +407,15 @@ async def feedback(feedback: Feedback) -> FeedbackResponse:
     return FeedbackResponse()
 
 
+@router.post("/{agent_id}/history", operation_id="history_with_agent_id")
 @router.post("/history")
-async def history(input: ChatHistoryInput) -> ChatHistory:
+async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> ChatHistory:
     """
-    Get chat history.
+    Get chat history for a thread and agent.
+
+    If agent_id is not provided, the default agent will be used.
     """
-    # TODO: Hard-coding DEFAULT_AGENT here is wonky
-    agent: AgentGraph = get_agent(DEFAULT_AGENT)
+    agent: AgentGraph = get_agent(agent_id)
     try:
         state_snapshot = await agent.aget_state(
             config=RunnableConfig(configurable={"thread_id": input.thread_id})

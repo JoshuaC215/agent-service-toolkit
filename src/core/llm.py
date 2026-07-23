@@ -1,9 +1,8 @@
 from functools import cache
-from typing import TypeAlias
 
 from langchain_anthropic import ChatAnthropic
 from langchain_aws import ChatBedrock
-from langchain_community.chat_models import FakeListChatModel
+from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_vertexai import ChatVertexAI
 from langchain_groq import ChatGroq
@@ -47,11 +46,11 @@ class FakeToolModel(FakeListChatModel):
     def __init__(self, responses: list[str]):
         super().__init__(responses=responses)
 
-    def bind_tools(self, tools):
+    def bind_tools(self, tools, *, tool_choice=None, **kwargs):
         return self
 
 
-ModelT: TypeAlias = (
+type ModelT = (
     AzureChatOpenAI
     | ChatOpenAI
     | ChatAnthropic
@@ -89,11 +88,11 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
         if not settings.AZURE_OPENAI_API_KEY or not settings.AZURE_OPENAI_ENDPOINT:
             raise ValueError("Azure OpenAI API key and endpoint must be configured")
 
+        # GPT-5 generation is reasoning-based and rejects temperature (400); omit it.
         return AzureChatOpenAI(
             azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
             deployment_name=api_model_name,
             api_version=settings.AZURE_OPENAI_API_VERSION,
-            temperature=0.5,
             streaming=True,
             timeout=60,
             max_retries=3,
@@ -107,7 +106,12 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             openai_api_key=settings.DEEPSEEK_API_KEY,
         )
     if model_name in AnthropicModelName:
-        return ChatAnthropic(model=api_model_name, temperature=0.5, streaming=True)
+        if model_name == AnthropicModelName.SONNET_5:
+            # Claude Sonnet 5 rejects non-default sampling parameters (temperature,
+            # top_p, top_k) with a 400 error -- adaptive thinking is on by default
+            # instead. See https://docs.anthropic.com/en/docs/about-claude/models
+            return ChatAnthropic(model_name=api_model_name, streaming=True)
+        return ChatAnthropic(model_name=api_model_name, temperature=0.5, streaming=True)
     if model_name in GoogleModelName:
         return ChatGoogleGenerativeAI(model=api_model_name, temperature=0.5, streaming=True)
     if model_name in VertexAIModelName:
@@ -117,8 +121,13 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             return ChatGroq(model=api_model_name, temperature=0.0)  # type: ignore[call-arg]
         return ChatGroq(model=api_model_name, temperature=0.5)  # type: ignore[call-arg]
     if model_name in AWSModelName:
-        return ChatBedrock(model_id=api_model_name, temperature=0.5)
+        if model_name == AWSModelName.BEDROCK_SONNET:
+            # Sonnet 5 rejects non-default sampling params (400); omit temperature.
+            return ChatBedrock(model=api_model_name)
+        return ChatBedrock(model=api_model_name, temperature=0.5)
     if model_name in OllamaModelName:
+        if not settings.OLLAMA_MODEL:
+            raise ValueError("Ollama model must be configured")
         if settings.OLLAMA_BASE_URL:
             chat_ollama = ChatOllama(
                 model=settings.OLLAMA_MODEL, temperature=0.5, base_url=settings.OLLAMA_BASE_URL

@@ -15,18 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install uv
-      uses: astral-sh/setup-uv@v4
+      uses: astral-sh/setup-uv@v8.3.2
       with:
-        version: "0.7.19"
+        version: "0.11.29"
     - name: Install dependencies with uv
       run: |
         uv sync --frozen
@@ -37,18 +37,40 @@ jobs:
         uv run ruff format --check
         uv run ruff check --output-format github
 
-    - name: Run mypy
+    - name: Type check with pyrefly
       run: |
-        uv run mypy src/
+        uv run pyrefly check
 
     - name: Test with pytest
       run: |
         uv run pytest --cov=src/ --cov-report=xml
 
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+
+  lint-markdown:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version-file: "pyproject.toml"
+    - name: Install uv
+      uses: astral-sh/setup-uv@v8.3.2
+      with:
+        version: "0.11.29"
+    - name: Install dependencies with uv
+      run: |
+        uv sync --frozen --only-group dev
+      env:
+        UV_SYSTEM_PYTHON: 1
+    - name: Lint markdown with pymarkdown
+      run: |
+        uv run pymarkdown scan README.md docs/
 
   test-docker:
     runs-on: ubuntu-latest
@@ -66,28 +88,30 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v4
         with:
           driver-opts: network=host
 
       - name: Build service image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: false
           load: true
+          provenance: false
           tags: agent-service-toolkit.service:${{ github.sha }}
           file: docker/Dockerfile.service
 
       - name: Build app image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: false
           load: true
+          provenance: false
           tags: agent-service-toolkit.app:${{ github.sha }}
           file: docker/Dockerfile.app
 
@@ -118,13 +142,13 @@ jobs:
           '
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version-file: "pyproject.toml"
       - name: Install uv
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v8.3.2
         with:
-          version: "0.7.19"
+          version: "0.11.29"
       - name: Install ONLY CLIENT dependencies with uv
         run: |
           uv sync --frozen --only-group client --only-group dev

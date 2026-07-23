@@ -8,56 +8,63 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "License :: OSI Approved :: MIT License",
     "Framework :: FastAPI",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.12,<3.15"
 
 dependencies = [
+    "aiosqlite >=0.20",
     "docx2txt ~=0.8",
-    "duckduckgo-search>=7.3.0",
-    "fastapi ~=0.115.5",
-    "grpcio >=1.68.0",
-    "httpx ~=0.28.0",
-    "jiter ~=0.8.2",
-    "langchain ~=1.0.5",
-    "langchain-core ~=1.0.0",
-    "langchain-community ~=0.4.1",
-    "langchain-anthropic ~=1.0.0",
-    "langchain-aws ~=1.0.0",
-    "langchain-chroma ~=1.0.0",
-    "langchain-google-genai ~=3.0.0",
-    "langchain-google-vertexai>=3.0.3",
-    "langchain-groq ~=1.0.1",
-    "langchain-ollama ~=1.0.0",
-    "langchain-openai ~=1.0.2",
-    "langfuse >=2.65.0",
-    "langgraph ~=1.0.0",
-    "langgraph-checkpoint-mongodb ~=0.1.3",
-    "langgraph-checkpoint-postgres ~=2.0.13",
-    "langgraph-checkpoint-sqlite ~=2.0.1",
+    "duckduckgo-search>=8.1.1",
+    "fastapi ~=0.139.0",
+    "httpx ~=0.28.1",
+    "jiter ~=0.16.0",
+    "langchain ~=1.3.11",
+    "langchain-core ~=1.4.8",
+    "langchain-community ~=0.4.2",
+    "langchain-anthropic ~=1.4.8",
+    "langchain-aws ~=1.6.1",
+    "langchain-chroma ~=1.1.0",
+    "langchain-google-genai ~=4.2.6",
+    "langchain-google-vertexai>=3.2.4",
+    "langchain-groq ~=1.1.3",
+    "langchain-ollama ~=1.1.0",
+    "langchain-openai ~=1.3.3",
+    "langfuse ~=4.12",
+    "langgraph ~=1.2.7",
+    "langgraph-checkpoint-mongodb ~=0.4.0",
+    "langgraph-checkpoint-postgres ~=3.1.0",
+    "langgraph-checkpoint-sqlite ~=3.1.0",
     "langgraph-supervisor ~=0.0.31",
-    "langsmith ~=0.4.0",
-    "numexpr ~=2.10.1",
-    "numpy ~=2.3.4",
-    "onnxruntime ~= 1.21.1",
-    "pandas ~=2.2.3",
-    "psycopg[binary,pool] ~=3.2.4",
-    "pyarrow >=18.1.0",
-    "pydantic ~=2.10.1",
-    "pydantic-settings ~=2.12.0",
-    "pypdf ~=5.3.0",
-    "pyowm ~=3.3.0",
-    "python-dotenv ~=1.0.1",
-    "setuptools ~=75.6.0",
-    "streamlit ~=1.52.0",
-    "tiktoken >=0.8.0",
-    "uvicorn ~=0.32.1",
-    "langchain-mcp-adapters>=0.1.10",
-    "ddgs>=9.9.1",
+    "langsmith ~=0.10.2",
+    "numexpr ~=2.14.1",
+    "numpy ~=2.5.0",
+    "onnxruntime ~= 1.27.0",
+    "pandas ~=3.0.3",
+    "psycopg[binary,pool] ~=3.3.4",
+    "pyarrow >=23.0.1",
+    "pydantic ~=2.13.4",
+    "pydantic-settings ~=2.14.2",
+    "pypdf ~=6.14.2",
+    "pyowm ~=3.5.0",
+    "python-dotenv ~=1.2.2",
+    "setuptools ~=83.0.0",
+    "streamlit ~=1.59.1",
+    "tiktoken >=0.13.0",
+    "uvicorn ~=0.51.0",
+    "langchain-mcp-adapters>=0.3.0",
+    "ddgs>=9.14.4",
+    "ag-ui-langgraph~=0.0.42",
 ]
+
+# Supply-chain cooldown: resolution only considers releases >=7 days old. Needs the
+# repo's pinned uv version (older uv ignores this and strips it from uv.lock on re-lock).
+# Policy and override procedure: .claude/skills/dependency-refresh/SKILL.md
+[tool.uv]
+exclude-newer = "7 days"
 
 [dependency-groups]
 dev = [
@@ -68,22 +75,23 @@ dev = [
     "pytest-env",
     "pytest-asyncio",
     "ruff",
-    "mypy",
+    "pyrefly ~=1.1.1",
+    "pymarkdownlnt",
 ]
 
 # Group for the minimal dependencies to run just the client and Streamlit app.
 # These are also installed in the default dependencies.
 # To install run: `uv sync --frozen --only-group client`
 client = [
-    "httpx~=0.28.0",
-    "pydantic ~=2.10.1",
-    "python-dotenv ~=1.0.1",
-    "streamlit~=1.52.0",
+    "httpx~=0.28.1",
+    "pydantic ~=2.13.4",
+    "python-dotenv ~=1.2.2",
+    "streamlit~=1.59.1",
 ]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 extend-select = ["I", "U"]
@@ -95,14 +103,24 @@ asyncio_default_fixture_loop_scope = "function"
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-fake-openai-key"
 
-[tool.mypy]
-plugins = "pydantic.mypy"
-exclude = "src/streamlit_app.py"
+[tool.pymarkdown]
+# Docs use long, unwrapped prose lines rather than hard-wrapping at a fixed
+# column, so line length isn't enforced.
+plugins.md013.enabled = false
+# Inline HTML (e.g. <img> with width=) is used intentionally in README.md.
+plugins.md033.enabled = false
+# Not every doc needs to start with a top-level heading.
+plugins.md041.enabled = false
+# Allow repeated heading text as long as it's not adjacent siblings.
+plugins.md024.siblings_only = true
 
-[[tool.mypy.overrides]]
-module = ["numexpr.*"]
-follow_untyped_imports = true
+[tool.pyrefly]
+project-includes = ["src"]
+project-excludes = ["src/streamlit_app.py"]
+preset = "default"
 
-[[tool.mypy.overrides]]
-module = ["langchain_mcp_adapters.*"]
-ignore_missing_imports = true
+[tool.pyrefly.errors]
+# LangGraph's StateGraph(state_schema) generic bound rejects MessagesState
+# subclasses, so this fires on every agent's StateGraph(AgentState). It's a gap
+# in LangGraph's typing, not a real error, so disable it project-wide.
+bad-specialization = false

@@ -11,3 +11,21 @@ repos:
     - id: ruff
       args: [ --fix ]
     - id: ruff-format
+- repo: local
+  hooks:
+    - id: pyrefly
+      name: pyrefly
+      entry: uv run pyrefly check
+      language: system
+      types: [ python ]
+      pass_filenames: false
+- repo: https://github.com/jackdewinter/pymarkdown
+  rev: v0.9.38
+  hooks:
+    - id: pymarkdown
+      alias: pymarkdown-fix
+      args: [ fix ]
+      files: ^(README\.md|docs/.*\.md)$
+    - id: pymarkdown
+      args: [ scan ]
+      files: ^(README\.md|docs/.*\.md)$

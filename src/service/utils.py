@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
@@ -55,7 +57,7 @@ def langchain_to_chat_message(message: BaseMessage) -> ChatMessage:
                 custom_message = ChatMessage(
                     type="custom",
                     content="",
-                    custom_data=message.content[0],
+                    custom_data=cast(dict[str, Any], message.content[0]),
                 )
                 return custom_message
             else:

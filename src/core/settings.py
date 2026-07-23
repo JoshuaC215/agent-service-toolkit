@@ -142,6 +142,7 @@ class Settings(BaseSettings):
     MONGO_USER: str | None = None
     MONGO_PASSWORD: SecretStr | None = None
     MONGO_AUTH_SOURCE: str | None = None
+    MONGO_TLS: bool = False  # opt-in TLS for MongoDB; set to True for production/Atlas
 
     # Azure OpenAI Settings
     AZURE_OPENAI_API_KEY: SecretStr | None = None
@@ -170,6 +171,10 @@ class Settings(BaseSettings):
         if not active_keys:
             raise ValueError("At least one LLM API key must be provided.")
 
+        # USE_FAKE_MODEL must win the default even when real provider keys are present.
+        if self.USE_FAKE_MODEL and self.DEFAULT_MODEL is None:
+            self.DEFAULT_MODEL = FakeModelName.FAKE
+
         for provider in active_keys:
             match provider:
                 case Provider.OPENAI:
@@ -182,7 +187,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(OpenAICompatibleName))
                 case Provider.DEEPSEEK:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = DeepseekModelName.DEEPSEEK_CHAT
+                        self.DEFAULT_MODEL = DeepseekModelName.DEEPSEEK_V4_FLASH
                     self.AVAILABLE_MODELS.update(set(DeepseekModelName))
                 case Provider.ANTHROPIC:
                     if self.DEFAULT_MODEL is None:
@@ -190,11 +195,11 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(AnthropicModelName))
                 case Provider.GOOGLE:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_20_FLASH
+                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_36_FLASH
                     self.AVAILABLE_MODELS.update(set(GoogleModelName))
                 case Provider.VERTEXAI:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = VertexAIModelName.GEMINI_20_FLASH
+                        self.DEFAULT_MODEL = VertexAIModelName.GEMINI_36_FLASH
                     self.AVAILABLE_MODELS.update(set(VertexAIModelName))
                 case Provider.GROQ:
                     if self.DEFAULT_MODEL is None:
@@ -210,7 +215,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(OllamaModelName))
                 case Provider.OPENROUTER:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = OpenRouterModelName.GEMINI_25_FLASH
+                        self.DEFAULT_MODEL = OpenRouterModelName.GEMINI_36_FLASH
                     self.AVAILABLE_MODELS.update(set(OpenRouterModelName))
                 case Provider.FAKE:
                     if self.DEFAULT_MODEL is None:
@@ -218,7 +223,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(FakeModelName))
                 case Provider.AZURE_OPENAI:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = AzureOpenAIModelName.AZURE_GPT_4O_MINI
+                        self.DEFAULT_MODEL = AzureOpenAIModelName.AZURE_GPT_5_MINI
                     self.AVAILABLE_MODELS.update(set(AzureOpenAIModelName))
                     # Validate Azure OpenAI settings if Azure provider is available
                     if not self.AZURE_OPENAI_API_KEY:
@@ -238,7 +243,7 @@ class Settings(BaseSettings):
                             raise ValueError(f"Invalid AZURE_OPENAI_DEPLOYMENT_MAP JSON: {e}")
 
                     # Validate required deployments exist
-                    required_models = {"gpt-4o", "gpt-4o-mini"}
+                    required_models = {"gpt-5", "gpt-5-mini"}
                     missing_models = required_models - set(self.AZURE_OPENAI_DEPLOYMENT_MAP.keys())
                     if missing_models:
                         raise ValueError(f"Missing required Azure deployments: {missing_models}")

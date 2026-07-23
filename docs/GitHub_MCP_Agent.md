@@ -5,6 +5,7 @@ The GitHub MCP Agent is a specialized agent that uses GitHub MCP (Model Context 
 **This agent is designed as a demo for agents that use MCP (Model Context Protocol) servers and tools.**
 
 ## Features
+
 [The Github MCP server](https://github.com/github/github-mcp-server) provides a variety of tools, if a PAT is configured.
 
 - Repository management (create, clone, browse)
