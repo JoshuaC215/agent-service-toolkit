@@ -38,6 +38,7 @@ from schema import (
 from service.agui import router as agui_router
 from service.utils import (
     convert_message_content_to_string,
+    ensure_model_available,
     langchain_to_chat_message,
     remove_tool_calls,
 )
@@ -136,12 +137,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
 
     configurable = {"thread_id": thread_id, "user_id": user_id}
     if user_input.model is not None:
-        if user_input.model not in settings.AVAILABLE_MODELS:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Model '{user_input.model}' is not available. "
-                f"Allowed: {[m.value for m in settings.AVAILABLE_MODELS]}",
-            )
+        ensure_model_available(user_input.model)
         configurable["model"] = user_input.model
 
     callbacks: list[Any] = []
@@ -169,15 +165,6 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
 
     # Check for interrupts that need to be resumed
     state = await agent.aget_state(config=config)
-
-    # Validate that the caller owns this thread
-    if state.values and state.config:
-        stored_user_id = state.config.get("configurable", {}).get("user_id")
-        if stored_user_id and stored_user_id != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="thread_id does not belong to the provided user_id",
-            )
 
     interrupted_tasks = [
         task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
@@ -430,21 +417,9 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
         state_snapshot = await agent.aget_state(
             config=RunnableConfig(configurable={"thread_id": input.thread_id})
         )
-
-        # Validate that the caller owns this thread
-        if input.user_id and state_snapshot.config:
-            stored_user_id = state_snapshot.config.get("configurable", {}).get("user_id")
-            if stored_user_id and stored_user_id != input.user_id:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="thread_id does not belong to the provided user_id",
-                )
-
         messages: list[AnyMessage] = state_snapshot.values["messages"]
         chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
         return ChatHistory(messages=chat_messages)
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")

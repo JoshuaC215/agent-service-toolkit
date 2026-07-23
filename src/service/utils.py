@@ -1,5 +1,6 @@
 from typing import Any, cast
 
+from fastapi import HTTPException
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
@@ -10,7 +11,18 @@ from langchain_core.messages import (
     ChatMessage as LangchainChatMessage,
 )
 
+from core import settings
 from schema import ChatMessage
+
+
+def ensure_model_available(model: Any) -> None:
+    """Raise 400 if `model` isn't in the operator's AVAILABLE_MODELS allowlist."""
+    if model not in settings.AVAILABLE_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Model '{model}' is not available. "
+            f"Allowed: {[m.value for m in settings.AVAILABLE_MODELS]}",
+        )
 
 
 def convert_message_content_to_string(content: str | list[str | dict]) -> str:

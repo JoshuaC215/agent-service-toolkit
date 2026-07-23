@@ -12,6 +12,9 @@ from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.types import interrupt
 from pydantic import TypeAdapter
 
+from core import settings
+from schema.models import FakeModelName
+
 FAKE_RESPONSE = "The answer is 42"
 
 event_adapter: TypeAdapter[Event] = TypeAdapter(Event)
@@ -51,6 +54,12 @@ def _reset_captured_configurable():
     """Every test using model_agent writes to this shared dict; reset before each test."""
     captured_configurable.clear()
     yield
+
+
+@pytest.fixture
+def allow_fake_model(monkeypatch):
+    """Make FakeModelName.FAKE pass the AVAILABLE_MODELS allowlist check."""
+    monkeypatch.setattr(settings, "AVAILABLE_MODELS", {FakeModelName.FAKE})
 
 
 @pytest.fixture
@@ -137,9 +146,12 @@ def test_agui_unknown_agent(mock_agui_agent, test_client) -> None:
     assert response.status_code == 404
 
 
-def test_agui_configurable_passthrough(mock_agui_agent, test_client) -> None:
+def test_agui_configurable_passthrough(mock_agui_agent, allow_fake_model, test_client) -> None:
     """forwardedProps.configurable values reach the agent's configurable."""
-    body = run_input(forwardedProps={"configurable": {"model": "fake", "user_id": "user-123"}})
+    body = run_input(
+        thread_id="passthrough-thread",
+        forwardedProps={"configurable": {"model": "fake", "user_id": "user-123"}},
+    )
     collect_events(test_client, "/agui/model-agent/run", body)
     assert captured_configurable.get("model") == "fake"
     assert captured_configurable.get("user_id") == "user-123"
@@ -156,6 +168,17 @@ def test_agui_configurable_wrong_type(mock_agui_agent, test_client) -> None:
     body = run_input(forwardedProps={"configurable": "not-a-dict"})
     response = test_client.post("/agui/model-agent/run", json=body)
     assert response.status_code == 422
+
+
+def test_agui_configurable_model_not_available(mock_agui_agent, test_client) -> None:
+    """A model outside the operator's AVAILABLE_MODELS allowlist is rejected before the run starts."""
+    body = run_input(
+        thread_id="model-not-available-thread",
+        forwardedProps={"configurable": {"model": "not-a-real-model"}},
+    )
+    response = test_client.post("/agui/model-agent/run", json=body)
+    assert response.status_code == 400
+    assert "not available" in response.json()["detail"]
 
 
 def test_agui_interrupt_and_resume(mock_agui_agent, test_client) -> None:

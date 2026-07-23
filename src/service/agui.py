@@ -23,6 +23,7 @@ from langfuse.langchain import CallbackHandler  # type: ignore[import-untyped]
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent
 from core import settings
+from service.utils import ensure_model_available
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,9 @@ def _base_config(input_data: RunAgentInput) -> RunnableConfig:
             status_code=422,
             detail=f"forwardedProps.configurable contains reserved keys: {overlap}",
         )
+
+    if (model := configurable.get("model")) is not None:
+        ensure_model_available(model)
 
     callbacks: list[Any] = []
     if settings.LANGFUSE_TRACING:

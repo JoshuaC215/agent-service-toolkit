@@ -69,7 +69,8 @@ THREAD_ID=my-thread node client.mjs "And another one" chatbot
 - **Per-request configuration** goes in `forwardedProps.configurable` — the AG-UI equivalent of
   the vanilla API's `model` / `user_id` / `agent_config` fields, e.g.
   `{"forwardedProps": {"configurable": {"model": "gpt-5.2"}}}`. Keys managed by the protocol
-  (`thread_id`, `checkpoint_id`, `checkpoint_ns`) are rejected.
+  (`thread_id`, `checkpoint_id`, `checkpoint_ns`) are rejected. `model` is checked against
+  `AVAILABLE_MODELS` (400 if not allowed), same as the vanilla API.
 - **Interrupts** (human-in-the-loop) surface as a `CUSTOM` event named `on_interrupt`. Resume by
   running the same thread again with `{"forwardedProps": {"command": {"resume": <answer>}}}`.
 - **Graph state is client-visible.** AG-UI's shared-state feature sends `STATE_SNAPSHOT` events
