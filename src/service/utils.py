@@ -29,15 +29,9 @@ def ensure_model_available(model: Any) -> None:
 def ensure_thread_ownership(state_metadata: Mapping[str, Any] | None, user_id: str | None) -> None:
     """Raise 403 if the thread's stored owner doesn't match the caller-supplied user_id.
 
-    The stored owner lives in checkpoint *metadata*, not `state.config`: LangGraph
-    copies scalar `configurable` values (like `user_id`) into checkpoint metadata at
-    write time (see `get_checkpoint_metadata` in langgraph's checkpoint base), while
-    `state.config` only ever holds the checkpoint-addressing thread_id/checkpoint_ns/
-    checkpoint_id triple - confirmed against both MemorySaver and the Postgres
-    checkpointer. Pass `state.metadata`, not `state.config`.
-
-    No-op if the caller didn't supply a user_id, or the thread has no stored owner
-    (e.g. it predates ownership tracking, or doesn't exist yet).
+    Pass `state.metadata`, not `state.config` - LangGraph copies `configurable`
+    values like `user_id` into checkpoint metadata, not into `state.config` (which
+    only ever holds thread_id/checkpoint_ns/checkpoint_id).
     """
     if not user_id or not state_metadata:
         return
