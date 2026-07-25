@@ -174,6 +174,7 @@ class ChatHistoryInput(BaseModel):
 class ChatHistory(BaseModel):
     messages: list[ChatMessage]
 
+
 class UserThreadsInput(BaseModel):
     """Input for listing a user's conversation threads."""
 

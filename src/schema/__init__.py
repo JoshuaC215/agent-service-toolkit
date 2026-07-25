@@ -8,10 +8,10 @@ from schema.schema import (
     FeedbackResponse,
     ServiceMetadata,
     StreamInput,
-    UserInput,
-    UserThreadsInput,
     ThreadSummary,
-    UserThreads
+    UserInput,
+    UserThreads,
+    UserThreadsInput,
 )
 
 __all__ = [
@@ -27,5 +27,5 @@ __all__ = [
     "ChatHistory",
     "UserThreadsInput",
     "ThreadSummary",
-    "UserThreads"
+    "UserThreads",
 ]

@@ -14,7 +14,7 @@ from schema import (
     StreamInput,
     UserInput,
     UserThreads,
-    UserThreadsInput
+    UserThreadsInput,
 )
 
 
@@ -365,7 +365,7 @@ class AgentClient:
             raise AgentClientError(f"Error: {e}")
 
         return ChatHistory.model_validate(response.json())
-    
+
     def get_user_threads(
         self, user_id: str, agent: str | None = None, limit: int = 20
     ) -> UserThreads:

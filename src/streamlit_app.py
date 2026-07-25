@@ -138,7 +138,7 @@ async def main() -> None:
             if "last_audio" in st.session_state:
                 del st.session_state.last_audio
             st.rerun()
-        
+
         with st.expander(":material/history: Previous Chats", expanded=False):
             try:
                 thread_list = agent_client.get_user_threads(user_id=user_id).threads

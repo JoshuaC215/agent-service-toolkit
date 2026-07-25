@@ -212,6 +212,16 @@ def test_history(test_client, mock_agent) -> None:
     assert output.messages[1].content == ANSWER
 
 
+def test_threads_without_checkpointer_returns_empty(test_client, mock_agent) -> None:
+    """Test that /threads returns an empty list when the agent has no checkpointer configured."""
+    mock_agent.checkpointer = None
+
+    response = test_client.post("/threads", json={"user_id": "user-123", "limit": 10})
+
+    assert response.status_code == 200
+    assert response.json() == {"threads": []}
+
+
 def test_history_custom_agent(test_client) -> None:
     """Test that /{agent_id}/history reads the thread through the requested agent's graph."""
     CUSTOM_AGENT = "custom_agent"
