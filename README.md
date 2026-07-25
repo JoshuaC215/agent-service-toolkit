@@ -27,7 +27,7 @@ echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 
 # uv is the recommended way to install agent-service-toolkit, but "pip install ." also works
 # For uv installation options, see: https://docs.astral.sh/uv/getting-started/installation/
-curl -LsSf https://astral.sh/uv/0.11.28/install.sh | sh
+curl -LsSf https://astral.sh/uv/0.11.29/install.sh | sh
 
 # Install dependencies. "uv sync" creates .venv automatically
 uv sync --frozen
