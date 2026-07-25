@@ -13,6 +13,8 @@ from schema import (
     ServiceMetadata,
     StreamInput,
     UserInput,
+    UserThreads,
+    UserThreadsInput
 )
 
 
@@ -363,3 +365,30 @@ class AgentClient:
             raise AgentClientError(f"Error: {e}")
 
         return ChatHistory.model_validate(response.json())
+    
+    def get_user_threads(
+        self, user_id: str, agent: str | None = None, limit: int = 20
+    ) -> UserThreads:
+        """
+        List a user's conversation threads.
+
+        Args:
+            user_id (str): User ID to list threads for.
+            agent (str, optional): The agent whose threads should be listed.
+            limit (int, optional): Maximum number of threads to return.
+        """
+        agent = agent or self.agent
+        request = UserThreadsInput(user_id=user_id, limit=limit)
+        url = f"{self.base_url}/{agent}/threads" if agent else f"{self.base_url}/threads"
+        try:
+            response = httpx.post(
+                url,
+                json=request.model_dump(),
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error: {e}")
+
+        return UserThreads.model_validate(response.json())

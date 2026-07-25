@@ -138,6 +138,28 @@ async def main() -> None:
             if "last_audio" in st.session_state:
                 del st.session_state.last_audio
             st.rerun()
+        
+        with st.expander(":material/history: Previous Chats", expanded=False):
+            try:
+                thread_list = agent_client.get_user_threads(user_id=user_id).threads
+            except AgentClientError as e:
+                st.caption(f"Couldn't load conversation history: {e}")
+                thread_list = []
+
+            for t in thread_list:
+                label = t.title or f"Chat {t.thread_id[:8]}"
+                if st.button(label, key=f"thread_{t.thread_id}", use_container_width=True):
+                    try:
+                        history: ChatHistory = agent_client.get_history(
+                            thread_id=t.thread_id, agent=t.agent_id
+                        )
+                    except AgentClientError:
+                        st.error("Could not load that conversation.")
+                        st.stop()
+                    st.session_state.messages = history.messages
+                    st.session_state.thread_id = t.thread_id
+                    st.query_params["thread_id"] = t.thread_id
+                    st.rerun()
 
         with st.popover(":material/settings: Settings", use_container_width=True):
             model_idx = agent_client.info.models.index(agent_client.info.default_model)
