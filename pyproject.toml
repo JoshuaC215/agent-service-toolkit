@@ -60,6 +60,18 @@ dependencies = [
     "ag-ui-langgraph~=0.0.42",
 ]
 
+# Supply-chain cooldown: resolution only considers releases >=14 days old. Needs the
+# repo's pinned uv version (older uv ignores this and strips it from uv.lock on re-lock).
+# Policy and override procedure: .claude/skills/dependency-refresh/SKILL.md
+[tool.uv]
+exclude-newer = "14 days"
+
+[tool.uv.exclude-newer-package]
+# gitpython 3.1.54 fixes a vulnerability (Dependabot alert #157); streamlit pins it
+# exactly, so the global cooldown blocks resolution until 3.1.54 clears 14 days old.
+# Remove this override once 3.1.54 is >14 days old (~2026-08-05).
+gitpython = "0 days"
+
 [dependency-groups]
 dev = [
     "langgraph-cli[inmem]",
@@ -69,7 +81,7 @@ dev = [
     "pytest-env",
     "pytest-asyncio",
     "ruff",
-    "mypy ~=2.2.0",
+    "pyrefly ~=1.1.1",
     "pymarkdownlnt",
 ]
 
@@ -108,18 +120,13 @@ plugins.md041.enabled = false
 # Allow repeated heading text as long as it's not adjacent siblings.
 plugins.md024.siblings_only = true
 
-[tool.mypy]
-plugins = "pydantic.mypy"
-exclude = "src/streamlit_app.py"
+[tool.pyrefly]
+project-includes = ["src"]
+project-excludes = ["src/streamlit_app.py"]
+preset = "default"
 
-[[tool.mypy.overrides]]
-module = ["numexpr.*"]
-follow_untyped_imports = true
-
-[[tool.mypy.overrides]]
-module = ["langchain_mcp_adapters.*"]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = ["ag_ui_langgraph.*"]
-follow_untyped_imports = true
+[tool.pyrefly.errors]
+# LangGraph's StateGraph(state_schema) generic bound rejects MessagesState
+# subclasses, so this fires on every agent's StateGraph(AgentState). It's a gap
+# in LangGraph's typing, not a real error, so disable it project-wide.
+bad-specialization = false

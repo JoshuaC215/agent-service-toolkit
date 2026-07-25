@@ -17,7 +17,7 @@ class Provider(StrEnum):
 
 
 class OpenAIModelName(StrEnum):
-    """https://platform.openai.com/docs/models/gpt-4o"""
+    """https://platform.openai.com/docs/models"""
 
     GPT_5_NANO = "gpt-5-nano"
     GPT_5_MINI = "gpt-5-mini"
@@ -39,10 +39,11 @@ class DeepseekModelName(StrEnum):
     """https://api-docs.deepseek.com/quick_start/pricing"""
 
     DEEPSEEK_V4_FLASH = "deepseek-v4-flash"
+    DEEPSEEK_V4_PRO = "deepseek-v4-pro"
 
 
 class AnthropicModelName(StrEnum):
-    """https://docs.anthropic.com/en/docs/about-claude/models#model-names"""
+    """https://platform.claude.com/docs/en/docs/about-claude/models"""
 
     HAIKU_45 = "claude-haiku-4-5"
     SONNET_45 = "claude-sonnet-4-5"
@@ -55,7 +56,10 @@ class GoogleModelName(StrEnum):
     GEMINI_25_PRO = "gemini-2.5-pro"
     GEMINI_31_FLASH_LITE = "gemini-3.1-flash-lite"
     GEMINI_35_FLASH = "gemini-3.5-flash"
-    GEMINI_30_PRO = "gemini-3-pro-preview"
+    GEMINI_35_FLASH_LITE = "gemini-3.5-flash-lite"
+    GEMINI_36_FLASH = "gemini-3.6-flash"
+    # gemini-3-pro-preview was shut down 2026-03-09; 3.1 is the current preview-tier pro model.
+    GEMINI_31_PRO_PREVIEW = "gemini-3.1-pro-preview"
 
 
 class VertexAIModelName(StrEnum):
@@ -64,7 +68,10 @@ class VertexAIModelName(StrEnum):
     GEMINI_25_PRO = "gemini-2.5-pro"
     GEMINI_31_FLASH_LITE = "models/gemini-3.1-flash-lite"
     GEMINI_35_FLASH = "models/gemini-3.5-flash"
-    GEMINI_30_PRO = "gemini-3-pro-preview"
+    GEMINI_35_FLASH_LITE = "models/gemini-3.5-flash-lite"
+    GEMINI_36_FLASH = "models/gemini-3.6-flash"
+    # gemini-3-pro-preview was shut down 2026-03-09; 3.1 is the current preview-tier pro model.
+    GEMINI_31_PRO_PREVIEW = "gemini-3.1-pro-preview"
 
 
 class GroqModelName(StrEnum):
@@ -96,6 +103,7 @@ class OpenRouterModelName(StrEnum):
     """https://openrouter.ai/models"""
 
     GEMINI_35_FLASH = "google/gemini-3.5-flash"
+    GEMINI_36_FLASH = "google/gemini-3.6-flash"
 
 
 class OpenAICompatibleName(StrEnum):

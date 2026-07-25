@@ -41,6 +41,7 @@ from schema import (
 from service.agui import router as agui_router
 from service.utils import (
     convert_message_content_to_string,
+    ensure_model_available,
     langchain_to_chat_message,
     remove_tool_calls,
 )
@@ -141,6 +142,7 @@ async def _handle_input(
 
     configurable = {"thread_id": thread_id, "user_id": user_id}
     if user_input.model is not None:
+        ensure_model_available(user_input.model)
         configurable["model"] = user_input.model
 
     callbacks: list[Any] = []
@@ -169,6 +171,7 @@ async def _handle_input(
 
     # Check for interrupts that need to be resumed
     state = await agent.aget_state(config=config)
+
     interrupted_tasks = [
         task for task in state.tasks if hasattr(task, "interrupts") and task.interrupts
     ]
@@ -242,7 +245,7 @@ async def message_generator(
 
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
-        async for stream_event in agent.astream(
+        async for stream_event in agent.astream(  # type: ignore[no-matching-overload]
             **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
         ):
             if not isinstance(stream_event, tuple):
@@ -254,7 +257,7 @@ async def message_generator(
             else:
                 # Without subgraphs: (stream_mode, event)
                 stream_mode, event = stream_event
-            new_messages = []
+            new_messages: list[Any] = []
             if stream_mode == "updates":
                 for node, updates in event.items():
                     # A simple approach to handle agent interrupts.
