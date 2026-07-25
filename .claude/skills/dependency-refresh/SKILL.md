@@ -77,18 +77,18 @@ forward per the template above.
 
 Two layers, one mechanism where possible:
 
-**1. Global 7-day resolver cooldown (enforced by uv).** `pyproject.toml` has:
+**1. Global 14-day resolver cooldown (enforced by uv).** `pyproject.toml` has:
 
 ```toml
 [tool.uv]
-exclude-newer = "7 days"
+exclude-newer = "14 days"
 ```
 
 Every resolution (`uv lock`, `uv lock --upgrade`, `uv sync` re-locks) only
-considers releases at least 7 days old, so a compromised or broken
+considers releases at least 14 days old, so a compromised or broken
 fresh release can't enter the lock during its highest-risk window. This
 automatically limits pin raises too: raising a `~=` pin to a version younger
-than 7 days makes the resolve fail with an `exclude-newer` hint — that is the
+than 14 days makes the resolve fail with an `exclude-newer` hint — that is the
 policy working, not an error to route around. Hold that bump for the next
 round instead of overriding.
 
@@ -100,7 +100,7 @@ global cooldown:
 
 ```toml
 [tool.uv.exclude-newer-package]
-somepkg = "0 days"  # security fix CVE-XXXX; remove once >7 days old
+somepkg = "0 days"  # security fix CVE-XXXX; remove once >14 days old
 ```
 
 Cooldown mechanics to know: the span is recorded in `uv.lock`
