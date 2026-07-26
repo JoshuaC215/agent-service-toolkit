@@ -14,8 +14,12 @@ permissions:
 
 jobs:
   cleanup:
-    # Only ever run in downstream template copies, never in the source repo.
-    if: github.repository != 'JoshuaC215/agent-service-toolkit'
+    # Run only in genuine template instantiations. The repository check skips the
+    # source repo; the fork check skips contributor forks (also downstream copies,
+    # where a "Use this template" repo has fork == false but a fork has fork == true).
+    if: >-
+      github.repository != 'JoshuaC215/agent-service-toolkit'
+      && github.event.repository.fork == false
     runs-on: ubuntu-latest
 
     steps:
