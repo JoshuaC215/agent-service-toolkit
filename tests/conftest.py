@@ -1,5 +1,4 @@
 import os
-import tempfile
 from unittest.mock import patch
 
 import pytest
@@ -26,14 +25,5 @@ def pytest_collection_modifyitems(config, items):
 @pytest.fixture
 def mock_env():
     """Fixture to ensure environment is clean for each test."""
-    home_dir = (
-        os.environ.get("HOME")
-        or os.environ.get("USERPROFILE")
-        or tempfile.mkdtemp(prefix="streamlit-home-")
-    )
-    env = {
-        "HOME": home_dir,
-        "USERPROFILE": home_dir,
-    }
-    with patch.dict(os.environ, env, clear=True):
+    with patch.dict(os.environ, {}, clear=True):
         yield
