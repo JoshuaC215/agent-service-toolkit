@@ -377,13 +377,17 @@ class AgentClient:
             agent (str, optional): The agent whose threads should be listed.
             limit (int, optional): Maximum number of threads to return.
         """
-        agent = agent or self.agent
+        agent_id = agent or self.agent
+        url = f"{self.base_url}/threads"
         request = UserThreadsInput(user_id=user_id, limit=limit)
-        url = f"{self.base_url}/{agent}/threads" if agent else f"{self.base_url}/threads"
+        params = request.model_dump()
+        if agent_id:
+            params["agent_id"] = agent_id
+
         try:
-            response = httpx.post(
+            response = httpx.get(
                 url,
-                json=request.model_dump(),
+                params=params,
                 headers=self._headers,
                 timeout=self.timeout,
             )

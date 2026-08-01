@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Literal, NotRequired
 
 from pydantic import BaseModel, Field, SerializeAsAny
@@ -199,7 +200,7 @@ class ThreadSummary(BaseModel):
         description="Agent this thread was run with.",
         examples=["research-assistant"],
     )
-    updated_at: str = Field(
+    updated_at: datetime = Field(
         description="Timestamp of the most recent checkpoint in this thread.",
         examples=["2024-07-31T20:14:19.804150+00:00"],
     )
@@ -207,10 +208,6 @@ class ThreadSummary(BaseModel):
         description="Title for the thread, derived from the first human message.",
         default=None,
         examples=["What is the weather in Tokyo?"],
-    )
-    last_message: ChatMessage | None = Field(
-        description="Most recent AI message in the thread, used as a preview.",
-        default=None,
     )
 
 

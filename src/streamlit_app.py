@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from pydantic import ValidationError
 
 from client import AgentClient, AgentClientError
-from schema import ChatHistory, ChatMessage
+from schema import ChatHistory, ChatMessage, UserThreads
 from schema.task_data import TaskData, TaskDataStatus
 from voice import VoiceManager
 
@@ -51,6 +51,17 @@ def get_or_create_user_id() -> str:
     st.query_params[USER_ID_COOKIE] = user_id
 
     return user_id
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def fetch_user_threads_cached(
+    base_url: str, user_id: str, agent_id: str | None = None, limit: int = 20
+) -> UserThreads:
+    """
+    Fetch and cache user threads using the new synchronous get_user_threads method.
+    """
+    client = AgentClient(base_url=base_url, get_info=False)
+    return client.get_user_threads(user_id=user_id, agent=agent_id, limit=limit)
 
 
 async def main() -> None:
@@ -141,8 +152,14 @@ async def main() -> None:
 
         with st.expander(":material/history: Previous Chats", expanded=False):
             try:
-                thread_list = agent_client.get_user_threads(user_id=user_id).threads
-            except AgentClientError as e:
+                user_threads = fetch_user_threads_cached(
+                    base_url=agent_client.base_url,
+                    user_id=user_id,
+                    agent_id=agent_client.agent,
+                    limit=20,
+                )
+                thread_list = user_threads.threads
+            except Exception as e:
                 st.caption(f"Couldn't load conversation history: {e}")
                 thread_list = []
 
@@ -155,10 +172,15 @@ async def main() -> None:
                         )
                     except AgentClientError:
                         st.error("Could not load that conversation.")
-                        st.stop()
                     st.session_state.messages = history.messages
                     st.session_state.thread_id = t.thread_id
                     st.query_params["thread_id"] = t.thread_id
+                    if "last_audio" in st.session_state:
+                        del st.session_state.last_audio
+                    if t.agent_id and t.agent_id != agent_client.agent:
+                        st.query_params["agent"] = t.agent_id
+                        agent_client.agent = t.agent_id
+                        fetch_user_threads_cached.clear()
                     st.rerun()
 
         with st.popover(":material/settings: Settings", use_container_width=True):
@@ -173,6 +195,7 @@ async def main() -> None:
                 index=agent_idx,
                 key="agent",
                 bind="query-params",
+                on_change=fetch_user_threads_cached.clear,
             )
             use_streaming = st.toggle("Stream results", value=True)
             # Audio toggle with callback: clears cached audio when toggled off
@@ -289,6 +312,7 @@ async def main() -> None:
         user_input = st.chat_input()
 
     if user_input:
+        is_first_message = len(messages) == 0
         messages.append(ChatMessage(type="human", content=user_input))
         st.chat_message("human").write(user_input)
         try:
@@ -327,6 +351,8 @@ async def main() -> None:
                         voice.render_message(response.content)
                     else:
                         st.write(response.content)
+            if is_first_message:
+                fetch_user_threads_cached.clear()
             st.rerun()  # Clear stale containers
         except AgentClientError as e:
             st.error(f"Error generating response: {e}")
