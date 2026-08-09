@@ -152,6 +152,11 @@ async def main() -> None:
 
         with st.expander(":material/history: Previous Chats", expanded=False):
             try:
+                url_agent = st.query_params.get("agent")
+                if url_agent in [a.key for a in agent_client.info.agents]:
+                    agent_client.agent = url_agent
+                else:
+                    agent_client.agent = agent_client.info.default_agent
                 user_threads = fetch_user_threads_cached(
                     base_url=agent_client.base_url,
                     user_id=user_id,
@@ -172,13 +177,13 @@ async def main() -> None:
                         )
                     except AgentClientError:
                         st.error("Could not load that conversation.")
+                        continue
                     st.session_state.messages = history.messages
                     st.session_state.thread_id = t.thread_id
                     st.query_params["thread_id"] = t.thread_id
                     if "last_audio" in st.session_state:
                         del st.session_state.last_audio
                     if t.agent_id and t.agent_id != agent_client.agent:
-                        st.query_params["agent"] = t.agent_id
                         agent_client.agent = t.agent_id
                         fetch_user_threads_cached.clear()
                     st.rerun()

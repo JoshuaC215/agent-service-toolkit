@@ -431,6 +431,7 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
+@router.get("/{agent_id}/threads")
 @router.get("/threads")
 async def threads(
     input: UserThreadsInput = Depends(), agent_id: str = DEFAULT_AGENT
@@ -450,7 +451,10 @@ async def threads(
             page = [
                 c
                 async for c in checkpointer.alist(
-                    None, filter={"user_id": input.user_id}, before=before, limit=200
+                    None,
+                    filter={"user_id": input.user_id, "agent_id": agent_id},
+                    before=before,
+                    limit=200,
                 )
             ]
             if not page:
@@ -461,11 +465,15 @@ async def threads(
                     continue
 
                 stored_user_id = tup.metadata.get("user_id")
-                if stored_user_id != input.user_id:
+                stored_agent_id = tup.metadata.get("agent_id")
+                if stored_user_id != input.user_id or (
+                    stored_agent_id is not None and stored_agent_id != agent_id
+                ):
                     logger.warning(
                         f"Checkpointer returned thread {tid} with user_id "
-                        f"{stored_user_id!r}, expected {input.user_id!r} — "
-                        "skipping to avoid a cross-user leak."
+                        f"{stored_user_id!r}/agent_id {stored_agent_id!r}, expected "
+                        f"{input.user_id!r}/{agent_id!r} — skipping to avoid a "
+                        "cross-user or cross-agent leak."
                     )
                     continue
 

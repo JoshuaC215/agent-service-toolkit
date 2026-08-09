@@ -378,12 +378,9 @@ class AgentClient:
             limit (int, optional): Maximum number of threads to return.
         """
         agent_id = agent or self.agent
-        url = f"{self.base_url}/threads"
+        url = f"{self.base_url}/{agent_id}/threads" if agent_id else f"{self.base_url}/threads"
         request = UserThreadsInput(user_id=user_id, limit=limit)
         params = request.model_dump()
-        if agent_id:
-            params["agent_id"] = agent_id
-
         try:
             response = httpx.get(
                 url,

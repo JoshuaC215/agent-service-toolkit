@@ -368,7 +368,7 @@ def test_get_user_threads(agent_client):
         ]
     }
 
-    mock_request = Request("GET", "http://test/threads")
+    mock_request = Request("GET", "http://test/test-agent/threads")
     mock_response = Response(200, json=MOCK_THREADS_RESPONSE, request=mock_request)
 
     with patch("httpx.get", return_value=mock_response) as mock_get:
@@ -380,33 +380,32 @@ def test_get_user_threads(agent_client):
 
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        assert args[0] == "http://test/threads"
+        assert args[0] == "http://test/test-agent/threads"
         assert kwargs["params"] == {
             "user_id": USER_ID,
             "limit": 20,
-            "agent_id": "test-agent",
         }
 
     with patch("httpx.get", return_value=mock_response) as mock_get:
         agent_client.get_user_threads(USER_ID, agent="custom-agent", limit=50)
 
-        kwargs = mock_get.call_args.kwargs
+        args, kwargs = mock_get.call_args
+        assert args[0] == "http://test/custom-agent/threads"
         assert kwargs["params"] == {
             "user_id": USER_ID,
             "limit": 50,
-            "agent_id": "custom-agent",
         }
 
     agent_client.agent = None
     with patch("httpx.get", return_value=mock_response) as mock_get:
         agent_client.get_user_threads(USER_ID)
 
-        kwargs = mock_get.call_args.kwargs
+        args, kwargs = mock_get.call_args
+        assert args[0] == "http://test/threads"
         assert kwargs["params"] == {"user_id": USER_ID, "limit": 20}
 
     agent_client.agent = "test-agent"
 
-    # 4. Test HTTP Error handling raises AgentClientError
     error_response = Response(500, text="Internal Server Error", request=mock_request)
     with patch("httpx.get", return_value=error_response):
         with pytest.raises(AgentClientError) as exc:
