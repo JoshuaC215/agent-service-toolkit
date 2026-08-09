@@ -47,9 +47,9 @@ def test_get_model_anthropic_sonnet_5_omits_temperature():
 
 def test_get_model_groq():
     with patch.dict(os.environ, {"GROQ_API_KEY": "test_key"}):
-        model = get_model(GroqModelName.LLAMA_31_8B)
+        model = get_model(GroqModelName.GPT_OSS_20B)
         assert isinstance(model, ChatGroq)
-        assert model.model_name == "llama-3.1-8b-instant"
+        assert model.model_name == "openai/gpt-oss-20b"
         assert model.temperature == 0.5
 
 

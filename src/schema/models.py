@@ -77,9 +77,9 @@ class VertexAIModelName(StrEnum):
 class GroqModelName(StrEnum):
     """https://console.groq.com/docs/models"""
 
-    LLAMA_31_8B = "llama-3.1-8b-instant"
-    LLAMA_33_70B = "llama-3.3-70b-versatile"
-
+    # llama-3.1-8b-instant/llama-3.3-70b-versatile retire 2026-08-16 per
+    # https://console.groq.com/docs/deprecations (announced 2026-06-17); dropped
+    # ahead of that date in favor of their recommended gpt-oss replacements below.
     GPT_OSS_20B = "openai/gpt-oss-20b"
     GPT_OSS_120B = "openai/gpt-oss-120b"
     GPT_OSS_SAFEGUARD_20B = "openai/gpt-oss-safeguard-20b"
