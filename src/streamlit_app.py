@@ -183,9 +183,6 @@ async def main() -> None:
                     st.query_params["thread_id"] = t.thread_id
                     if "last_audio" in st.session_state:
                         del st.session_state.last_audio
-                    if t.agent_id and t.agent_id != agent_client.agent:
-                        agent_client.agent = t.agent_id
-                        fetch_user_threads_cached.clear()
                     st.rerun()
 
         with st.popover(":material/settings: Settings", use_container_width=True):
