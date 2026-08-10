@@ -218,6 +218,210 @@ def test_history(test_client, mock_agent) -> None:
     assert output.messages[1].content == ANSWER
 
 
+def test_threads_without_checkpointer_returns_empty(test_client, mock_agent) -> None:
+    """Test that /threads returns an empty list when the agent has no checkpointer configured."""
+    mock_agent.checkpointer = None
+
+    response = test_client.get("/threads", params={"user_id": "user-123", "limit": 10})
+
+    assert response.status_code == 200
+    assert response.json() == {"threads": []}
+
+
+def test_threads_filters_and_orders_from_checkpointer(test_client, mock_agent) -> None:
+    """Test that /threads only returns matching, ordered summaries from the checkpointer."""
+
+    class DummyCheckpoint:
+        def __init__(self, thread_id: str, user_id: str | None, ts: str, title: str):
+            self.config = {
+                "configurable": {
+                    "thread_id": thread_id,
+                    "checkpoint_id": f"cp-{thread_id}",
+                }
+            }
+            self.checkpoint = {
+                "ts": ts,
+                "channel_values": {
+                    "messages": [HumanMessage(content=title), AIMessage(content="reply")]
+                },
+            }
+            self.metadata = {"agent_id": "research-assistant", "user_id": user_id}
+
+    call_count = {"n": 0}
+
+    async def fake_alist(*args, **kwargs):
+        if call_count["n"] > 0:
+            return
+        call_count["n"] += 1
+        yield DummyCheckpoint("thread-b", "user-123", "2024-07-31T20:14:19.804150+00:00", "Second")
+        yield DummyCheckpoint("thread-a", "user-123", "2024-07-31T20:15:19.804150+00:00", "First")
+        yield DummyCheckpoint(
+            "thread-c", "other-user", "2024-07-31T20:16:19.804150+00:00", "Ignored"
+        )
+        yield DummyCheckpoint("thread-d", None, "2024-07-31T20:17:19.804150+00:00", "Missing")
+        yield DummyCheckpoint(
+            "thread-a", "user-123", "2024-07-31T20:15:19.804150+00:00", "Duplicate"
+        )
+
+    mock_agent.checkpointer = type("Checkpointer", (), {})()
+    mock_agent.checkpointer.alist = fake_alist
+
+    response = test_client.get("/threads", params={"user_id": "user-123", "limit": 10})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [thread["thread_id"] for thread in payload["threads"]] == ["thread-a", "thread-b"]
+    assert [thread["title"] for thread in payload["threads"]] == ["First", "Second"]
+    assert [thread["agent_id"] for thread in payload["threads"]] == [
+        "research-assistant",
+        "research-assistant",
+    ]
+    assert [thread["updated_at"].replace("Z", "+00:00") for thread in payload["threads"]] == [
+        "2024-07-31T20:15:19.804150+00:00",
+        "2024-07-31T20:14:19.804150+00:00",
+    ]
+
+
+def test_threads_uses_requested_agent_id(test_client) -> None:
+    """Test that /threads uses the requested agent_id query parameter."""
+    agent_calls = {"default": 0, "custom": 0}
+
+    async def empty_alist(*args, **kwargs):
+        return
+        yield  # pragma: no cover - makes this an async generator function
+
+    custom_agent = AsyncMock()
+    custom_agent.checkpointer = type("Checkpointer", (), {})()
+    custom_agent.checkpointer.alist = empty_alist
+
+    default_agent = AsyncMock()
+    default_agent.checkpointer = None
+
+    def agent_lookup(agent_id):
+        if agent_id == "custom-agent":
+            agent_calls["custom"] += 1
+            return custom_agent
+        agent_calls["default"] += 1
+        return default_agent
+
+    with patch("service.service.get_agent", side_effect=agent_lookup):
+        response = test_client.get(
+            "/threads",
+            params={"user_id": "user-123", "limit": 10, "agent_id": "custom-agent"},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"threads": []}
+    assert agent_calls["custom"] == 1
+    assert agent_calls["default"] == 0
+
+
+def test_threads_paginates_until_limit(test_client, mock_agent) -> None:
+    """Test that /threads pages through checkpointer results until the limit is reached."""
+
+    class DummyCheckpoint:
+        def __init__(self, thread_id: str, user_id: str, ts: str, title: str):
+            self.config = {
+                "configurable": {
+                    "thread_id": thread_id,
+                    "checkpoint_id": f"cp-{thread_id}",
+                }
+            }
+            self.checkpoint = {
+                "ts": ts,
+                "channel_values": {
+                    "messages": [HumanMessage(content=title), AIMessage(content="reply")]
+                },
+            }
+            self.metadata = {"agent_id": "research-assistant", "user_id": user_id}
+
+    call_count = {"n": 0}
+
+    async def fake_alist(*args, **kwargs):
+        if call_count["n"] == 0:
+            call_count["n"] += 1
+            yield DummyCheckpoint(
+                "thread-a", "user-123", "2024-07-31T20:15:19.804150+00:00", "First"
+            )
+            yield DummyCheckpoint(
+                "thread-a", "user-123", "2024-07-31T20:15:19.804150+00:00", "Duplicate"
+            )
+            return
+        if call_count["n"] == 1:
+            call_count["n"] += 1
+            yield DummyCheckpoint(
+                "thread-b", "user-123", "2024-07-31T20:16:19.804150+00:00", "Second"
+            )
+            yield DummyCheckpoint(
+                "thread-c", "other-user", "2024-07-31T20:17:19.804150+00:00", "Ignored"
+            )
+
+    mock_agent.checkpointer = type("Checkpointer", (), {})()
+    mock_agent.checkpointer.alist = fake_alist
+
+    response = test_client.get("/threads", params={"user_id": "user-123", "limit": 2})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert len(payload["threads"]) == 2
+    assert [thread["thread_id"] for thread in payload["threads"]] == ["thread-b", "thread-a"]
+    assert call_count["n"] == 2
+
+
+def test_threads_falls_back_to_requested_agent_id_when_metadata_missing(
+    test_client, mock_agent
+) -> None:
+    """Test that /threads uses the requested agent_id when checkpoint metadata has no agent_id."""
+
+    class DummyCheckpoint:
+        def __init__(self, thread_id: str, user_id: str, ts: str):
+            self.config = {
+                "configurable": {
+                    "thread_id": thread_id,
+                    "checkpoint_id": f"cp-{thread_id}",
+                }
+            }
+            self.checkpoint = {
+                "ts": ts,
+                "channel_values": {
+                    "messages": [HumanMessage(content="Hello"), AIMessage(content="Reply")]
+                },
+            }
+            self.metadata = {"user_id": user_id}
+
+    call_count = {"n": 0}
+
+    async def fake_alist(*args, **kwargs):
+        if call_count["n"] > 0:
+            return
+        call_count["n"] += 1
+        yield DummyCheckpoint("thread-x", "user-123", "2024-07-31T20:15:19.804150+00:00")
+
+    mock_agent.checkpointer = type("Checkpointer", (), {})()
+    mock_agent.checkpointer.alist = fake_alist
+
+    response = test_client.get(
+        "/threads",
+        params={"user_id": "user-123", "limit": 10, "agent_id": "custom-agent"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["threads"][0]["agent_id"] == "custom-agent"
+
+
+def test_threads_checkpointer_error_returns_500(test_client, mock_agent) -> None:
+    async def broken_alist(*args, **kwargs):
+        raise RuntimeError("db unavailable")
+        yield  # pragma: no cover
+
+    mock_agent.checkpointer = type("Checkpointer", (), {})()
+    mock_agent.checkpointer.alist = broken_alist
+
+    response = test_client.get("/threads", params={"user_id": "user-123", "limit": 10})
+    assert response.status_code == 500
+
+
 def test_history_custom_agent(test_client) -> None:
     """Test that /{agent_id}/history reads the thread through the requested agent's graph."""
     CUSTOM_AGENT = "custom_agent"
