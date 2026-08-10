@@ -431,7 +431,7 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
-@router.get("/{agent_id}/threads",operation_id="threads_with_agent_id")
+@router.get("/{agent_id}/threads", operation_id="threads_with_agent_id")
 @router.get("/threads")
 async def threads(
     input: UserThreadsInput = Depends(), agent_id: str = DEFAULT_AGENT
