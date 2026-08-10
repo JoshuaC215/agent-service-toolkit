@@ -1,12 +1,13 @@
 import json
 import os
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from httpx import Request, Response
 
 from client import AgentClient, AgentClientError
-from schema import AgentInfo, ChatHistory, ChatMessage, ServiceMetadata
+from schema import AgentInfo, ChatHistory, ChatMessage, ServiceMetadata, UserThreads
 from schema.models import OpenAIModelName
 
 
@@ -340,3 +341,74 @@ def test_info(agent_client):
     with pytest.raises(AgentClientError) as exc:
         agent_client.invoke("test")
     assert "No agent selected. Use update_agent() to select an agent." in str(exc.value)
+
+
+def test_get_user_threads(agent_client):
+    """Test user threads retrieval under various configurations."""
+    USER_ID = "user-123"
+
+    MOCK_THREADS_RESPONSE = {
+        "threads": [
+            {
+                "thread_id": "thread-1",
+                "user_id": USER_ID,
+                "agent_id": "test-agent",
+                "created_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
+                "metadata": {"title": "First Chat"},
+            },
+            {
+                "thread_id": "thread-2",
+                "user_id": USER_ID,
+                "agent_id": "test-agent",
+                "created_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
+                "metadata": {"title": "Second Chat"},
+            },
+        ]
+    }
+
+    mock_request = Request("GET", "http://test/test-agent/threads")
+    mock_response = Response(200, json=MOCK_THREADS_RESPONSE, request=mock_request)
+
+    with patch("httpx.get", return_value=mock_response) as mock_get:
+        result = agent_client.get_user_threads(USER_ID)
+
+        assert isinstance(result, UserThreads)
+        assert len(result.threads) == 2
+        assert result.threads[0].thread_id == "thread-1"
+
+        mock_get.assert_called_once()
+        args, kwargs = mock_get.call_args
+        assert args[0] == "http://test/test-agent/threads"
+        assert kwargs["params"] == {
+            "user_id": USER_ID,
+            "limit": 20,
+        }
+
+    with patch("httpx.get", return_value=mock_response) as mock_get:
+        agent_client.get_user_threads(USER_ID, agent="custom-agent", limit=50)
+
+        args, kwargs = mock_get.call_args
+        assert args[0] == "http://test/custom-agent/threads"
+        assert kwargs["params"] == {
+            "user_id": USER_ID,
+            "limit": 50,
+        }
+
+    agent_client.agent = None
+    with patch("httpx.get", return_value=mock_response) as mock_get:
+        agent_client.get_user_threads(USER_ID)
+
+        args, kwargs = mock_get.call_args
+        assert args[0] == "http://test/threads"
+        assert kwargs["params"] == {"user_id": USER_ID, "limit": 20}
+
+    agent_client.agent = "test-agent"
+
+    error_response = Response(500, text="Internal Server Error", request=mock_request)
+    with patch("httpx.get", return_value=error_response):
+        with pytest.raises(AgentClientError) as exc:
+            agent_client.get_user_threads(USER_ID)
+        assert "Error:" in str(exc.value)
+        assert "500 Internal Server Error" in str(exc.value)

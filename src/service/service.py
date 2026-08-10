@@ -33,7 +33,10 @@ from schema import (
     FeedbackResponse,
     ServiceMetadata,
     StreamInput,
+    ThreadSummary,
     UserInput,
+    UserThreads,
+    UserThreadsInput,
 )
 from service.agui import router as agui_router
 from service.utils import (
@@ -126,7 +129,9 @@ async def info() -> ServiceMetadata:
     )
 
 
-async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[str, Any], UUID]:
+async def _handle_input(
+    user_input: UserInput, agent: AgentGraph, agent_id: str
+) -> tuple[dict[str, Any], UUID]:
     """
     Parse user input and handle any required interrupt resumption.
     Returns kwargs for agent invocation and the run_id.
@@ -159,6 +164,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
 
     config = RunnableConfig(
         configurable=configurable,
+        metadata={"user_id": user_id, "agent_id": agent_id},
         run_id=run_id,
         callbacks=callbacks,
     )
@@ -202,7 +208,7 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     # you'd want to include it. You could update the API to return a list of ChatMessages
     # in that case.
     agent: AgentGraph = get_agent(agent_id)
-    kwargs, run_id = await _handle_input(user_input, agent)
+    kwargs, run_id = await _handle_input(user_input, agent, agent_id)
 
     try:
         response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
@@ -235,7 +241,7 @@ async def message_generator(
     This is the workhorse method for the /stream endpoint.
     """
     agent: AgentGraph = get_agent(agent_id)
-    kwargs, run_id = await _handle_input(user_input, agent)
+    kwargs, run_id = await _handle_input(user_input, agent, agent_id)
 
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
@@ -423,6 +429,76 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")
+
+
+@router.get("/{agent_id}/threads", operation_id="threads_with_agent_id")
+@router.get("/threads")
+async def threads(
+    input: UserThreadsInput = Depends(), agent_id: str = DEFAULT_AGENT
+) -> UserThreads:
+    """
+    List a user's conversation threads for an agent, most recently updated first.
+    """
+    agent: AgentGraph = get_agent(agent_id)
+    checkpointer = getattr(agent, "checkpointer", None)
+    if not checkpointer:
+        return UserThreads(threads=[])
+
+    seen_threads: dict[str, ThreadSummary] = {}
+    before = None
+    try:
+        while len(seen_threads) < input.limit:
+            page = [
+                c
+                async for c in checkpointer.alist(
+                    None,
+                    filter={"user_id": input.user_id, "agent_id": agent_id},
+                    before=before,
+                    limit=200,
+                )
+            ]
+            if not page:
+                break
+            for tup in page:
+                tid = tup.config["configurable"]["thread_id"]
+                if tid in seen_threads:
+                    continue
+
+                stored_user_id = tup.metadata.get("user_id")
+                stored_agent_id = tup.metadata.get("agent_id")
+                if stored_user_id != input.user_id or (
+                    stored_agent_id is not None and stored_agent_id != agent_id
+                ):
+                    logger.warning(
+                        f"Checkpointer returned thread {tid} with user_id "
+                        f"{stored_user_id!r}/agent_id {stored_agent_id!r}, expected "
+                        f"{input.user_id!r}/{agent_id!r} — skipping to avoid a "
+                        "cross-user or cross-agent leak."
+                    )
+                    continue
+
+                messages = tup.checkpoint.get("channel_values", {}).get("messages", [])
+                first_human = next((m for m in messages if isinstance(m, HumanMessage)), None)
+                title = (
+                    convert_message_content_to_string(first_human.content)[:60]
+                    if first_human
+                    else None
+                )
+                seen_threads[tid] = ThreadSummary(
+                    thread_id=tid,
+                    agent_id=tup.metadata.get("agent_id", agent_id),
+                    updated_at=tup.checkpoint.get("ts"),
+                    title=title,
+                )
+            before = RunnableConfig(
+                configurable={"checkpoint_id": page[-1].config["configurable"]["checkpoint_id"]}
+            )
+    except Exception as e:
+        logger.error(f"An exception occurred: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error")
+
+    sorted_threads = sorted(seen_threads.values(), key=lambda t: t.updated_at, reverse=True)
+    return UserThreads(threads=sorted_threads[: input.limit])
 
 
 @app.get("/health")

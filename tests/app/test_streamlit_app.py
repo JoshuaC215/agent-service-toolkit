@@ -5,7 +5,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from client import AgentClientError
-from schema import ChatHistory, ChatMessage
+from schema import ChatHistory, ChatMessage, ThreadSummary, UserThreads
 from schema.models import OpenAIModelName
 
 
@@ -583,4 +583,36 @@ async def test_app_streaming_nested_sub_agents(mock_agent_client, multi_agent_me
         f"Should have 4 children: transfer to a, status for a (with nested b), final message, feedback stars - got {len(ai_message.children)}"
     )
 
+    assert not at.exception
+
+
+@pytest.fixture
+def mock_threads_data():
+    """Fixture providing dummy thread data for caching tests."""
+    return UserThreads(
+        threads=[
+            ThreadSummary(
+                thread_id="thread-1111-2222",
+                agent_id="test-agent",
+                updated_at="2026-07-31T20:14:19.804150+00:00",
+                title="What is Python?",
+            )
+        ]
+    )
+
+
+def test_app_thread_caching_sidebar(mock_agent_client, mock_threads_data):
+    """Verify thread list is fetched via get_user_threads and rendered in sidebar history."""
+    mock_agent_client.get_user_threads = Mock(return_value=mock_threads_data)
+
+    at = AppTest.from_file("../../src/streamlit_app.py")
+    at.query_params["user_id"] = "user-123"
+    at.run()
+
+    mock_agent_client.get_user_threads.assert_called_with(
+        user_id="user-123", agent="test-agent", limit=20
+    )
+
+    sidebar_buttons = [b.label for b in at.sidebar.button]
+    assert "What is Python?" in sidebar_buttons
     assert not at.exception

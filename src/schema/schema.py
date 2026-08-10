@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Literal, NotRequired
 
 from pydantic import BaseModel, Field, SerializeAsAny
@@ -173,3 +174,42 @@ class ChatHistoryInput(BaseModel):
 
 class ChatHistory(BaseModel):
     messages: list[ChatMessage]
+
+
+class UserThreadsInput(BaseModel):
+    """Input for listing a user's conversation threads."""
+
+    user_id: str = Field(
+        description="User ID to list threads for.",
+        examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
+    )
+    limit: int = Field(
+        description="Maximum number of threads to return.",
+        default=20,
+    )
+
+
+class ThreadSummary(BaseModel):
+    """Summary of a single conversation thread."""
+
+    thread_id: str = Field(
+        description="Thread ID of the conversation.",
+        examples=["847c6285-8fc9-4560-a83f-4e6285809254"],
+    )
+    agent_id: str = Field(
+        description="Agent this thread was run with.",
+        examples=["research-assistant"],
+    )
+    updated_at: datetime = Field(
+        description="Timestamp of the most recent checkpoint in this thread.",
+        examples=["2024-07-31T20:14:19.804150+00:00"],
+    )
+    title: str | None = Field(
+        description="Title for the thread, derived from the first human message.",
+        default=None,
+        examples=["What is the weather in Tokyo?"],
+    )
+
+
+class UserThreads(BaseModel):
+    threads: list[ThreadSummary]
