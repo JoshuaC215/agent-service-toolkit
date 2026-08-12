@@ -15,6 +15,7 @@ from schema.models import (
     GroqModelName,
     OllamaModelName,
     OpenAIModelName,
+    OrcaRouterModelName,
 )
 
 
@@ -82,6 +83,16 @@ def test_get_model_fake():
     model = get_model(FakeModelName.FAKE)
     assert isinstance(model, FakeListChatModel)
     assert model.responses == ["This is a test response from the fake model."]
+
+
+def test_get_model_orcarouter():
+    with patch.dict(os.environ, {"ORCAROUTER_API_KEY": "test_key"}):
+        model = get_model(OrcaRouterModelName.DEEPSEEK_V4_FLASH)
+        assert isinstance(model, ChatOpenAI)
+        assert model.model_name == "deepseek/deepseek-v4-flash-0731"
+        assert model.openai_api_base == "https://api.orcarouter.ai/v1"
+        assert model.temperature == 0.5
+        assert model.streaming is True
 
 
 def test_get_model_invalid():

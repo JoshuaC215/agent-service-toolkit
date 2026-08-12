@@ -12,6 +12,7 @@ from schema.models import (
     AzureOpenAIModelName,
     FakeModelName,
     OpenAIModelName,
+    OrcaRouterModelName,
     VertexAIModelName,
 )
 
@@ -57,6 +58,14 @@ def test_settings_with_anthropic_key():
         assert settings.ANTHROPIC_API_KEY == SecretStr("test_key")
         assert settings.DEFAULT_MODEL == AnthropicModelName.HAIKU_45
         assert settings.AVAILABLE_MODELS == set(AnthropicModelName)
+
+
+def test_settings_with_orcarouter_key():
+    with patch.dict(os.environ, {"ORCAROUTER_API_KEY": "test_key"}, clear=True):
+        settings = Settings(_env_file=None)
+        assert settings.ORCAROUTER_API_KEY == "test_key"
+        assert settings.DEFAULT_MODEL == OrcaRouterModelName.DEEPSEEK_V4_FLASH
+        assert settings.AVAILABLE_MODELS == set(OrcaRouterModelName)
 
 
 def test_settings_with_vertexai_credentials_file():

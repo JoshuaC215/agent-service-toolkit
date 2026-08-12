@@ -13,6 +13,7 @@ class Provider(StrEnum):
     AWS = auto()
     OLLAMA = auto()
     OPENROUTER = auto()
+    ORCAROUTER = auto()
     FAKE = auto()
 
 
@@ -103,6 +104,17 @@ class OpenRouterModelName(StrEnum):
     GEMINI_36_FLASH = "google/gemini-3.6-flash"
 
 
+# Values must stay unique across all model enums: get_model dispatch and API
+# model-string parsing both match on StrEnum values.
+class OrcaRouterModelName(StrEnum):
+    """https://www.orcarouter.ai — OpenAI-compatible model routing gateway; values are provider/model paths."""
+
+    ANTHROPIC_CLAUDE_OPUS_5 = "anthropic/claude-opus-5"
+    DEEPSEEK_V4_FLASH = "deepseek/deepseek-v4-flash-0731"
+    QWEN3_8_MAX = "qwen/qwen3.8-max"
+    GROK_4_3 = "grok/grok-4.3"
+
+
 class OpenAICompatibleName(StrEnum):
     """https://platform.openai.com/docs/guides/text-generation"""
 
@@ -127,5 +139,6 @@ type AllModelEnum = (
     | AWSModelName
     | OllamaModelName
     | OpenRouterModelName
+    | OrcaRouterModelName
     | FakeModelName
 )
