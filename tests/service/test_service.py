@@ -250,6 +250,7 @@ class FakeCheckpointer:
         turns: int = 1,
         title: str = "Hello",
         functional_api: bool = False,
+        subgraph_heads: int = 0,
         tip_ts: str | None = "2024-07-31T20:14:19.804150+00:00",
     ) -> None:
         def add(step: int, channel_values: dict, ts: str | None) -> None:
@@ -263,6 +264,9 @@ class FakeCheckpointer:
             )
 
         add(-1, {"__start__": {"messages": [HumanMessage(content=title)]}}, "2024-01-01T00:00:00Z")
+        # Subgraph runs write their own head, inheriting the parent run's metadata.
+        for _ in range(subgraph_heads):
+            add(-1, {"__start__": {}}, "2024-01-01T00:00:00Z")
         messages: list = []
         for turn in range(turns):
             messages = messages + [
@@ -459,6 +463,44 @@ def test_threads_deduplicates_threads(test_client, mock_agent) -> None:
 
     assert response.status_code == 200
     assert [thread["thread_id"] for thread in response.json()["threads"]] == ["thread-a"]
+
+
+def test_threads_pages_past_subgraph_heads(test_client, mock_agent) -> None:
+    """Test that subgraph head rows don't crowd real threads out of the result.
+
+    An agent with subgraphs writes several head rows per thread, so a single page of
+    rows covers far fewer threads than the caller asked for.
+    """
+    checkpointer = FakeCheckpointer()
+    for index in range(30):
+        checkpointer.add_thread(f"thread-{index:02d}", title=f"Thread {index}", subgraph_heads=9)
+    mock_agent.checkpointer = checkpointer
+
+    with patch("service.service.HEAD_PAGE_SIZE", 20):
+        response = test_client.get("/threads", params={"user_id": "user-123", "limit": 30})
+
+    assert response.status_code == 200
+    threads = response.json()["threads"]
+    assert len(threads) == 30
+    assert threads[0]["thread_id"] == "thread-29"
+
+
+def test_threads_bounds_total_rows_scanned(test_client, mock_agent) -> None:
+    """Test that head paging stops at the row cap instead of scanning the whole table."""
+    checkpointer = FakeCheckpointer()
+    for index in range(60):
+        checkpointer.add_thread(f"thread-{index:02d}", title=f"Thread {index}", subgraph_heads=9)
+    mock_agent.checkpointer = checkpointer
+
+    with (
+        patch("service.service.HEAD_PAGE_SIZE", 20),
+        patch("service.service.MAX_HEAD_ROWS", 100),
+    ):
+        response = test_client.get("/threads", params={"user_id": "user-123", "limit": 30})
+
+    assert response.status_code == 200
+    assert len(checkpointer.alist_filters) == 5
+    assert len(response.json()["threads"]) == 10
 
 
 def test_threads_titles_functional_api_threads(test_client, mock_agent) -> None:

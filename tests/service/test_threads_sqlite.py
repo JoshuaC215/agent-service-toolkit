@@ -31,6 +31,20 @@ def build_graph_agent(checkpointer):
     return graph.compile(checkpointer=checkpointer)
 
 
+def build_subgraph_agent(checkpointer):
+    """A graph that calls a checkpointed subgraph, like the supervisor agents do."""
+    inner = StateGraph(MessagesState)
+    inner.add_node("echo", echo)
+    inner.set_entry_point("echo")
+    inner.add_edge("echo", END)
+
+    outer = StateGraph(MessagesState)
+    outer.add_node("worker", inner.compile())
+    outer.set_entry_point("worker")
+    outer.add_edge("worker", END)
+    return outer.compile(checkpointer=checkpointer)
+
+
 def build_functional_agent(checkpointer):
     @entrypoint(checkpointer=checkpointer)
     async def functional(inputs: dict, *, previous: dict | None = None) -> dict:
@@ -61,6 +75,7 @@ async def seeded(tmp_path):
         agents = {
             "graph-agent": build_graph_agent(checkpointer),
             "functional-agent": build_functional_agent(checkpointer),
+            "subgraph-agent": build_subgraph_agent(checkpointer),
         }
         threads = {
             ("graph-agent", "alice", "g-alice-single"): ["only turn"],
@@ -68,6 +83,8 @@ async def seeded(tmp_path):
             ("graph-agent", "bob", "g-bob-single"): ["bob only turn"],
             ("functional-agent", "alice", "f-alice-single"): ["fn only turn"],
             ("functional-agent", "alice", "f-alice-multi"): ["fn first turn", "fn second"],
+            ("subgraph-agent", "alice", "s-alice-single"): ["sub only turn"],
+            ("subgraph-agent", "alice", "s-alice-multi"): ["sub first turn", "sub second"],
         }
         for (agent_id, user_id, thread_id), messages in threads.items():
             await run_turns(agents[agent_id], thread_id, user_id, agent_id, messages)
@@ -113,6 +130,31 @@ async def test_threads_titles_functional_api_agent(seeded) -> None:
     threads = response.json()["threads"]
     assert [t["thread_id"] for t in threads] == ["f-alice-multi", "f-alice-single"]
     assert [t["title"] for t in threads] == ["fn first turn", "fn only turn"]
+
+
+@pytest.mark.asyncio
+async def test_threads_lists_subgraph_threads_once(seeded) -> None:
+    """Subgraph runs write their own head checkpoint under a nested namespace.
+
+    Those inherit the parent run's user_id/agent_id metadata, so they match the same
+    query and would otherwise be listed as extra copies of the thread, each costing
+    its own tip lookup.
+    """
+    tip_lookups: list[str] = []
+    original = AsyncSqliteSaver.aget_tuple
+
+    async def counting_aget_tuple(self, config):
+        tip_lookups.append(config["configurable"]["thread_id"])
+        return await original(self, config)
+
+    with patch.object(AsyncSqliteSaver, "aget_tuple", counting_aget_tuple):
+        response = await seeded.get("/subgraph-agent/threads", params={"user_id": "alice"})
+
+    assert response.status_code == 200
+    threads = response.json()["threads"]
+    assert [t["thread_id"] for t in threads] == ["s-alice-multi", "s-alice-single"]
+    assert [t["title"] for t in threads] == ["sub first turn", "sub only turn"]
+    assert sorted(tip_lookups) == ["s-alice-multi", "s-alice-single"]
 
 
 @pytest.mark.asyncio

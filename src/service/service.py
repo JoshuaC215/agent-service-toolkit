@@ -62,9 +62,12 @@ logger = logging.getLogger(__name__)
 # step 1 looks equivalent but single-turn threads never reach it.
 THREAD_HEAD_STEP = -1
 
-# Heads are ordered by thread creation, so over-fetch and re-sort by the tip timestamp to
-# approximate "most recently updated". Threads older than this cap can fall off the list.
+# Heads are ordered by thread creation, so over-fetch distinct threads and re-sort by the
+# tip timestamp to approximate "most recently updated". Threads created before the oldest
+# head considered can fall off the list; MAX_HEAD_ROWS bounds the work either way.
 MAX_THREAD_HEADS = 200
+MAX_HEAD_ROWS = 1000
+HEAD_PAGE_SIZE = 200
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -456,6 +459,46 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
+async def _list_thread_heads(checkpointer: Any, user_id: str, agent_id: str) -> list[Any]:
+    """Return one head checkpoint per thread, newest thread first.
+
+    Pages because a head row isn't always a distinct thread: an agent with subgraphs
+    (the supervisor agents) writes a head per subgraph call under a nested namespace,
+    inheriting the parent run's metadata. Taking a single page of rows would quietly
+    list far fewer threads than the caller asked for.
+    """
+    heads: list[Any] = []
+    seen: set[str] = set()
+    rows_scanned = 0
+    before = None
+    while len(seen) < MAX_THREAD_HEADS and rows_scanned < MAX_HEAD_ROWS:
+        page = [
+            c
+            async for c in checkpointer.alist(
+                None,
+                filter={"user_id": user_id, "agent_id": agent_id, "step": THREAD_HEAD_STEP},
+                before=before,
+                limit=HEAD_PAGE_SIZE,
+            )
+        ]
+        if not page:
+            break
+        rows_scanned += len(page)
+        short_page = len(page) < HEAD_PAGE_SIZE
+        for row in page:
+            thread_id = row.config["configurable"]["thread_id"]
+            if thread_id in seen:
+                continue
+            seen.add(thread_id)
+            heads.append(row)
+        if short_page:
+            break
+        before = RunnableConfig(
+            configurable={"checkpoint_id": page[-1].config["configurable"]["checkpoint_id"]}
+        )
+    return heads
+
+
 @router.get("/{agent_id}/threads", operation_id="threads_with_agent_id")
 @router.get("/threads")
 async def threads(
@@ -470,26 +513,11 @@ async def threads(
         return UserThreads(threads=[])
 
     try:
-        heads = [
-            c
-            async for c in checkpointer.alist(
-                None,
-                filter={
-                    "user_id": input.user_id,
-                    "agent_id": agent_id,
-                    "step": THREAD_HEAD_STEP,
-                },
-                limit=MAX_THREAD_HEADS,
-            )
-        ]
+        heads = await _list_thread_heads(checkpointer, input.user_id, agent_id)
 
         summaries: list[tuple[str, ThreadSummary]] = []
-        seen: set[str] = set()
         for head in heads:
             thread_id = head.config["configurable"]["thread_id"]
-            if thread_id in seen:
-                continue
-            seen.add(thread_id)
             stored_user_id = head.metadata.get("user_id")
             stored_agent_id = head.metadata.get("agent_id")
             if stored_user_id != input.user_id or stored_agent_id != agent_id:
