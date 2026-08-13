@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from typing import Any, cast
 
 from fastapi import HTTPException
@@ -76,6 +77,24 @@ def langchain_to_chat_message(message: BaseMessage) -> ChatMessage:
                 raise ValueError(f"Unsupported chat message role: {message.role}")
         case _:
             raise ValueError(f"Unsupported message type: {message.__class__.__name__}")
+
+
+def messages_from_checkpoint(checkpoint: Mapping[str, Any]) -> list[BaseMessage]:
+    """Extract a thread's conversation from a raw checkpoint.
+
+    Graph-state agents keep the conversation in the `messages` channel. Functional-API
+    (`@entrypoint`) agents keep it in `__previous__` instead, which `aget_state` does not
+    surface - it only returns the entrypoint's final value.
+    """
+    channel_values = checkpoint.get("channel_values") or {}
+    messages = channel_values.get("messages")
+    if not messages:
+        previous = channel_values.get("__previous__")
+        if isinstance(previous, Mapping):
+            messages = previous.get("messages")
+        elif isinstance(previous, list):
+            messages = previous
+    return [m for m in (messages or []) if isinstance(m, BaseMessage)]
 
 
 def remove_tool_calls(content: str | list[str | dict]) -> str | list[str | dict]:

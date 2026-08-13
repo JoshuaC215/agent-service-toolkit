@@ -157,6 +157,34 @@ def test_agui_configurable_passthrough(mock_agui_agent, allow_fake_model, test_c
     assert captured_configurable.get("user_id") == "user-123"
 
 
+def test_agui_records_thread_metadata(mock_agui_agent, test_client) -> None:
+    """AG-UI runs record user_id/agent_id so their threads are listed by /threads."""
+    body = run_input(
+        thread_id="metadata-thread",
+        forwardedProps={"configurable": {"user_id": "user-123"}},
+    )
+    collect_events(test_client, "/agui/model-agent/run", body)
+
+    tup = model_agent.checkpointer.get_tuple(
+        RunnableConfig(configurable={"thread_id": "metadata-thread"})
+    )
+    assert tup is not None
+    assert tup.metadata["user_id"] == "user-123"
+    assert tup.metadata["agent_id"] == "model-agent"
+
+
+def test_agui_generates_user_id_when_missing(mock_agui_agent, test_client) -> None:
+    """Without a client-supplied user_id the run still records one, as /invoke does."""
+    collect_events(test_client, "/agui/model-agent/run", run_input(thread_id="anon-thread"))
+
+    tup = model_agent.checkpointer.get_tuple(
+        RunnableConfig(configurable={"thread_id": "anon-thread"})
+    )
+    assert tup is not None
+    assert tup.metadata["user_id"]
+    assert captured_configurable.get("user_id") == tup.metadata["user_id"]
+
+
 def test_agui_configurable_reserved_keys(mock_agui_agent, test_client) -> None:
     body = run_input(forwardedProps={"configurable": {"thread_id": "hijack"}})
     response = test_client.post("/agui/model-agent/run", json=body)

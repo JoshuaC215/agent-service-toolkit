@@ -412,3 +412,41 @@ def test_get_user_threads(agent_client):
             agent_client.get_user_threads(USER_ID)
         assert "Error:" in str(exc.value)
         assert "500 Internal Server Error" in str(exc.value)
+
+
+@pytest.mark.asyncio
+async def test_aget_user_threads(agent_client):
+    """Test async user threads retrieval."""
+    USER_ID = "user-123"
+
+    mock_request = Request("GET", "http://test/test-agent/threads")
+    mock_response = Response(
+        200,
+        json={
+            "threads": [
+                {
+                    "thread_id": "thread-1",
+                    "agent_id": "test-agent",
+                    "updated_at": datetime.now(UTC).isoformat(),
+                    "title": "First Chat",
+                }
+            ]
+        },
+        request=mock_request,
+    )
+
+    with patch("httpx.AsyncClient.get", return_value=mock_response) as mock_get:
+        result = await agent_client.aget_user_threads(USER_ID, agent="custom-agent", limit=50)
+
+        assert isinstance(result, UserThreads)
+        assert result.threads[0].thread_id == "thread-1"
+
+        args, kwargs = mock_get.call_args
+        assert args[0] == "http://test/custom-agent/threads"
+        assert kwargs["params"] == {"user_id": USER_ID, "limit": 50}
+
+    error_response = Response(500, text="Internal Server Error", request=mock_request)
+    with patch("httpx.AsyncClient.get", return_value=error_response):
+        with pytest.raises(AgentClientError) as exc:
+            await agent_client.aget_user_threads(USER_ID)
+        assert "500 Internal Server Error" in str(exc.value)

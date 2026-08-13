@@ -616,3 +616,61 @@ def test_app_thread_caching_sidebar(mock_agent_client, mock_threads_data):
     sidebar_buttons = [b.label for b in at.sidebar.button]
     assert "What is Python?" in sidebar_buttons
     assert not at.exception
+
+
+def test_app_thread_click_loads_history(mock_agent_client, mock_threads_data):
+    """Verify clicking a sidebar thread loads that conversation into the chat."""
+    mock_agent_client.get_user_threads = Mock(return_value=mock_threads_data)
+    mock_agent_client.get_history = Mock(
+        return_value=ChatHistory(
+            messages=[
+                ChatMessage(type="human", content="What is Python?"),
+                ChatMessage(type="ai", content="A programming language."),
+            ]
+        )
+    )
+
+    at = AppTest.from_file("../../src/streamlit_app.py")
+    at.query_params["user_id"] = "user-123"
+    at.run()
+
+    at.button(key="thread_thread-1111-2222").click().run()
+
+    mock_agent_client.get_history.assert_called_with(
+        thread_id="thread-1111-2222", agent="test-agent"
+    )
+    assert at.session_state.thread_id == "thread-1111-2222"
+    assert [m.content for m in at.session_state.messages] == [
+        "What is Python?",
+        "A programming language.",
+    ]
+    assert not at.exception
+
+
+def test_app_thread_click_history_error(mock_agent_client, mock_threads_data):
+    """Verify a failed history fetch surfaces an error and leaves the current chat alone."""
+    mock_agent_client.get_user_threads = Mock(return_value=mock_threads_data)
+    mock_agent_client.get_history = Mock(side_effect=AgentClientError("service down"))
+
+    at = AppTest.from_file("../../src/streamlit_app.py")
+    at.query_params["user_id"] = "user-123"
+    at.run()
+    original_thread_id = at.session_state.thread_id
+
+    at.button(key="thread_thread-1111-2222").click().run()
+
+    assert any("Could not load that conversation." in error.value for error in at.error)
+    assert at.session_state.thread_id == original_thread_id
+    assert not at.exception
+
+
+def test_app_thread_fetch_error_shows_caption(mock_agent_client):
+    """Verify the sidebar degrades gracefully when the threads endpoint fails."""
+    mock_agent_client.get_user_threads = Mock(side_effect=AgentClientError("service down"))
+
+    at = AppTest.from_file("../../src/streamlit_app.py")
+    at.query_params["user_id"] = "user-123"
+    at.run()
+
+    assert any("Couldn't load conversation history" in caption.value for caption in at.caption)
+    assert not at.exception

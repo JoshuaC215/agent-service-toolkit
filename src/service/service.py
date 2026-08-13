@@ -12,7 +12,13 @@ from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    ToolMessage,
+)
 from langchain_core.runnables import RunnableConfig
 from langfuse import Langfuse  # type: ignore[import-untyped]
 from langfuse.langchain import (
@@ -43,11 +49,22 @@ from service.utils import (
     convert_message_content_to_string,
     ensure_model_available,
     langchain_to_chat_message,
+    messages_from_checkpoint,
     remove_tool_calls,
 )
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
+
+# LangGraph writes the input checkpoint at step -1 exactly once per thread: later turns
+# continue from the last step rather than resetting, so filtering on it enumerates threads
+# instead of scanning every checkpoint a user owns. Don't switch this to another step —
+# step 1 looks equivalent but single-turn threads never reach it.
+THREAD_HEAD_STEP = -1
+
+# Heads are ordered by thread creation, so over-fetch and re-sort by the tip timestamp to
+# approximate "most recently updated". Threads older than this cap can fall off the list.
+MAX_THREAD_HEADS = 200
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -419,11 +436,19 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
     If agent_id is not provided, the default agent will be used.
     """
     agent: AgentGraph = get_agent(agent_id)
+    config = RunnableConfig(configurable={"thread_id": input.thread_id})
     try:
-        state_snapshot = await agent.aget_state(
-            config=RunnableConfig(configurable={"thread_id": input.thread_id})
-        )
-        messages: list[AnyMessage] = state_snapshot.values["messages"]
+        messages: list[BaseMessage] = []
+        # Functional-API agents keep the conversation in `__previous__`, which aget_state
+        # doesn't return, so read the raw checkpoint first and only fall back for graphs.
+        checkpointer = getattr(agent, "checkpointer", None)
+        if checkpointer:
+            tup = await checkpointer.aget_tuple(config)
+            if tup and "__previous__" in (tup.checkpoint.get("channel_values") or {}):
+                messages = messages_from_checkpoint(tup.checkpoint)
+        if not messages:
+            state_snapshot = await agent.aget_state(config=config)
+            messages = state_snapshot.values["messages"]
         chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
         return ChatHistory(messages=chat_messages)
     except Exception as e:
@@ -444,61 +469,66 @@ async def threads(
     if not checkpointer:
         return UserThreads(threads=[])
 
-    seen_threads: dict[str, ThreadSummary] = {}
-    before = None
     try:
-        while len(seen_threads) < input.limit:
-            page = [
-                c
-                async for c in checkpointer.alist(
-                    None,
-                    filter={"user_id": input.user_id, "agent_id": agent_id},
-                    before=before,
-                    limit=200,
-                )
-            ]
-            if not page:
-                break
-            for tup in page:
-                tid = tup.config["configurable"]["thread_id"]
-                if tid in seen_threads:
-                    continue
+        heads = [
+            c
+            async for c in checkpointer.alist(
+                None,
+                filter={
+                    "user_id": input.user_id,
+                    "agent_id": agent_id,
+                    "step": THREAD_HEAD_STEP,
+                },
+                limit=MAX_THREAD_HEADS,
+            )
+        ]
 
-                stored_user_id = tup.metadata.get("user_id")
-                stored_agent_id = tup.metadata.get("agent_id")
-                if stored_user_id != input.user_id or (
-                    stored_agent_id is not None and stored_agent_id != agent_id
-                ):
-                    logger.warning(
-                        f"Checkpointer returned thread {tid} with user_id "
-                        f"{stored_user_id!r}/agent_id {stored_agent_id!r}, expected "
-                        f"{input.user_id!r}/{agent_id!r} — skipping to avoid a "
-                        "cross-user or cross-agent leak."
-                    )
-                    continue
+        summaries: list[tuple[str, ThreadSummary]] = []
+        seen: set[str] = set()
+        for head in heads:
+            thread_id = head.config["configurable"]["thread_id"]
+            if thread_id in seen:
+                continue
+            seen.add(thread_id)
+            stored_user_id = head.metadata.get("user_id")
+            stored_agent_id = head.metadata.get("agent_id")
+            if stored_user_id != input.user_id or stored_agent_id != agent_id:
+                logger.warning(
+                    f"Checkpointer returned thread {thread_id} with user_id "
+                    f"{stored_user_id!r}/agent_id {stored_agent_id!r}, expected "
+                    f"{input.user_id!r}/{agent_id!r} — skipping to avoid a "
+                    "cross-user or cross-agent leak."
+                )
+                continue
 
-                messages = tup.checkpoint.get("channel_values", {}).get("messages", [])
-                first_human = next((m for m in messages if isinstance(m, HumanMessage)), None)
-                title = (
-                    convert_message_content_to_string(first_human.content)[:60]
-                    if first_human
-                    else None
+            # The head has no messages yet, so the title and updated_at come from the tip.
+            tip = await checkpointer.aget_tuple(
+                RunnableConfig(configurable={"thread_id": thread_id})
+            )
+            if tip is None:
+                continue
+            messages = messages_from_checkpoint(tip.checkpoint)
+            first_human = next((m for m in messages if isinstance(m, HumanMessage)), None)
+            summaries.append(
+                (
+                    tip.config["configurable"]["checkpoint_id"],
+                    ThreadSummary(
+                        thread_id=thread_id,
+                        agent_id=agent_id,
+                        updated_at=tip.checkpoint.get("ts"),
+                        title=convert_message_content_to_string(first_human.content)[:60]
+                        if first_human
+                        else None,
+                    ),
                 )
-                seen_threads[tid] = ThreadSummary(
-                    thread_id=tid,
-                    agent_id=tup.metadata.get("agent_id", agent_id),
-                    updated_at=tup.checkpoint.get("ts"),
-                    title=title,
-                )
-            before = RunnableConfig(
-                configurable={"checkpoint_id": page[-1].config["configurable"]["checkpoint_id"]}
             )
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")
 
-    sorted_threads = sorted(seen_threads.values(), key=lambda t: t.updated_at, reverse=True)
-    return UserThreads(threads=sorted_threads[: input.limit])
+    # Checkpoint IDs are time-ordered UUIDs, so the tip's ID sorts by last update.
+    summaries.sort(key=lambda item: item[0], reverse=True)
+    return UserThreads(threads=[summary for _, summary in summaries[: input.limit]])
 
 
 @app.get("/health")

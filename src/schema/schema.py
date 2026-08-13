@@ -186,6 +186,8 @@ class UserThreadsInput(BaseModel):
     limit: int = Field(
         description="Maximum number of threads to return.",
         default=20,
+        ge=1,
+        le=100,
     )
 
 
@@ -200,8 +202,9 @@ class ThreadSummary(BaseModel):
         description="Agent this thread was run with.",
         examples=["research-assistant"],
     )
-    updated_at: datetime = Field(
+    updated_at: datetime | None = Field(
         description="Timestamp of the most recent checkpoint in this thread.",
+        default=None,
         examples=["2024-07-31T20:14:19.804150+00:00"],
     )
     title: str | None = Field(

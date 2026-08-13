@@ -12,6 +12,7 @@ See docs/AGUI.md for usage, including how to connect a client.
 import logging
 from collections.abc import AsyncGenerator
 from typing import Any
+from uuid import uuid4
 
 from ag_ui.core import EventType, RunAgentInput
 from ag_ui.encoder import EventEncoder
@@ -34,7 +35,7 @@ router = APIRouter(prefix="/agui")
 RESERVED_CONFIGURABLE_KEYS = {"thread_id", "checkpoint_id", "checkpoint_ns"}
 
 
-def _base_config(input_data: RunAgentInput) -> RunnableConfig:
+def _base_config(input_data: RunAgentInput, agent_id: str) -> RunnableConfig:
     """Build the base RunnableConfig for an AG-UI run.
 
     Clients can pass configurable values (e.g. `model`, `user_id`, or custom agent
@@ -59,7 +60,15 @@ def _base_config(input_data: RunAgentInput) -> RunnableConfig:
     if settings.LANGFUSE_TRACING:
         callbacks.append(CallbackHandler())
 
-    return RunnableConfig(configurable=dict(configurable), callbacks=callbacks)
+    configurable = dict(configurable)
+    user_id = configurable.setdefault("user_id", str(uuid4()))
+
+    return RunnableConfig(
+        configurable=configurable,
+        # Recorded in checkpoint metadata so AG-UI threads show up in /threads too.
+        metadata={"user_id": user_id, "agent_id": agent_id},
+        callbacks=callbacks,
+    )
 
 
 async def _event_stream(
@@ -99,7 +108,7 @@ async def agui_run(
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
 
-    config = _base_config(input_data)
+    config = _base_config(input_data, agent_id)
     encoder = EventEncoder(accept=request.headers.get("accept", ""))
     return StreamingResponse(
         _event_stream(agent_id, graph, input_data, config, encoder),
