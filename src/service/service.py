@@ -220,15 +220,16 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     try:
         response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
         response_type, response = response_events[-1]
-        if response_type == "values":
-            # Normal response, the agent completed successfully
-            output = langchain_to_chat_message(response["messages"][-1])
-        elif response_type == "updates" and "__interrupt__" in response:
-            # The last thing to occur was an interrupt
+        # A run that stops on an interrupt reports it on the final event of either stream
+        # mode, so check for the interrupt before falling back to the last message.
+        if "__interrupt__" in response:
             # Return the value of the first interrupt as an AIMessage
             output = langchain_to_chat_message(
                 AIMessage(content=response["__interrupt__"][0].value)
             )
+        elif response_type == "values":
+            # Normal response, the agent completed successfully
+            output = langchain_to_chat_message(response["messages"][-1])
         else:
             raise ValueError(f"Unexpected response type: {response_type}")
 
