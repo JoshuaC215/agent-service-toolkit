@@ -61,7 +61,7 @@ docker compose watch
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
 1. **Content Moderation**: Implements Safeguard for content moderation (requires Groq API key).
 1. **RAG Agent**: A basic RAG agent implementation using ChromaDB - see [docs](docs/RAG_Assistant.md).
-1. **Chat History**: Lists a user's previous conversations per agent via `/threads`, with a "Previous Chats" sidebar in the Streamlit app - see [below](#chat-history).
+1. **Chat History**: Lists a user's previous conversations per agent via `/threads`, with a "Previous Chats" sidebar in the Streamlit app.
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
 1. **Testing**: Includes robust unit and integration tests for the full repo.
@@ -166,15 +166,6 @@ response.pretty_print()
 # The librarian replied, "It rings a bell, but I'm not sure if it's here or not."
 
 ```
-
-### Chat history
-
-Threads are persisted by the checkpointer and listed back per user by `GET /threads` and
-`GET /{agent_id}/threads` - see the OpenAPI docs at `/redoc` for parameters and the
-authorization caveat. `AgentClient.get_user_threads` wraps them.
-
-The Streamlit app surfaces these under **Previous Chats** in the sidebar, **scoped to the
-currently selected agent** - switch agents in Settings to see the chats from another one.
 
 ### Development with LangGraph Studio
 

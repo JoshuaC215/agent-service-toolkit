@@ -458,9 +458,6 @@ async def threads(
     request, so any holder of the bearer token can list any user's threads - the same
     trust model as /history. Put your own authorization in front of this before end
     users can reach it.
-
-    Threads created before this endpoint existed have no user_id/agent_id metadata and
-    are not listed. They stay readable through /history if you know the thread ID.
     """
     agent: AgentGraph = get_agent(agent_id)
     checkpointer = getattr(agent, "checkpointer", None)
