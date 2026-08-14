@@ -169,38 +169,12 @@ response.pretty_print()
 
 ### Chat history
 
-Threads are persisted by the checkpointer, and two endpoints list them back for a user:
+Threads are persisted by the checkpointer and listed back per user by `GET /threads` and
+`GET /{agent_id}/threads` - see the OpenAPI docs at `/redoc` for parameters and the
+authorization caveat. `AgentClient.get_user_threads` wraps them.
 
-- `GET /threads?user_id=<id>&limit=<n>` - threads for the default agent.
-- `GET /{agent_id}/threads?user_id=<id>&limit=<n>` - threads for a specific agent.
-
-Both return the user's threads for that agent, most recently updated first, with a title
-derived from the thread's first human message. `limit` defaults to 20 and is capped at 100.
-From the client:
-
-```python
-from client import AgentClient
-client = AgentClient()
-
-threads = client.get_user_threads(user_id="user-123", agent="chatbot")
-for thread in threads.threads:
-    print(thread.updated_at, thread.thread_id, thread.title)
-```
-
-The Streamlit app surfaces these under **Previous Chats** in the sidebar. The list is
-**scoped to the currently selected agent** - switch agents in Settings to see the chats
-from another one.
-
-A few things to know before exposing this:
-
-- **`user_id` is client-asserted.** It's a plain query parameter with no ownership check,
-  so any holder of the bearer token can list any user's threads. That's the same trust
-  model as `/history`, but enumeration has a bigger blast radius: put your own authorization
-  layer in front of these endpoints before end users can reach them.
-- **Threads are enumerated from checkpoint metadata**, which the service records on each
-  run. Threads created before this feature existed have no `user_id`/`agent_id` metadata
-  and are invisible to `/threads` - they're excluded rather than leaked, and remain
-  readable through `/history` if you know the thread ID.
+The Streamlit app surfaces these under **Previous Chats** in the sidebar, **scoped to the
+currently selected agent** - switch agents in Settings to see the chats from another one.
 
 ### Development with LangGraph Studio
 

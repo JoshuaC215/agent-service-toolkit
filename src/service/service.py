@@ -39,12 +39,12 @@ from schema import (
     FeedbackResponse,
     ServiceMetadata,
     StreamInput,
-    ThreadSummary,
     UserInput,
     UserThreads,
     UserThreadsInput,
 )
 from service.agui import router as agui_router
+from service.threads import list_user_threads
 from service.utils import (
     convert_message_content_to_string,
     ensure_model_available,
@@ -55,19 +55,6 @@ from service.utils import (
 
 warnings.filterwarnings("ignore", category=LangChainBetaWarning)
 logger = logging.getLogger(__name__)
-
-# LangGraph writes the input checkpoint at step -1 exactly once per thread: later turns
-# continue from the last step rather than resetting, so filtering on it enumerates threads
-# instead of scanning every checkpoint a user owns. Don't switch this to another step —
-# step 1 looks equivalent but single-turn threads never reach it.
-THREAD_HEAD_STEP = -1
-
-# Heads are ordered by thread creation, so over-fetch distinct threads and re-sort by the
-# tip timestamp to approximate "most recently updated". Threads created before the oldest
-# head considered can fall off the list; MAX_HEAD_ROWS bounds the work either way.
-MAX_THREAD_HEADS = 200
-MAX_HEAD_ROWS = 1000
-HEAD_PAGE_SIZE = 200
 
 
 def custom_generate_unique_id(route: APIRoute) -> str:
@@ -459,46 +446,6 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
-async def _list_thread_heads(checkpointer: Any, user_id: str, agent_id: str) -> list[Any]:
-    """Return one head checkpoint per thread, newest thread first.
-
-    Pages because a head row isn't always a distinct thread: an agent with subgraphs
-    (the supervisor agents) writes a head per subgraph call under a nested namespace,
-    inheriting the parent run's metadata. Taking a single page of rows would quietly
-    list far fewer threads than the caller asked for.
-    """
-    heads: list[Any] = []
-    seen: set[str] = set()
-    rows_scanned = 0
-    before = None
-    while len(seen) < MAX_THREAD_HEADS and rows_scanned < MAX_HEAD_ROWS:
-        page = [
-            c
-            async for c in checkpointer.alist(
-                None,
-                filter={"user_id": user_id, "agent_id": agent_id, "step": THREAD_HEAD_STEP},
-                before=before,
-                limit=HEAD_PAGE_SIZE,
-            )
-        ]
-        if not page:
-            break
-        rows_scanned += len(page)
-        short_page = len(page) < HEAD_PAGE_SIZE
-        for row in page:
-            thread_id = row.config["configurable"]["thread_id"]
-            if thread_id in seen:
-                continue
-            seen.add(thread_id)
-            heads.append(row)
-        if short_page:
-            break
-        before = RunnableConfig(
-            configurable={"checkpoint_id": page[-1].config["configurable"]["checkpoint_id"]}
-        )
-    return heads
-
-
 @router.get("/{agent_id}/threads", operation_id="threads_with_agent_id")
 @router.get("/threads")
 async def threads(
@@ -506,6 +453,14 @@ async def threads(
 ) -> UserThreads:
     """
     List a user's conversation threads for an agent, most recently updated first.
+
+    `user_id` is asserted by the caller and not checked against the credentials on the
+    request, so any holder of the bearer token can list any user's threads - the same
+    trust model as /history. Put your own authorization in front of this before end
+    users can reach it.
+
+    Threads created before this endpoint existed have no user_id/agent_id metadata and
+    are not listed. They stay readable through /history if you know the thread ID.
     """
     agent: AgentGraph = get_agent(agent_id)
     checkpointer = getattr(agent, "checkpointer", None)
@@ -513,50 +468,12 @@ async def threads(
         return UserThreads(threads=[])
 
     try:
-        heads = await _list_thread_heads(checkpointer, input.user_id, agent_id)
-
-        summaries: list[tuple[str, ThreadSummary]] = []
-        for head in heads:
-            thread_id = head.config["configurable"]["thread_id"]
-            stored_user_id = head.metadata.get("user_id")
-            stored_agent_id = head.metadata.get("agent_id")
-            if stored_user_id != input.user_id or stored_agent_id != agent_id:
-                logger.warning(
-                    f"Checkpointer returned thread {thread_id} with user_id "
-                    f"{stored_user_id!r}/agent_id {stored_agent_id!r}, expected "
-                    f"{input.user_id!r}/{agent_id!r} — skipping to avoid a "
-                    "cross-user or cross-agent leak."
-                )
-                continue
-
-            # The head has no messages yet, so the title and updated_at come from the tip.
-            tip = await checkpointer.aget_tuple(
-                RunnableConfig(configurable={"thread_id": thread_id})
-            )
-            if tip is None:
-                continue
-            messages = messages_from_checkpoint(tip.checkpoint)
-            first_human = next((m for m in messages if isinstance(m, HumanMessage)), None)
-            summaries.append(
-                (
-                    tip.config["configurable"]["checkpoint_id"],
-                    ThreadSummary(
-                        thread_id=thread_id,
-                        agent_id=agent_id,
-                        updated_at=tip.checkpoint.get("ts"),
-                        title=convert_message_content_to_string(first_human.content)[:60]
-                        if first_human
-                        else None,
-                    ),
-                )
-            )
+        summaries = await list_user_threads(checkpointer, input.user_id, agent_id, input.limit)
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")
 
-    # Checkpoint IDs are time-ordered UUIDs, so the tip's ID sorts by last update.
-    summaries.sort(key=lambda item: item[0], reverse=True)
-    return UserThreads(threads=[summary for _, summary in summaries[: input.limit]])
+    return UserThreads(threads=summaries)
 
 
 @app.get("/health")
