@@ -27,7 +27,7 @@ echo 'OPENAI_API_KEY=your_openai_api_key' >> .env
 
 # uv is the recommended way to install agent-service-toolkit, but "pip install ." also works
 # For uv installation options, see: https://docs.astral.sh/uv/getting-started/installation/
-curl -LsSf https://astral.sh/uv/0.11.29/install.sh | sh
+curl -LsSf https://astral.sh/uv/0.11.32/install.sh | sh
 
 # Install dependencies. "uv sync" creates .venv automatically
 uv sync --frozen
@@ -61,6 +61,7 @@ docker compose watch
 1. **Asynchronous Design**: Utilizes async/await for efficient handling of concurrent requests.
 1. **Content Moderation**: Implements Safeguard for content moderation (requires Groq API key).
 1. **RAG Agent**: A basic RAG agent implementation using ChromaDB - see [docs](docs/RAG_Assistant.md).
+1. **Chat History**: Lists a user's previous conversations per agent via `/threads`, with a "Previous Chats" sidebar in the Streamlit app.
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
 1. **Testing**: Includes robust unit and integration tests for the full repo.

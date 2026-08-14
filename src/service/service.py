@@ -12,7 +12,13 @@ from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
-from langchain_core.messages import AIMessage, AIMessageChunk, AnyMessage, HumanMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    BaseMessage,
+    HumanMessage,
+    ToolMessage,
+)
 from langchain_core.runnables import RunnableConfig
 from langfuse import Langfuse  # type: ignore[import-untyped]
 from langfuse.langchain import (
@@ -34,12 +40,16 @@ from schema import (
     ServiceMetadata,
     StreamInput,
     UserInput,
+    UserThreads,
+    UserThreadsInput,
 )
 from service.agui import router as agui_router
+from service.threads import list_user_threads
 from service.utils import (
     convert_message_content_to_string,
     ensure_model_available,
     langchain_to_chat_message,
+    messages_from_checkpoint,
     remove_tool_calls,
 )
 
@@ -126,7 +136,9 @@ async def info() -> ServiceMetadata:
     )
 
 
-async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[str, Any], UUID]:
+async def _handle_input(
+    user_input: UserInput, agent: AgentGraph, agent_id: str
+) -> tuple[dict[str, Any], UUID]:
     """
     Parse user input and handle any required interrupt resumption.
     Returns kwargs for agent invocation and the run_id.
@@ -159,6 +171,7 @@ async def _handle_input(user_input: UserInput, agent: AgentGraph) -> tuple[dict[
 
     config = RunnableConfig(
         configurable=configurable,
+        metadata={"user_id": user_id, "agent_id": agent_id},
         run_id=run_id,
         callbacks=callbacks,
     )
@@ -202,20 +215,21 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
     # you'd want to include it. You could update the API to return a list of ChatMessages
     # in that case.
     agent: AgentGraph = get_agent(agent_id)
-    kwargs, run_id = await _handle_input(user_input, agent)
+    kwargs, run_id = await _handle_input(user_input, agent, agent_id)
 
     try:
         response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
         response_type, response = response_events[-1]
-        if response_type == "values":
-            # Normal response, the agent completed successfully
-            output = langchain_to_chat_message(response["messages"][-1])
-        elif response_type == "updates" and "__interrupt__" in response:
-            # The last thing to occur was an interrupt
+        # A run that stops on an interrupt reports it on the final event of either stream
+        # mode, so check for the interrupt before falling back to the last message.
+        if "__interrupt__" in response:
             # Return the value of the first interrupt as an AIMessage
             output = langchain_to_chat_message(
                 AIMessage(content=response["__interrupt__"][0].value)
             )
+        elif response_type == "values":
+            # Normal response, the agent completed successfully
+            output = langchain_to_chat_message(response["messages"][-1])
         else:
             raise ValueError(f"Unexpected response type: {response_type}")
 
@@ -235,7 +249,7 @@ async def message_generator(
     This is the workhorse method for the /stream endpoint.
     """
     agent: AgentGraph = get_agent(agent_id)
-    kwargs, run_id = await _handle_input(user_input, agent)
+    kwargs, run_id = await _handle_input(user_input, agent, agent_id)
 
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
@@ -413,16 +427,51 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
     If agent_id is not provided, the default agent will be used.
     """
     agent: AgentGraph = get_agent(agent_id)
+    config = RunnableConfig(configurable={"thread_id": input.thread_id})
     try:
-        state_snapshot = await agent.aget_state(
-            config=RunnableConfig(configurable={"thread_id": input.thread_id})
-        )
-        messages: list[AnyMessage] = state_snapshot.values["messages"]
+        messages: list[BaseMessage] = []
+        # Functional-API agents keep the conversation in `__previous__`, which aget_state
+        # doesn't return, so read the raw checkpoint first and only fall back for graphs.
+        checkpointer = getattr(agent, "checkpointer", None)
+        if checkpointer:
+            tup = await checkpointer.aget_tuple(config)
+            if tup and "__previous__" in (tup.checkpoint.get("channel_values") or {}):
+                messages = messages_from_checkpoint(tup.checkpoint)
+        if not messages:
+            state_snapshot = await agent.aget_state(config=config)
+            messages = state_snapshot.values["messages"]
         chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
         return ChatHistory(messages=chat_messages)
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")
+
+
+@router.get("/{agent_id}/threads", operation_id="threads_with_agent_id")
+@router.get("/threads")
+async def threads(
+    input: UserThreadsInput = Depends(), agent_id: str = DEFAULT_AGENT
+) -> UserThreads:
+    """
+    List a user's conversation threads for an agent, most recently updated first.
+
+    `user_id` is asserted by the caller and not checked against the credentials on the
+    request, so any holder of the bearer token can list any user's threads - the same
+    trust model as /history. Put your own authorization in front of this before end
+    users can reach it.
+    """
+    agent: AgentGraph = get_agent(agent_id)
+    checkpointer = getattr(agent, "checkpointer", None)
+    if not checkpointer:
+        return UserThreads(threads=[])
+
+    try:
+        summaries = await list_user_threads(checkpointer, input.user_id, agent_id, input.limit)
+    except Exception as e:
+        logger.error(f"An exception occurred: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected error")
+
+    return UserThreads(threads=summaries)
 
 
 @app.get("/health")

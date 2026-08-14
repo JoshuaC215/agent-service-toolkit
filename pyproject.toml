@@ -16,7 +16,7 @@ classifiers = [
 requires-python = ">=3.12,<3.15"
 
 dependencies = [
-    "aiosqlite >=0.20",
+    "aiosqlite >=0.22.1",
     "docx2txt ~=0.8",
     "duckduckgo-search>=8.1.1",
     "fastapi ~=0.139.0",
@@ -66,12 +66,6 @@ dependencies = [
 [tool.uv]
 exclude-newer = "14 days"
 
-[tool.uv.exclude-newer-package]
-# gitpython 3.1.54 fixes a vulnerability (Dependabot alert #157); streamlit pins it
-# exactly, so the global cooldown blocks resolution until 3.1.54 clears 14 days old.
-# Remove this override once 3.1.54 is >14 days old (~2026-08-05).
-gitpython = "0 days"
-
 [dependency-groups]
 dev = [
     "langgraph-cli[inmem]",
@@ -80,7 +74,7 @@ dev = [
     "pytest-cov",
     "pytest-env",
     "pytest-asyncio",
-    "ruff",
+    "ruff ~=0.15.21",
     "pyrefly ~=1.1.1",
     "pymarkdownlnt",
 ]

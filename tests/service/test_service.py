@@ -248,8 +248,10 @@ def test_history_custom_agent(test_client) -> None:
 
     custom_mock = AsyncMock()
     custom_mock.aget_state.return_value = custom_snapshot
+    custom_mock.checkpointer = None
     default_mock = AsyncMock()
     default_mock.aget_state.return_value = default_snapshot
+    default_mock.checkpointer = None
 
     def agent_lookup(agent_id):
         if agent_id == CUSTOM_AGENT:

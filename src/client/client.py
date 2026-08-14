@@ -13,6 +13,8 @@ from schema import (
     ServiceMetadata,
     StreamInput,
     UserInput,
+    UserThreads,
+    UserThreadsInput,
 )
 
 
@@ -363,3 +365,61 @@ class AgentClient:
             raise AgentClientError(f"Error: {e}")
 
         return ChatHistory.model_validate(response.json())
+
+    def _user_threads_request(
+        self, user_id: str, agent: str | None, limit: int
+    ) -> tuple[str, dict[str, Any]]:
+        agent_id = agent or self.agent
+        url = f"{self.base_url}/{agent_id}/threads" if agent_id else f"{self.base_url}/threads"
+        return url, UserThreadsInput(user_id=user_id, limit=limit).model_dump()
+
+    def get_user_threads(
+        self, user_id: str, agent: str | None = None, limit: int = 20
+    ) -> UserThreads:
+        """
+        List a user's conversation threads.
+
+        Args:
+            user_id (str): User ID to list threads for.
+            agent (str, optional): The agent whose threads should be listed.
+            limit (int, optional): Maximum number of threads to return.
+        """
+        url, params = self._user_threads_request(user_id, agent, limit)
+        try:
+            response = httpx.get(
+                url,
+                params=params,
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error: {e}")
+
+        return UserThreads.model_validate(response.json())
+
+    async def aget_user_threads(
+        self, user_id: str, agent: str | None = None, limit: int = 20
+    ) -> UserThreads:
+        """
+        List a user's conversation threads asynchronously.
+
+        Args:
+            user_id (str): User ID to list threads for.
+            agent (str, optional): The agent whose threads should be listed.
+            limit (int, optional): Maximum number of threads to return.
+        """
+        url, params = self._user_threads_request(user_id, agent, limit)
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    url,
+                    params=params,
+                    headers=self._headers,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+            except httpx.HTTPError as e:
+                raise AgentClientError(f"Error: {e}")
+
+        return UserThreads.model_validate(response.json())
