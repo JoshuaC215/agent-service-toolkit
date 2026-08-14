@@ -90,7 +90,11 @@ async def seeded(tmp_path):
             await run_turns(agents[agent_id], thread_id, user_id, agent_id, messages)
 
         transport = httpx.ASGITransport(app=app)
-        with patch("service.service.get_agent", side_effect=lambda agent_id: agents[agent_id]):
+        lookup = {"side_effect": lambda agent_id: agents[agent_id]}
+        with (
+            patch("service.service.get_agent", **lookup),
+            patch("service.agui.get_agent", **lookup),
+        ):
             async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
                 yield client
 
@@ -182,6 +186,30 @@ async def test_threads_respects_limit(seeded) -> None:
 
     assert response.status_code == 200
     assert [t["thread_id"] for t in response.json()["threads"]] == ["g-alice-multi"]
+
+
+@pytest.mark.asyncio
+async def test_agui_runs_are_listed_by_threads(seeded) -> None:
+    """An AG-UI run records the same metadata, so its thread lists like any other."""
+    response = await seeded.post(
+        "/agui/graph-agent/run",
+        json={
+            "threadId": "agui-thread",
+            "runId": "agui-run",
+            "messages": [{"id": "m1", "role": "user", "content": "from ag-ui"}],
+            "tools": [],
+            "context": [],
+            "state": {},
+            "forwardedProps": {"configurable": {"user_id": "alice"}},
+        },
+    )
+    assert response.status_code == 200
+
+    threads = (await seeded.get("/graph-agent/threads", params={"user_id": "alice"})).json()
+    listed = {t["thread_id"]: t for t in threads["threads"]}
+    assert "agui-thread" in listed
+    assert listed["agui-thread"]["title"] == "from ag-ui"
+    assert listed["agui-thread"]["agent_id"] == "graph-agent"
 
 
 @pytest.mark.asyncio
