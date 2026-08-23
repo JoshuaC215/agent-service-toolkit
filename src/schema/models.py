@@ -65,10 +65,8 @@ class GoogleModelName(StrEnum):
 class VertexAIModelName(StrEnum):
     """https://cloud.google.com/vertex-ai/generative-ai/docs/models"""
 
-    # The models/ prefix is required to keep these distinct from GoogleModelName:
-    # StrEnum hashes by value, so a shared value collapses the two members into one
-    # and get_model routes the Gemini API branch first. Vertex resolves both the
-    # bare and models/-prefixed forms to the same resource path.
+    # The models/ prefix keeps every value distinct from its GoogleModelName twin;
+    # Vertex resolves it to the same resource path as the bare name.
     GEMINI_25_PRO = "models/gemini-2.5-pro"
     GEMINI_31_FLASH_LITE = "models/gemini-3.1-flash-lite"
     GEMINI_35_FLASH = "models/gemini-3.5-flash"
