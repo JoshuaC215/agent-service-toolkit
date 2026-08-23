@@ -7,6 +7,7 @@ from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_groq import ChatGroq
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
+from pydantic import SecretStr
 
 from core.llm import get_model
 from schema.models import (
@@ -15,6 +16,7 @@ from schema.models import (
     GroqModelName,
     OllamaModelName,
     OpenAIModelName,
+    OpenRouterModelName,
 )
 
 
@@ -76,6 +78,31 @@ def test_get_model_ollama():
         assert isinstance(model, ChatOllama)
         assert model.model == "llama3.3"
         assert model.temperature == 0.5
+
+
+# get_model is @cache'd, so these call the uncached function directly: clearing the
+# shared cache would evict entries later tests (and app startup) rely on.
+_get_model_uncached = get_model.__wrapped__
+
+
+def test_get_model_openrouter():
+    with patch("core.settings.settings.OPENROUTER_API_KEY", SecretStr("test_key")):
+        model = _get_model_uncached(OpenRouterModelName.GEMINI_36_FLASH)
+        assert isinstance(model, ChatOpenAI)
+        assert model.model_name == "google/gemini-3.6-flash"
+        assert model.openai_api_base == "https://openrouter.ai/api/v1/"
+        assert model.openai_api_key is not None
+        assert model.openai_api_key.get_secret_value() == "test_key"
+        assert model.temperature == 0.5
+        assert model.streaming is True
+
+
+def test_get_model_openrouter_requires_key():
+    # An unset key must fail loudly: the openai SDK would otherwise fall back to
+    # OPENAI_API_KEY and send it to openrouter.ai.
+    with patch("core.settings.settings.OPENROUTER_API_KEY", None):
+        with pytest.raises(ValueError, match="OpenRouter API key must be configured"):
+            _get_model_uncached(OpenRouterModelName.GEMINI_36_FLASH)
 
 
 def test_get_model_fake():

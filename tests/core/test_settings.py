@@ -12,6 +12,7 @@ from schema.models import (
     AzureOpenAIModelName,
     FakeModelName,
     OpenAIModelName,
+    OpenRouterModelName,
     VertexAIModelName,
 )
 
@@ -57,6 +58,16 @@ def test_settings_with_anthropic_key():
         assert settings.ANTHROPIC_API_KEY == SecretStr("test_key")
         assert settings.DEFAULT_MODEL == AnthropicModelName.HAIKU_45
         assert settings.AVAILABLE_MODELS == set(AnthropicModelName)
+
+
+def test_settings_with_openrouter_key():
+    with patch.dict(os.environ, {"OPENROUTER_API_KEY": "test_key"}, clear=True):
+        settings = Settings(_env_file=None)
+        assert settings.OPENROUTER_API_KEY == SecretStr("test_key")
+        assert settings.DEFAULT_MODEL == OpenRouterModelName.GEMINI_36_FLASH
+        assert settings.AVAILABLE_MODELS == set(OpenRouterModelName)
+        # SecretStr keeps the key out of logs and tracebacks that render Settings.
+        assert "test_key" not in repr(settings)
 
 
 def test_settings_with_vertexai_credentials_file():
