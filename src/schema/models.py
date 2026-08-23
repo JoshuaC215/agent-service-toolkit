@@ -65,13 +65,17 @@ class GoogleModelName(StrEnum):
 class VertexAIModelName(StrEnum):
     """https://cloud.google.com/vertex-ai/generative-ai/docs/models"""
 
-    GEMINI_25_PRO = "gemini-2.5-pro"
+    # The models/ prefix is required to keep these distinct from GoogleModelName:
+    # StrEnum hashes by value, so a shared value collapses the two members into one
+    # and get_model routes the Gemini API branch first. Vertex resolves both the
+    # bare and models/-prefixed forms to the same resource path.
+    GEMINI_25_PRO = "models/gemini-2.5-pro"
     GEMINI_31_FLASH_LITE = "models/gemini-3.1-flash-lite"
     GEMINI_35_FLASH = "models/gemini-3.5-flash"
     GEMINI_35_FLASH_LITE = "models/gemini-3.5-flash-lite"
     GEMINI_36_FLASH = "models/gemini-3.6-flash"
     # gemini-3-pro-preview was shut down 2026-03-09; 3.1 is the current preview-tier pro model.
-    GEMINI_31_PRO_PREVIEW = "gemini-3.1-pro-preview"
+    GEMINI_31_PRO_PREVIEW = "models/gemini-3.1-pro-preview"
 
 
 class GroqModelName(StrEnum):
