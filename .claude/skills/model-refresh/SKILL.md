@@ -69,6 +69,10 @@ per-provider `DEFAULT_MODEL` fallbacks point at a model that still exists.
    - Enum values are the exact string the provider's API expects
      (`claude-sonnet-4-5`, `gemini-2.5-pro`, `gpt-5.1`) — copy verbatim from the
      provider docs, don't guess.
+   - Values must be unique across *all* the enums in `AllModelEnum` —
+     `tests/schema/test_models.py` enforces this. Where two providers serve the
+     same upstream model one side needs a distinguishing form: `VertexAIModelName`
+     uses the `models/` prefix, so keep it on new Vertex entries.
    - Keep provider families grouped and roughly ordered by size/generation within
      a class, matching how they read today.
 4. **Apply changes across every coupled location** — do not edit only the enum:
