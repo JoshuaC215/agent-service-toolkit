@@ -58,6 +58,7 @@ from schema.models import (  # noqa: E402
     GroqModelName,
     OpenAIModelName,
     OpenRouterModelName,
+    OrcaRouterModelName,
     Provider,
     VertexAIModelName,
 )
@@ -74,6 +75,7 @@ PROVIDER_MODELS: dict[Provider, tuple[type[AllModelEnum], Callable[[], bool]]] =
     Provider.GROQ: (GroqModelName, lambda: bool(settings.GROQ_API_KEY)),
     Provider.DEEPSEEK: (DeepseekModelName, lambda: bool(settings.DEEPSEEK_API_KEY)),
     Provider.OPENROUTER: (OpenRouterModelName, lambda: bool(settings.OPENROUTER_API_KEY)),
+    Provider.ORCAROUTER: (OrcaRouterModelName, lambda: bool(settings.ORCAROUTER_API_KEY)),
     Provider.AWS: (AWSModelName, lambda: settings.USE_AWS_BEDROCK),
     Provider.AZURE_OPENAI: (AzureOpenAIModelName, lambda: bool(settings.AZURE_OPENAI_API_KEY)),
     Provider.VERTEXAI: (VertexAIModelName, lambda: bool(settings.GOOGLE_APPLICATION_CREDENTIALS)),
