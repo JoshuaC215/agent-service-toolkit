@@ -95,6 +95,7 @@ The repository is structured as follows:
 ### Additional setup for specific AI providers
 
 - [Setting up Ollama](docs/Ollama.md)
+- [Running local models on local hardware (vLLM / SGLang)](docs/Local_GPU_Deployment.md)
 - [Setting up VertexAI](docs/VertexAI.md)
 - [Setting up RAG with ChromaDB](docs/RAG_Assistant.md)
 
