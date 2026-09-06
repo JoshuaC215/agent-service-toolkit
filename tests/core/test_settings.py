@@ -9,6 +9,7 @@ from pydantic import SecretStr, ValidationError
 from core.settings import LogLevel, Settings, check_str_is_http
 from schema.models import (
     AnthropicModelName,
+    AtlasCloudModelName,
     AzureOpenAIModelName,
     FakeModelName,
     OpenAIModelName,
@@ -67,6 +68,15 @@ def test_settings_with_openrouter_key():
         assert settings.DEFAULT_MODEL == OpenRouterModelName.GEMINI_36_FLASH
         assert settings.AVAILABLE_MODELS == set(OpenRouterModelName)
         # SecretStr keeps the key out of logs and tracebacks that render Settings.
+        assert "test_key" not in repr(settings)
+
+
+def test_settings_with_atlascloud_key():
+    with patch.dict(os.environ, {"ATLASCLOUD_API_KEY": "test_key"}, clear=True):
+        settings = Settings(_env_file=None)
+        assert settings.ATLASCLOUD_API_KEY == SecretStr("test_key")
+        assert settings.DEFAULT_MODEL == AtlasCloudModelName.QWEN_35_35B_A3B
+        assert settings.AVAILABLE_MODELS == set(AtlasCloudModelName)
         assert "test_key" not in repr(settings)
 
 
