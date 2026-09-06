@@ -17,7 +17,7 @@ class Provider(StrEnum):
 
 
 class OpenAIModelName(StrEnum):
-    """https://platform.openai.com/docs/models"""
+    """https://developers.openai.com/api/docs/models"""
 
     GPT_5_NANO = "gpt-5-nano"
     GPT_5_MINI = "gpt-5-mini"
@@ -53,25 +53,27 @@ class AnthropicModelName(StrEnum):
 class GoogleModelName(StrEnum):
     """https://ai.google.dev/gemini-api/docs/models/gemini"""
 
-    GEMINI_25_PRO = "gemini-2.5-pro"
     GEMINI_31_FLASH_LITE = "gemini-3.1-flash-lite"
     GEMINI_35_FLASH = "gemini-3.5-flash"
     GEMINI_35_FLASH_LITE = "gemini-3.5-flash-lite"
     GEMINI_36_FLASH = "gemini-3.6-flash"
+    GEMINI_37_FLASH = "gemini-3.7-flash"
+    GEMINI_38_FLASH = "gemini-3.8-flash"
     # gemini-3-pro-preview was shut down 2026-03-09; 3.1 is the current preview-tier pro model.
     GEMINI_31_PRO_PREVIEW = "gemini-3.1-pro-preview"
 
 
 class VertexAIModelName(StrEnum):
-    """https://cloud.google.com/vertex-ai/generative-ai/docs/models"""
+    """https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models"""
 
     # The models/ prefix keeps every value distinct from its GoogleModelName twin;
     # Vertex resolves it to the same resource path as the bare name.
-    GEMINI_25_PRO = "models/gemini-2.5-pro"
     GEMINI_31_FLASH_LITE = "models/gemini-3.1-flash-lite"
     GEMINI_35_FLASH = "models/gemini-3.5-flash"
     GEMINI_35_FLASH_LITE = "models/gemini-3.5-flash-lite"
     GEMINI_36_FLASH = "models/gemini-3.6-flash"
+    GEMINI_37_FLASH = "models/gemini-3.7-flash"
+    GEMINI_38_FLASH = "models/gemini-3.8-flash"
     # gemini-3-pro-preview was shut down 2026-03-09; 3.1 is the current preview-tier pro model.
     GEMINI_31_PRO_PREVIEW = "models/gemini-3.1-pro-preview"
 
@@ -103,6 +105,8 @@ class OpenRouterModelName(StrEnum):
 
     GEMINI_35_FLASH = "google/gemini-3.5-flash"
     GEMINI_36_FLASH = "google/gemini-3.6-flash"
+    GEMINI_37_FLASH = "google/gemini-3.7-flash"
+    GEMINI_38_FLASH = "google/gemini-3.8-flash"
 
 
 class OpenAICompatibleName(StrEnum):
