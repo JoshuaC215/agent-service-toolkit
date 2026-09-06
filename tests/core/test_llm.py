@@ -12,6 +12,7 @@ from pydantic import SecretStr
 from core.llm import get_model
 from schema.models import (
     AnthropicModelName,
+    AtlasCloudModelName,
     FakeModelName,
     GroqModelName,
     OllamaModelName,
@@ -103,6 +104,26 @@ def test_get_model_openrouter_requires_key():
     with patch("core.settings.settings.OPENROUTER_API_KEY", None):
         with pytest.raises(ValueError, match="OpenRouter API key must be configured"):
             _get_model_uncached(OpenRouterModelName.GEMINI_36_FLASH)
+
+
+def test_get_model_atlascloud():
+    with patch("core.settings.settings.ATLASCLOUD_API_KEY", SecretStr("test_key")):
+        model = _get_model_uncached(AtlasCloudModelName.QWEN_35_35B_A3B)
+        assert isinstance(model, ChatOpenAI)
+        assert model.model_name == "qwen/qwen3.5-35b-a3b"
+        assert model.openai_api_base == "https://api.atlascloud.ai/v1/"
+        assert model.openai_api_key is not None
+        assert model.openai_api_key.get_secret_value() == "test_key"
+        assert model.temperature == 0.5
+        assert model.streaming is True
+
+
+def test_get_model_atlascloud_requires_key():
+    # Same trap as OpenRouter: an unset key would let the openai SDK fall back to
+    # OPENAI_API_KEY and send it to api.atlascloud.ai.
+    with patch("core.settings.settings.ATLASCLOUD_API_KEY", None):
+        with pytest.raises(ValueError, match="Atlas Cloud API key must be configured"):
+            _get_model_uncached(AtlasCloudModelName.QWEN_35_35B_A3B)
 
 
 def test_get_model_fake():

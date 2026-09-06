@@ -13,6 +13,7 @@ class Provider(StrEnum):
     AWS = auto()
     OLLAMA = auto()
     OPENROUTER = auto()
+    ATLASCLOUD = auto()
     FAKE = auto()
 
 
@@ -105,6 +106,16 @@ class OpenRouterModelName(StrEnum):
     GEMINI_36_FLASH = "google/gemini-3.6-flash"
 
 
+class AtlasCloudModelName(StrEnum):
+    """https://www.atlascloud.ai/models"""
+
+    # The gateway namespaces every model as <vendor>/<model>.
+    GLM_5 = "zai-org/glm-5"
+    KIMI_K26 = "moonshotai/kimi-k2.6"
+    QWEN_35_35B_A3B = "qwen/qwen3.5-35b-a3b"
+    DEEPSEEK_V31 = "deepseek-ai/DeepSeek-V3.1"
+
+
 class OpenAICompatibleName(StrEnum):
     """https://platform.openai.com/docs/guides/text-generation"""
 
@@ -129,5 +140,6 @@ type AllModelEnum = (
     | AWSModelName
     | OllamaModelName
     | OpenRouterModelName
+    | AtlasCloudModelName
     | FakeModelName
 )
