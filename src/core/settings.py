@@ -90,7 +90,7 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str | None = None
     OLLAMA_BASE_URL: str | None = None
     USE_FAKE_MODEL: bool = False
-    OPENROUTER_API_KEY: str | None = None
+    OPENROUTER_API_KEY: SecretStr | None = None
 
     # If DEFAULT_MODEL is None, it will be set in model_post_init
     DEFAULT_MODEL: AllModelEnum | None = None  # type: ignore[assignment]
@@ -195,11 +195,11 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(AnthropicModelName))
                 case Provider.GOOGLE:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_36_FLASH
+                        self.DEFAULT_MODEL = GoogleModelName.GEMINI_38_FLASH
                     self.AVAILABLE_MODELS.update(set(GoogleModelName))
                 case Provider.VERTEXAI:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = VertexAIModelName.GEMINI_36_FLASH
+                        self.DEFAULT_MODEL = VertexAIModelName.GEMINI_38_FLASH
                     self.AVAILABLE_MODELS.update(set(VertexAIModelName))
                 case Provider.GROQ:
                     if self.DEFAULT_MODEL is None:
@@ -215,7 +215,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(OllamaModelName))
                 case Provider.OPENROUTER:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = OpenRouterModelName.GEMINI_36_FLASH
+                        self.DEFAULT_MODEL = OpenRouterModelName.GEMINI_38_FLASH
                     self.AVAILABLE_MODELS.update(set(OpenRouterModelName))
                 case Provider.FAKE:
                     if self.DEFAULT_MODEL is None:
