@@ -12,6 +12,7 @@ from agents.knowledge_base_agent import kb_agent
 from agents.langgraph_supervisor_agent import langgraph_supervisor_agent
 from agents.langgraph_supervisor_hierarchy_agent import langgraph_supervisor_hierarchy_agent
 from agents.lazy_agent import LazyLoadingAgent
+from agents.local_rag_agent import local_rag_agent
 from agents.rag_assistant import rag_assistant
 from agents.research_assistant import research_assistant
 from schema import AgentInfo
@@ -40,6 +41,10 @@ agents: dict[str, Agent] = {
     "rag-assistant": Agent(
         description="A RAG assistant with access to information in a database.",
         graph_like=rag_assistant,
+    ),
+    "local-rag-agent": Agent(
+        description="A document-grounded RAG agent for uploaded local knowledge bases.",
+        graph_like=local_rag_agent,
     ),
     "command-agent": Agent(description="A command agent.", graph_like=command_agent),
     "bg-task-agent": Agent(description="A background task agent.", graph_like=bg_task_agent),
