@@ -10,6 +10,8 @@ from schema import (
     ChatHistoryInput,
     ChatMessage,
     Feedback,
+    KnowledgeDocumentResponse,
+    KnowledgeSearchResponse,
     ServiceMetadata,
     StreamInput,
     UserInput,
@@ -423,3 +425,81 @@ class AgentClient:
                 raise AgentClientError(f"Error: {e}")
 
         return UserThreads.model_validate(response.json())
+
+    def upload_knowledge_document(
+        self,
+        knowledge_base_id: str,
+        filename: str,
+        content: bytes,
+        content_type: str | None = None,
+    ) -> KnowledgeDocumentResponse:
+        """Upload and index a document in a local knowledge base."""
+        mime_type = content_type or "application/octet-stream"
+        files = {"file": (filename, content, mime_type)}
+        try:
+            response = httpx.post(
+                f"{self.base_url}/knowledge-bases/{knowledge_base_id}/documents",
+                files=files,
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error uploading knowledge document: {e}") from e
+        return KnowledgeDocumentResponse.model_validate(response.json())
+
+    async def aupload_knowledge_document(
+        self,
+        knowledge_base_id: str,
+        filename: str,
+        content: bytes,
+        content_type: str | None = None,
+    ) -> KnowledgeDocumentResponse:
+        """Upload and index a document asynchronously."""
+        mime_type = content_type or "application/octet-stream"
+        files = {"file": (filename, content, mime_type)}
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.post(
+                    f"{self.base_url}/knowledge-bases/{knowledge_base_id}/documents",
+                    files=files,
+                    headers=self._headers,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+            except httpx.HTTPError as e:
+                raise AgentClientError(f"Error uploading knowledge document: {e}") from e
+        return KnowledgeDocumentResponse.model_validate(response.json())
+
+    def search_knowledge_base(
+        self, knowledge_base_id: str, query: str, top_k: int = 4
+    ) -> KnowledgeSearchResponse:
+        """Search a local knowledge base and return citation metadata."""
+        try:
+            response = httpx.get(
+                f"{self.base_url}/knowledge-bases/{knowledge_base_id}/search",
+                params={"q": query, "k": top_k},
+                headers=self._headers,
+                timeout=self.timeout,
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as e:
+            raise AgentClientError(f"Error searching knowledge base: {e}") from e
+        return KnowledgeSearchResponse.model_validate(response.json())
+
+    async def asearch_knowledge_base(
+        self, knowledge_base_id: str, query: str, top_k: int = 4
+    ) -> KnowledgeSearchResponse:
+        """Search a local knowledge base asynchronously."""
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(
+                    f"{self.base_url}/knowledge-bases/{knowledge_base_id}/search",
+                    params={"q": query, "k": top_k},
+                    headers=self._headers,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+            except httpx.HTTPError as e:
+                raise AgentClientError(f"Error searching knowledge base: {e}") from e
+        return KnowledgeSearchResponse.model_validate(response.json())

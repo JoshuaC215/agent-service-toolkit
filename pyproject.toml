@@ -50,6 +50,7 @@ dependencies = [
     "pydantic-settings ~=2.15.0",
     "pypdf>=6.14.2,<6.17.0",
     "pyowm ~=3.5.0",
+    "python-multipart ~=0.0.32",
     "python-dotenv ~=1.2.2",
     "setuptools ~=84.0.0",
     "streamlit ~=1.59.1",
