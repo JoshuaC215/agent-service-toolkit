@@ -107,6 +107,7 @@ class OpenRouterModelName(StrEnum):
     GEMINI_36_FLASH = "google/gemini-3.6-flash"
     GEMINI_37_FLASH = "google/gemini-3.7-flash"
     GEMINI_38_FLASH = "google/gemini-3.8-flash"
+    GEMMA_4_31B_IT = "google/gemma-4-31b-it"
 
 
 class OpenAICompatibleName(StrEnum):
