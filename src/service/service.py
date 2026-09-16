@@ -17,7 +17,6 @@ from langchain_core.messages import (
     AIMessageChunk,
     BaseMessage,
     HumanMessage,
-    ToolMessage,
 )
 from langchain_core.runnables import RunnableConfig
 from langfuse import Langfuse  # type: ignore[import-untyped]
@@ -219,19 +218,22 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
 
     try:
         response_events: list[tuple[str, Any]] = await agent.ainvoke(**kwargs, stream_mode=["updates", "values"])  # type: ignore # fmt: skip
-        response_type, response = response_events[-1]
         # A run that stops on an interrupt reports it on the final event of either stream
-        # mode, so check for the interrupt before falling back to the last message.
-        if "__interrupt__" in response:
+        # mode, so check every event for the interrupt before falling back to the last message.
+        # (Middleware-based agents can emit trailing updates after the final values event.)
+        interrupt = next(
+            (data["__interrupt__"] for _, data in response_events if "__interrupt__" in data),
+            None,
+        )
+        if interrupt:
             # Return the value of the first interrupt as an AIMessage
-            output = langchain_to_chat_message(
-                AIMessage(content=response["__interrupt__"][0].value)
-            )
-        elif response_type == "values":
-            # Normal response, the agent completed successfully
-            output = langchain_to_chat_message(response["messages"][-1])
+            output = langchain_to_chat_message(AIMessage(content=interrupt[0].value))
         else:
-            raise ValueError(f"Unexpected response type: {response_type}")
+            values_events = [data for mode, data in response_events if mode == "values"]
+            if not values_events:
+                raise ValueError("Unexpected response type: no values event")
+            # Normal response, the agent completed successfully
+            output = langchain_to_chat_message(values_events[-1]["messages"][-1])
 
         output.run_id = str(run_id)
         return output
@@ -278,18 +280,6 @@ async def message_generator(
                         continue
                     updates = updates or {}
                     update_messages = updates.get("messages", [])
-                    # special cases for using langgraph-supervisor library
-                    if "supervisor" in node or "sub-agent" in node:
-                        # the only tools that come from the actual agent are the handoff and handback tools
-                        if isinstance(update_messages[-1], ToolMessage):
-                            if "sub-agent" in node and len(update_messages) > 1:
-                                # If this is a sub-agent, we want to keep the last 2 messages - the handback tool, and it's result
-                                update_messages = update_messages[-2:]
-                            else:
-                                # If this is a supervisor, we want to keep the last message only - the handoff result. The tool comes from the 'agent' node.
-                                update_messages = [update_messages[-1]]
-                        else:
-                            update_messages = []
                     new_messages.extend(update_messages)
 
             if stream_mode == "custom":

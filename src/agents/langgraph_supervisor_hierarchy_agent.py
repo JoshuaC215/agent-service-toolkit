@@ -1,5 +1,4 @@
-from langchain.agents import create_agent
-from langgraph_supervisor import create_supervisor
+from deepagents import create_deep_agent
 
 from agents.langgraph_supervisor_agent import add, multiply, web_search
 from core import get_model, settings
@@ -7,40 +6,43 @@ from core import get_model, settings
 model = get_model(settings.DEFAULT_MODEL)
 
 
-def workflow(chosen_model):
-    math_agent = create_agent(
+def workflow(chosen_model, checkpointer=None, store=None):
+    # The inner team is intentionally stateless: each delegation invokes it
+    # with a fresh task message (isolated subagents), so it needs no
+    # checkpointer of its own. checkpointer/store persist the outer thread,
+    # which already contains the full delegation history.
+    research_team = create_deep_agent(
         model=chosen_model,
-        tools=[add, multiply],
-        name="sub-agent-math_expert",  # Identify the graph node as a sub-agent
-        system_prompt="You are a math expert. Always use one tool at a time.",
-    ).with_config(tags=["skip_stream"])
-
-    research_agent = (
-        create_supervisor(
-            [math_agent],
-            model=chosen_model,
-            tools=[web_search],
-            prompt="You are a world class researcher with access to web search. Do not do any math, you have a math expert for that. ",
-            supervisor_name="supervisor-research_expert",  # Identify the graph node as a supervisor to the math agent
-        )
-        .compile(
-            name="sub-agent-research_expert"
-        )  # Identify the graph node as a sub-agent to the main supervisor
-        .with_config(tags=["skip_stream"])
-    )  # Stream tokens are ignored for sub-agents in the UI
-
-    # Create supervisor workflow
-    return create_supervisor(
-        [research_agent],
-        model=chosen_model,
-        prompt=(
-            "You are a team supervisor managing a research expert with math capabilities."
-            "For current events, use research_agent. "
+        system_prompt=(
+            "You are a world class researcher with access to web search. "
+            "Do not do any math, you have a math expert for that."
         ),
-        add_handoff_back_messages=True,
-        # UI now expects this to be True so we don't have to guess when a handoff back occurs
-        output_mode="full_history",  # otherwise when reloading conversations, the sub-agents' messages are not included
-    )  # default name for supervisor is "supervisor".
+        tools=[web_search],
+        subagents=[
+            {
+                "name": "math_expert",
+                "description": "Solve math problems with a calculator.",
+                "system_prompt": "You are a math expert. Always use one tool at a time.",
+                "tools": [add, multiply],
+            },
+        ],
+    )
+    return create_deep_agent(
+        model=chosen_model,
+        system_prompt=(
+            "You are a team supervisor managing a research expert with math capabilities. "
+            "For current events, delegate to the research_expert subagent."
+        ),
+        subagents=[
+            {
+                "name": "research_expert",
+                "description": ("Research current events with web search, with math capabilities."),
+                "runnable": research_team,
+            },
+        ],
+        checkpointer=checkpointer,
+        store=store,
+    )
 
 
-langgraph_supervisor_hierarchy_agent = workflow(model).compile()
+langgraph_supervisor_hierarchy_agent = workflow(model)

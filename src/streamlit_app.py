@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 import urllib.parse
 import uuid
@@ -12,6 +13,8 @@ from client import AgentClient, AgentClientError
 from schema import ChatHistory, ChatMessage, UserThreads
 from schema.task_data import TaskData, TaskDataStatus
 from voice import VoiceManager
+
+logger = logging.getLogger(__name__)
 
 # A Streamlit app for interacting with the langgraph agent via a simple chat interface.
 # The app has three main functions which are all run async:
@@ -455,6 +458,14 @@ async def draw_messages(
                             # Use different labels for transfer vs regular tool calls
                             if "transfer_to" in tool_call["name"]:
                                 label = f"""💼 Sub Agent: {tool_call["name"]}"""
+                            elif tool_call["name"] == "task":
+                                task_args = tool_call.get("args") or {}
+                                subagent_type = (
+                                    task_args.get("subagent_type")
+                                    or task_args.get("description")
+                                    or "task"
+                                )
+                                label = f"""💼 Sub Agent: {subagent_type}"""
                             else:
                                 label = f"""🛠️ Tool Call: {tool_call["name"]}"""
 
@@ -465,11 +476,24 @@ async def draw_messages(
                             call_results[tool_call["id"]] = status
 
                         # Expect one ToolMessage for each tool call.
+                        # Delegation calls (transfer_to/task) consume the shared
+                        # stream until their own result arrives, so only the
+                        # first one per message is nested; parallel delegations
+                        # in a single message would interleave and need
+                        # namespace-based routing to attribute correctly.
                         for tool_call in msg.tool_calls:
                             if "transfer_to" in tool_call["name"]:
                                 status = call_results[tool_call["id"]]
                                 status.update(expanded=True)
                                 await handle_sub_agent_msgs(messages_agen, status, is_new)
+                                break
+
+                            if tool_call["name"] == "task":
+                                status = call_results[tool_call["id"]]
+                                status.update(expanded=True)
+                                await handle_task_sub_agent_msgs(
+                                    messages_agen, status, is_new, tool_call["id"]
+                                )
                                 break
 
                             # Only non-transfer tool calls reach this point
@@ -557,11 +581,12 @@ async def handle_feedback() -> None:
 
 async def handle_sub_agent_msgs(messages_agen, status, is_new):
     """
-    This function segregates agent output into a status container.
-    It handles all messages after the initial tool call message
-    until it reaches the final AI message.
+    Render a transfer_to handoff subagent's output inside its status container.
 
-    Enhanced to support nested multi-agent hierarchies with handoff back messages.
+    Legacy path for handoff-style graphs (transfer_to_*/transfer_back_to_* tool
+    names, e.g. swarm-style agents); deepagents task-tool graphs use
+    handle_task_sub_agent_msgs instead. Both consume the shared stream until
+    the subagent's own result arrives.
 
     Args:
         messages_agen: Async generator of messages
@@ -639,6 +664,82 @@ async def handle_sub_agent_msgs(messages_agen, status, is_new):
                         popover.write(tc["args"])
                         # Store the popover reference using the tool call ID
                         nested_popovers[tc["id"]] = popover
+
+
+async def handle_task_sub_agent_msgs(messages_agen, status, is_new, tool_call_id):
+    """
+    Render a task-tool subagent's streamed output inside its status container.
+
+    Consumes messages until the ToolMessage answering tool_call_id arrives.
+    All subagent content, inner tool calls/results, and nested task
+    delegations are shown inside status; every consumed message is recorded
+    for history replay.
+    """
+    pending_tools = {}
+
+    def complete_pending() -> None:
+        for pending_id in pending_tools:
+            logger.warning("Subagent tool call %s never returned a result", pending_id)
+        pending_tools.clear()
+
+    while True:
+        sub_msg = await anext(messages_agen, None)
+        if sub_msg is None:
+            complete_pending()
+            if status:
+                status.update(state="complete")
+            break
+        if isinstance(sub_msg, str):
+            # Token previews are suppressed inside subagent cards; the full
+            # content arrives as an AIMessage right after.
+            continue
+        if is_new:
+            st.session_state.messages.append(sub_msg)
+
+        if sub_msg.type == "tool":
+            if sub_msg.tool_call_id == tool_call_id:
+                if pending_tools:
+                    complete_pending()
+                if status:
+                    if sub_msg.content:
+                        status.write("Output:")
+                        status.write(sub_msg.content)
+                    status.update(state="complete")
+                break
+            popover = pending_tools.pop(sub_msg.tool_call_id, None)
+            if popover is not None:
+                popover.write("**Output:**")
+                popover.write(sub_msg.content)
+            else:
+                logger.warning(
+                    "Tool result for unknown call %s inside subagent card",
+                    sub_msg.tool_call_id,
+                )
+            continue
+
+        if sub_msg.type != "ai":
+            # Only ai/tool messages occur mid-delegation; custom/human events
+            # are top-level protocol and never appear here.
+            continue
+        if status and sub_msg.content:
+            status.write(sub_msg.content)
+        for tc in sub_msg.tool_calls or []:
+            if not status:
+                continue
+            if tc["name"] == "task":
+                args = tc.get("args") or {}
+                nested_status = status.status(
+                    f"""💼 Sub Agent: {args.get("subagent_type") or args.get("description") or "task"}""",
+                    state="running" if is_new else "complete",
+                    expanded=True,
+                )
+                await handle_task_sub_agent_msgs(messages_agen, nested_status, is_new, tc["id"])
+            else:
+                popover = status.popover(f"""{tc["name"]}""", icon="🛠️")
+                popover.write(f"""**Tool:** {tc["name"]}""")
+                popover.write("**Input:**")
+                popover.write(tc["args"])
+                pending_tools[tc["id"]] = popover
 
 
 if __name__ == "__main__":

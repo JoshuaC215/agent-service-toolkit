@@ -587,6 +587,260 @@ async def test_app_streaming_nested_sub_agents(mock_agent_client, multi_agent_me
 
 
 @pytest.fixture
+def task_agent_messages():
+    """Fixture providing task-tool subagent messages (deepagents streaming shape)"""
+    from schema import ChatMessage
+
+    # Supervisor delegates to researcher
+    supervisor_task = ChatMessage(
+        type="ai",
+        content="Delegating to researcher...",
+        tool_calls=[
+            {
+                "name": "task",
+                "id": "task-1",
+                "args": {"description": "research this", "subagent_type": "research_expert"},
+            }
+        ],
+    )
+
+    # Researcher works with two tools
+    researcher_work_1 = ChatMessage(
+        type="ai",
+        content="Researching...",
+        tool_calls=[{"name": "do_work_1", "id": "tool-1", "args": {"my-arg": "value"}}],
+    )
+    researcher_work_1_result = ChatMessage(
+        type="tool", content="Tool 1 complete", tool_call_id="tool-1"
+    )
+    researcher_work_2 = ChatMessage(
+        type="ai",
+        content="Still researching...",
+        tool_calls=[{"name": "do_work_2", "id": "tool-2", "args": {"my-arg-2": "value"}}],
+    )
+    researcher_work_2_result = ChatMessage(
+        type="tool", content="Tool 2 complete", tool_call_id="tool-2"
+    )
+    researcher_final = ChatMessage(type="ai", content="Research complete.")
+    task_1_result = ChatMessage(type="tool", content="Research complete.", tool_call_id="task-1")
+
+    # Researcher delegates to math expert (nested)
+    researcher_task_math = ChatMessage(
+        type="ai",
+        content="Need math help...",
+        tool_calls=[
+            {
+                "name": "task",
+                "id": "task-2",
+                "args": {"description": "add numbers", "subagent_type": "math_expert"},
+            }
+        ],
+    )
+    math_work = ChatMessage(
+        type="ai",
+        content="Calculating...",
+        tool_calls=[{"name": "add", "id": "calc-1", "args": {"a": 2, "b": 3}}],
+    )
+    math_work_result = ChatMessage(type="tool", content="5.0", tool_call_id="calc-1")
+    math_final = ChatMessage(type="ai", content="2+3 is 5")
+    task_2_result = ChatMessage(type="tool", content="2+3 is 5", tool_call_id="task-2")
+
+    # Supervisor continues with a second delegation (sequential)
+    supervisor_task_math = ChatMessage(
+        type="ai",
+        content="Now some math...",
+        tool_calls=[
+            {
+                "name": "task",
+                "id": "task-3",
+                "args": {"description": "add numbers", "subagent_type": "math_expert"},
+            }
+        ],
+    )
+    task_3_result = ChatMessage(type="tool", content="5.0", tool_call_id="task-3")
+
+    supervisor_final = ChatMessage(type="ai", content="All tasks completed successfully.")
+
+    return {
+        "supervisor_task": supervisor_task,
+        "researcher_work_1": researcher_work_1,
+        "researcher_work_1_result": researcher_work_1_result,
+        "researcher_work_2": researcher_work_2,
+        "researcher_work_2_result": researcher_work_2_result,
+        "researcher_final": researcher_final,
+        "task_1_result": task_1_result,
+        "researcher_task_math": researcher_task_math,
+        "math_work": math_work,
+        "math_work_result": math_work_result,
+        "math_final": math_final,
+        "task_2_result": task_2_result,
+        "supervisor_task_math": supervisor_task_math,
+        "task_3_result": task_3_result,
+        "supervisor_final": supervisor_final,
+    }
+
+
+@pytest.mark.asyncio
+async def test_app_streaming_single_task_sub_agent(mock_agent_client, task_agent_messages):
+    """A task-tool subagent renders nested with all inner tools visible, like transfers did"""
+
+    at = AppTest.from_file("../../src/streamlit_app.py").run()
+
+    PROMPT = "Test single task sub-agent"
+    messages = task_agent_messages
+
+    async def amessage_iter():
+        for msg in [
+            messages["supervisor_task"],
+            messages["researcher_work_1"],
+            messages["researcher_work_1_result"],
+            messages["researcher_work_2"],
+            messages["researcher_work_2_result"],
+            messages["researcher_final"],
+            messages["task_1_result"],
+            messages["supervisor_final"],
+        ]:
+            yield msg
+
+    mock_agent_client.astream = Mock(return_value=amessage_iter())
+
+    at.toggle[0].set_value(True)
+    at.chat_input[0].set_value(PROMPT).run()
+
+    ai_message = at.chat_message[1]
+
+    assert ai_message.children[0].value == "Delegating to researcher..."
+
+    status_agent = ai_message.status[0]
+    assert status_agent == ai_message.children[1]
+    assert "research_expert" in status_agent.label
+
+    assert status_agent.children[0].value == "Researching..."
+
+    popover_1 = status_agent.children[1]
+    assert popover_1.type == "popover"
+    assert popover_1.proto.popover.label == "do_work_1"
+    assert popover_1.proto.popover.icon == "🛠️"
+    assert popover_1.markdown[0].value == "**Tool:** do_work_1"
+    assert popover_1.markdown[1].value == "**Input:**"
+    assert '"my-arg": "value"' in popover_1.json[0].value
+    assert popover_1.markdown[2].value == "**Output:**"
+    assert popover_1.markdown[3].value == "Tool 1 complete"
+
+    assert status_agent.children[2].value == "Still researching..."
+
+    popover_2 = status_agent.children[3]
+    assert popover_2.type == "popover"
+    assert popover_2.proto.popover.label == "do_work_2"
+
+    assert status_agent.children[4].value == "Research complete."
+    assert status_agent.children[5].value == "Output:"
+    assert status_agent.children[6].value == "Research complete."
+
+    assert ai_message.children[2].value == "All tasks completed successfully."
+
+    assert not at.exception
+
+
+@pytest.mark.asyncio
+async def test_app_streaming_nested_task_sub_agents(mock_agent_client, task_agent_messages):
+    """A task call inside a task subagent renders as a nested status"""
+
+    at = AppTest.from_file("../../src/streamlit_app.py").run()
+
+    PROMPT = "Test nested task sub-agents"
+    messages = task_agent_messages
+
+    async def amessage_iter():
+        for msg in [
+            messages["supervisor_task"],
+            messages["researcher_task_math"],
+            messages["math_work"],
+            messages["math_work_result"],
+            messages["math_final"],
+            messages["task_2_result"],
+            messages["researcher_final"],
+            messages["task_1_result"],
+            messages["supervisor_final"],
+        ]:
+            yield msg
+
+    mock_agent_client.astream = Mock(return_value=amessage_iter())
+
+    at.toggle[0].set_value(True)
+    at.chat_input[0].set_value(PROMPT).run()
+
+    ai_message = at.chat_message[1]
+
+    status_a = ai_message.status[0]
+    assert "research_expert" in status_a.label
+    assert status_a.children[0].value == "Need math help..."
+
+    nested_status = status_a.children[1]
+    assert "math_expert" in nested_status.label
+    assert nested_status.children[0].value == "Calculating..."
+
+    popover = nested_status.children[1]
+    assert popover.type == "popover"
+    assert popover.proto.popover.label == "add"
+    assert popover.markdown[2].value == "**Output:**"
+    assert popover.markdown[3].value == "5.0"
+
+    assert nested_status.children[2].value == "2+3 is 5"
+    assert nested_status.children[3].value == "Output:"
+    assert nested_status.children[4].value == "2+3 is 5"
+
+    assert ai_message.children[2].value == "All tasks completed successfully."
+
+    assert not at.exception
+
+
+@pytest.mark.asyncio
+async def test_app_streaming_sequential_task_sub_agents(mock_agent_client, task_agent_messages):
+    """Two task delegations in sequence render as two sibling statuses"""
+
+    at = AppTest.from_file("../../src/streamlit_app.py").run()
+
+    PROMPT = "Test sequential task sub-agents"
+    messages = task_agent_messages
+
+    async def amessage_iter():
+        for msg in [
+            messages["supervisor_task"],
+            messages["researcher_final"],
+            messages["task_1_result"],
+            messages["supervisor_task_math"],
+            messages["math_final"],
+            messages["task_3_result"],
+            messages["supervisor_final"],
+        ]:
+            yield msg
+
+    mock_agent_client.astream = Mock(return_value=amessage_iter())
+
+    at.toggle[0].set_value(True)
+    at.chat_input[0].set_value(PROMPT).run()
+
+    ai_message = at.chat_message[1]
+
+    assert ai_message.children[0].value == "Delegating to researcher..."
+
+    status_a = ai_message.status[0]
+    assert "research_expert" in status_a.label
+    assert status_a.children[0].value == "Research complete."
+
+    assert ai_message.children[2].value == "Now some math..."
+
+    status_b = ai_message.status[1]
+    assert "math_expert" in status_b.label
+    assert status_b.children[0].value == "2+3 is 5"
+
+    assert ai_message.children[4].value == "All tasks completed successfully."
+
+    assert not at.exception
+
+
+@pytest.fixture
 def mock_threads_data():
     """Fixture providing dummy thread data for caching tests."""
     return UserThreads(
