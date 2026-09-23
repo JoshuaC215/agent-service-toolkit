@@ -734,8 +734,9 @@ async def test_app_streaming_single_task_sub_agent(mock_agent_client, task_agent
     assert popover_2.proto.popover.label == "do_work_2"
 
     assert status_agent.children[4].value == "Research complete."
-    assert status_agent.children[5].value == "Output:"
-    assert status_agent.children[6].value == "Research complete."
+    # The task ToolMessage echoes the subagent's final message, so it is not
+    # rendered a second time.
+    assert len(status_agent.children) == 5
 
     assert ai_message.children[2].value == "All tasks completed successfully."
 
@@ -787,8 +788,8 @@ async def test_app_streaming_nested_task_sub_agents(mock_agent_client, task_agen
     assert popover.markdown[3].value == "5.0"
 
     assert nested_status.children[2].value == "2+3 is 5"
-    assert nested_status.children[3].value == "Output:"
-    assert nested_status.children[4].value == "2+3 is 5"
+    # The task ToolMessage echoes "2+3 is 5", so it is not repeated.
+    assert len(nested_status.children) == 3
 
     assert ai_message.children[2].value == "All tasks completed successfully."
 

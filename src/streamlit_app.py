@@ -676,6 +676,7 @@ async def handle_task_sub_agent_msgs(messages_agen, status, is_new, tool_call_id
     for history replay.
     """
     pending_tools = {}
+    last_ai_content: str | None = None
 
     def complete_pending() -> None:
         for pending_id in pending_tools:
@@ -701,7 +702,13 @@ async def handle_task_sub_agent_msgs(messages_agen, status, is_new, tool_call_id
                 if pending_tools:
                     complete_pending()
                 if status:
-                    if sub_msg.content:
+                    # deepagents returns the subagent's final message as the task
+                    # ToolMessage, so its content echoes the last AI message we
+                    # already rendered. Only show it when it adds something new.
+                    if (
+                        sub_msg.content
+                        and sub_msg.content.strip() != (last_ai_content or "").strip()
+                    ):
                         status.write("Output:")
                         status.write(sub_msg.content)
                     status.update(state="complete")
@@ -723,6 +730,7 @@ async def handle_task_sub_agent_msgs(messages_agen, status, is_new, tool_call_id
             continue
         if status and sub_msg.content:
             status.write(sub_msg.content)
+            last_ai_content = sub_msg.content
         for tc in sub_msg.tool_calls or []:
             if not status:
                 continue
