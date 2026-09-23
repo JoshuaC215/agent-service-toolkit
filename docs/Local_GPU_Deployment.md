@@ -94,4 +94,3 @@ COMPATIBLE_API_KEY=sk-not-needed               # any non-empty value; local serv
 `COMPATIBLE_BASE_URL=http://host.docker.internal:8000/v1` instead of `localhost`.
 
 The model then appears in the service and Streamlit app as `openai-compatible` and is selected as the default.
-
