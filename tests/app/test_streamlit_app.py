@@ -198,7 +198,11 @@ def test_app_new_chat_btn(mock_agent_client):
 
 @pytest.fixture
 def multi_agent_messages():
-    """Fixture providing reusable messages for multi-agent tests"""
+    """Fixture providing reusable messages for multi-agent tests.
+
+    A supervisor delegates by calling a tool that runs a sub-agent, so the sub-agent's
+    messages stream between the delegation tool call and that tool's result.
+    """
     from schema import ChatMessage
 
     # tool 1
@@ -217,97 +221,36 @@ def multi_agent_messages():
     )
     tool_2_result = ChatMessage(type="tool", content="Tool 2 complete", tool_call_id="tool-2")
 
-    # Transfer to agent A
-    transfer_a = ChatMessage(
+    # Supervisor delegates to agent A
+    delegate_a = ChatMessage(
         type="ai",
-        content="Transferring to agent A...",
-        tool_calls=[
-            {"name": "transfer_to_agent_a", "id": "transfer-a", "args": {"task": "task_1"}}
-        ],
-    )
-    transfer_a_success = ChatMessage(
-        type="tool",
-        content="Successfully transferred via transfer_to_agent_a",
-        tool_call_id="transfer-a",
+        content="Delegating to agent A...",
+        tool_calls=[{"name": "agent_a", "id": "delegate-a", "args": {"request": "task_1"}}],
     )
 
-    # Agent A transfers to agent B (sub-agent)
-    transfer_b_from_a = ChatMessage(
+    # Agent A delegates to agent B (sub-agent)
+    delegate_b_from_a = ChatMessage(
         type="ai",
         content="Agent A delegating to agent B...",
-        tool_calls=[
-            {"name": "transfer_to_agent_b", "id": "transfer-a-b", "args": {"sub_task": "task_2"}}
-        ],
+        tool_calls=[{"name": "agent_b", "id": "delegate-a-b", "args": {"request": "task_2"}}],
     )
-    transfer_b_success = ChatMessage(
-        type="tool",
-        content="Successfully transferred via transfer_to_agent_b",
-        tool_call_id="transfer-a-b",
+    agent_b_final = ChatMessage(type="ai", content="Agent B finished.")
+    # Agent B's result repeats its final message, so the UI doesn't draw it again
+    agent_b_result = ChatMessage(
+        type="tool", content="Agent B finished.", tool_call_id="delegate-a-b"
     )
 
-    # Agent B transfers back to A
-    transfer_back_b = ChatMessage(
-        type="ai",
-        content="Agent B finished.",
-        tool_calls=[
-            {"name": "transfer_back_to_agent_a", "id": "back-b-a", "args": {"result": "result_2"}}
-        ],
-    )
-    transfer_back_b_success = ChatMessage(
-        type="tool",
-        content="Successfully transferred back via transfer_back_to_agent_a",
-        tool_call_id="back-b-a",
-    )
+    agent_a_final = ChatMessage(type="ai", content="Agent A finished.")
+    agent_a_result = ChatMessage(type="tool", content="result_1", tool_call_id="delegate-a")
 
-    # Agent A transfers back to supervisor
-    transfer_back_a = ChatMessage(
-        type="ai",
-        content="Agent A finished.",
-        tool_calls=[
-            {
-                "name": "transfer_back_to_supervisor",
-                "id": "back-a-super",
-                "args": {"result": "result_1"},
-            }
-        ],
-    )
-    transfer_back_a_success = ChatMessage(
-        type="tool",
-        content="Successfully transferred back via transfer_back_to_supervisor",
-        tool_call_id="back-a-super",
-    )
-
-    # Supervisor continues and transfers to agent C (sibling to A)
+    # Supervisor continues and delegates to agent C (sibling to A)
     supervisor_continues = ChatMessage(
         type="ai",
-        content="Now transferring to agent C...",
-        tool_calls=[
-            {"name": "transfer_to_agent_c", "id": "transfer-c", "args": {"task": "task_3"}}
-        ],
+        content="Now delegating to agent C...",
+        tool_calls=[{"name": "agent_c", "id": "delegate-c", "args": {"request": "task_3"}}],
     )
-    transfer_c_success = ChatMessage(
-        type="tool",
-        content="Successfully transferred via transfer_to_agent_c",
-        tool_call_id="transfer-c",
-    )
-
-    # Agent C transfers back
-    transfer_back_c = ChatMessage(
-        type="ai",
-        content="Agent C finished.",
-        tool_calls=[
-            {
-                "name": "transfer_back_to_supervisor",
-                "id": "back-c-super",
-                "args": {"result": "result_3"},
-            }
-        ],
-    )
-    transfer_back_c_success = ChatMessage(
-        type="tool",
-        content="Successfully transferred back via transfer_back_to_supervisor",
-        tool_call_id="back-c-super",
-    )
+    agent_c_final = ChatMessage(type="ai", content="Agent C finished.")
+    agent_c_result = ChatMessage(type="tool", content="result_3", tool_call_id="delegate-c")
 
     # Final response
     supervisor_final = ChatMessage(
@@ -319,20 +262,34 @@ def multi_agent_messages():
         "tool_1_result": tool_1_result,
         "tool_2": tool_2,
         "tool_2_result": tool_2_result,
-        "transfer_a": transfer_a,
-        "transfer_a_success": transfer_a_success,
-        "transfer_b_from_a": transfer_b_from_a,
-        "transfer_b_success": transfer_b_success,
-        "transfer_back_b": transfer_back_b,
-        "transfer_back_b_success": transfer_back_b_success,
-        "transfer_back_a": transfer_back_a,
-        "transfer_back_a_success": transfer_back_a_success,
+        "delegate_a": delegate_a,
+        "delegate_b_from_a": delegate_b_from_a,
+        "agent_b_final": agent_b_final,
+        "agent_b_result": agent_b_result,
+        "agent_a_final": agent_a_final,
+        "agent_a_result": agent_a_result,
         "supervisor_continues": supervisor_continues,
-        "transfer_c_success": transfer_c_success,
-        "transfer_back_c": transfer_back_c,
-        "transfer_back_c_success": transfer_back_c_success,
+        "agent_c_final": agent_c_final,
+        "agent_c_result": agent_c_result,
         "supervisor_final": supervisor_final,
     }
+
+
+def assert_popover(popover, name, args_json, output):
+    assert popover.type == "popover"
+    assert popover.proto.popover.label == name
+    assert popover.proto.popover.icon == "🛠️"
+    assert popover.markdown[0].value == f"**Tool:** {name}"
+    assert popover.markdown[1].value == "**Input:**"
+    assert popover.json[0].value == args_json
+    assert popover.markdown[2].value == "**Output:**"
+    assert popover.markdown[3].value == output
+
+
+def assert_sub_agent_status(status, name, request):
+    assert status.label == f"💼 Sub Agent: {name}"
+    assert status.children[0].value == "Input:"
+    assert status.children[1].value == f'{{"request": "{request}"}}'
 
 
 @pytest.mark.asyncio
@@ -343,20 +300,18 @@ async def test_app_streaming_single_sub_agent(mock_agent_client, multi_agent_mes
 
     PROMPT = "Test single sub-agent with multiple tools"
 
-    # Use the fixture and include multiple work tools to test multiple popovers
     # Supervisor -> Agent A (with tool_1 and tool_2) -> Supervisor
     messages = multi_agent_messages
 
     async def amessage_iter():
         for msg in [
-            messages["transfer_a"],
-            messages["transfer_a_success"],
+            messages["delegate_a"],
             messages["tool_1"],
             messages["tool_1_result"],
             messages["tool_2"],
             messages["tool_2_result"],
-            messages["transfer_back_a"],
-            messages["transfer_back_a_success"],
+            messages["agent_a_final"],
+            messages["agent_a_result"],
             messages["supervisor_final"],
         ]:
             yield msg
@@ -368,68 +323,50 @@ async def test_app_streaming_single_sub_agent(mock_agent_client, multi_agent_mes
 
     ai_message = at.chat_message[1]
 
-    assert ai_message.children[0].value == "Transferring to agent A...", (
-        "First child should be transfer message"
-    )
+    assert ai_message.children[0].value == "Delegating to agent A..."
 
     status_agent = ai_message.status[0]
     assert status_agent == ai_message.children[1], "Second child should be the first status"
-    assert "transfer_to_agent_a" in status_agent.label
+    assert_sub_agent_status(status_agent, "agent_a", "task_1")
 
-    assert status_agent.children[0].value == "Starting tool 1...", (
-        "First child of status should be tool 1 message"
+    assert status_agent.children[2].value == "Starting tool 1..."
+    assert_popover(status_agent.children[3], "do_work_1", '{"my-arg": "value"}', "Tool 1 complete")
+    assert status_agent.children[4].value == "Starting tool 2..."
+    assert_popover(
+        status_agent.children[5], "do_work_2", '{"my-arg-2": "value"}', "Tool 2 complete"
     )
+    assert status_agent.children[6].value == "Agent A finished."
+    assert status_agent.children[7].value == "Output:"
+    assert status_agent.children[8].value == "result_1"
 
-    popover_1 = status_agent.children[1]
-    assert hasattr(popover_1, "type") and popover_1.type == "popover", (
-        "Second child of status should be a popover for the first tool call"
-    )
-    assert popover_1.proto.popover.label == "do_work_1"
-    assert popover_1.proto.popover.icon == "🛠️"
-    assert popover_1.markdown[0].value == "**Tool:** do_work_1"
-    assert popover_1.markdown[1].value == "**Input:**"
-    assert '"my-arg": "value"' in popover_1.json[0].value
-    assert popover_1.markdown[2].value == "**Output:**"
-    assert popover_1.markdown[3].value == "Tool 1 complete"
-
-    assert status_agent.children[2].value == "Starting tool 2...", (
-        "Third child of status should be tool 2 message"
-    )
-
-    popover_2 = status_agent.children[3]
-    assert hasattr(popover_2, "type") and popover_2.type == "popover", (
-        "Fourth child of the status should be a popover for the second tool call"
-    )
-    assert popover_2.proto.popover.label == "do_work_2"
+    assert ai_message.children[2].value == "All agents have completed their tasks successfully."
 
     assert not at.exception
 
 
 @pytest.mark.asyncio
 async def test_app_streaming_sequential_sub_agents(mock_agent_client, multi_agent_messages):
-    """Test when the supervisor agent transfers to sub agent A, then back to supervisor, then transfers to sub agent C, and back again"""
+    """Test when the supervisor delegates to sub agent A, then to sub agent C"""
 
     at = AppTest.from_file("../../src/streamlit_app.py").run()
 
-    PROMPT = "Test multiple transfer back patterns"
+    PROMPT = "Test sequential sub-agents"
 
-    # Create message flow for sequential agents: Supervisor -> Agent A (using tool 1) -> Supervisor -> Agent C (using tool 2) -> Supervisor
+    # Supervisor -> Agent A (using tool 1) -> Supervisor -> Agent C (using tool 2) -> Supervisor
     messages = multi_agent_messages
 
     async def amessage_iter():
         for msg in [
-            messages["transfer_a"],
-            messages["transfer_a_success"],
+            messages["delegate_a"],
             messages["tool_1"],
             messages["tool_1_result"],
-            messages["transfer_back_a"],
-            messages["transfer_back_a_success"],
+            messages["agent_a_final"],
+            messages["agent_a_result"],
             messages["supervisor_continues"],
-            messages["transfer_c_success"],
             messages["tool_2"],
             messages["tool_2_result"],
-            messages["transfer_back_c"],
-            messages["transfer_back_c_success"],
+            messages["agent_c_final"],
+            messages["agent_c_result"],
             messages["supervisor_final"],
         ]:
             yield msg
@@ -441,55 +378,30 @@ async def test_app_streaming_sequential_sub_agents(mock_agent_client, multi_agen
 
     ai_message = at.chat_message[1]
 
-    assert ai_message.children[0].value == "Transferring to agent A...", (
-        "First child should be transfer message to agent A"
-    )
+    assert ai_message.children[0].value == "Delegating to agent A..."
 
     status_a = ai_message.status[0]
     assert status_a == ai_message.children[1], "Second child should be the first status"
-    assert "transfer_to_agent_a" in status_a.label
+    assert_sub_agent_status(status_a, "agent_a", "task_1")
+    assert status_a.children[2].value == "Starting tool 1..."
+    assert_popover(status_a.children[3], "do_work_1", '{"my-arg": "value"}', "Tool 1 complete")
+    assert status_a.children[5].value == "Output:"
+    assert status_a.children[6].value == "result_1"
 
-    assert status_a.children[0].value == "Starting tool 1...", (
-        "First child of status should be tool 1 message"
-    )
-    # Second child of status should be the popover for the first tool call
-    popover_a = status_a.children[1]
-    assert popover_a.type == "popover"
-    assert popover_a.proto.popover.label == "do_work_1"
-    assert popover_a.proto.popover.icon == "🛠️"
-    assert popover_a.markdown[0].value == "**Tool:** do_work_1"
-    assert popover_a.markdown[1].value == "**Input:**"
-    assert popover_a.json[0].value == '{"my-arg": "value"}'
-    assert popover_a.markdown[2].value == "**Output:**"
-    assert popover_a.markdown[3].value == "Tool 1 complete"
-
-    assert ai_message.children[2].value == "Now transferring to agent C...", (
-        "Third child should be transfer message to agent C"
-    )
+    assert ai_message.children[2].value == "Now delegating to agent C..."
 
     status_c = ai_message.status[1]
     assert status_c == ai_message.children[3], "Fourth child should be the second status"
-    assert "transfer_to_agent_c" in status_c.label
+    assert_sub_agent_status(status_c, "agent_c", "task_3")
+    assert status_c.children[2].value == "Starting tool 2..."
+    assert_popover(status_c.children[3], "do_work_2", '{"my-arg-2": "value"}', "Tool 2 complete")
+    assert status_c.children[5].value == "Output:"
+    assert status_c.children[6].value == "result_3"
 
-    assert status_c.children[0].value == "Starting tool 2...", (
-        "First child of next status should be tool 2 message"
-    )
-    popover_c = status_c.children[1]
-    assert popover_c.type == "popover"
-    assert popover_c.proto.popover.label == "do_work_2"
-    assert popover_c.proto.popover.icon == "🛠️"
-    assert popover_c.markdown[0].value == "**Tool:** do_work_2"
-    assert popover_c.markdown[1].value == "**Input:**"
-    assert popover_c.json[0].value == '{"my-arg-2": "value"}'
-    assert popover_c.markdown[2].value == "**Output:**"
-    assert popover_c.markdown[3].value == "Tool 2 complete"
-
-    assert ai_message.children[4].value == "All agents have completed their tasks successfully.", (
-        "Fifth child should be final supervisor message"
-    )
+    assert ai_message.children[4].value == "All agents have completed their tasks successfully."
 
     assert len(ai_message.children) == 6, (
-        f"Should have 6 children: transfer to a, status for a, transfer to c, status for c, final message, feedback stars - got {len(ai_message.children)}"
+        f"Should have 6 children: delegate to a, status for a, delegate to c, status for c, final message, feedback stars - got {len(ai_message.children)}"
     )
 
     assert not at.exception
@@ -503,23 +415,21 @@ async def test_app_streaming_nested_sub_agents(mock_agent_client, multi_agent_me
 
     PROMPT = "Test nested sub-agents"
 
-    # Create message flow for nested sub-agents: Supervisor -> Agent A (using tool 1) -> Agent B (using tool 2) -> Agent A -> Supervisor
+    # Supervisor -> Agent A (using tool 1) -> Agent B (using tool 2) -> Agent A -> Supervisor
     messages = multi_agent_messages
 
     async def amessage_iter():
         for msg in [
-            messages["transfer_a"],
-            messages["transfer_a_success"],
+            messages["delegate_a"],
             messages["tool_1"],
             messages["tool_1_result"],
-            messages["transfer_b_from_a"],
-            messages["transfer_b_success"],
+            messages["delegate_b_from_a"],
             messages["tool_2"],
             messages["tool_2_result"],
-            messages["transfer_back_b"],
-            messages["transfer_back_b_success"],
-            messages["transfer_back_a"],
-            messages["transfer_back_a_success"],
+            messages["agent_b_final"],
+            messages["agent_b_result"],
+            messages["agent_a_final"],
+            messages["agent_a_result"],
             messages["supervisor_final"],
         ]:
             yield msg
@@ -531,56 +441,32 @@ async def test_app_streaming_nested_sub_agents(mock_agent_client, multi_agent_me
 
     ai_message = at.chat_message[1]
 
-    assert ai_message.children[0].value == "Transferring to agent A...", (
-        "First child should be transfer message to agent A"
-    )
+    assert ai_message.children[0].value == "Delegating to agent A..."
 
     status_a = ai_message.status[0]
     assert status_a == ai_message.children[1], "Second child should be the first status"
-    assert "transfer_to_agent_a" in status_a.label
+    assert_sub_agent_status(status_a, "agent_a", "task_1")
+    assert status_a.children[2].value == "Starting tool 1..."
+    assert_popover(status_a.children[3], "do_work_1", '{"my-arg": "value"}', "Tool 1 complete")
+    assert status_a.children[4].value == "Agent A delegating to agent B..."
 
-    assert status_a.children[0].value == "Starting tool 1...", (
-        "First child of status should be tool 1 message"
+    nested_status_b = status_a.children[5]
+    assert_sub_agent_status(nested_status_b, "agent_b", "task_2")
+    assert nested_status_b.children[2].value == "Starting tool 2..."
+    assert_popover(
+        nested_status_b.children[3], "do_work_2", '{"my-arg-2": "value"}', "Tool 2 complete"
     )
-    # Second child of status should be the popover for the first tool call
-    popover_a = status_a.children[1]
-    assert popover_a.type == "popover"
-    assert popover_a.proto.popover.label == "do_work_1"
-    assert popover_a.proto.popover.icon == "🛠️"
-    assert popover_a.markdown[0].value == "**Tool:** do_work_1"
-    assert popover_a.markdown[1].value == "**Input:**"
-    assert popover_a.json[0].value == '{"my-arg": "value"}'
-    assert popover_a.markdown[2].value == "**Output:**"
-    assert popover_a.markdown[3].value == "Tool 1 complete"
+    assert nested_status_b.children[4].value == "Agent B finished."
+    assert len(nested_status_b.children) == 5, "Output repeating the final message is skipped"
 
-    assert status_a.children[2].value == "Agent A delegating to agent B...", (
-        "Third child of status should be transfer message to agent B"
-    )
+    assert status_a.children[6].value == "Agent A finished."
+    assert status_a.children[7].value == "Output:"
+    assert status_a.children[8].value == "result_1"
 
-    # Fourth child of status should be the nested status for Agent B
-    nested_status_b = status_a.children[3]
-    assert "transfer_to_agent_b" in nested_status_b.label
-
-    assert nested_status_b.children[0].value == "Starting tool 2...", (
-        "First child of nested status should be tool 2 message"
-    )
-    # Second child of nested status should be the popover for task 2 tool call
-    popover_b = nested_status_b.children[1]
-    assert popover_b.type == "popover"
-    assert popover_b.proto.popover.label == "do_work_2"
-    assert popover_b.proto.popover.icon == "🛠️"
-    assert popover_b.markdown[0].value == "**Tool:** do_work_2"
-    assert popover_b.markdown[1].value == "**Input:**"
-    assert popover_b.json[0].value == '{"my-arg-2": "value"}'
-    assert popover_b.markdown[2].value == "**Output:**"
-    assert popover_b.markdown[3].value == "Tool 2 complete"
-
-    assert ai_message.children[2].value == "All agents have completed their tasks successfully.", (
-        "Third child should be final supervisor message"
-    )
+    assert ai_message.children[2].value == "All agents have completed their tasks successfully."
 
     assert len(ai_message.children) == 4, (
-        f"Should have 4 children: transfer to a, status for a (with nested b), final message, feedback stars - got {len(ai_message.children)}"
+        f"Should have 4 children: delegate to a, status for a (with nested b), final message, feedback stars - got {len(ai_message.children)}"
     )
 
     assert not at.exception

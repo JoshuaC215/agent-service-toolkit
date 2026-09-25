@@ -1,7 +1,11 @@
+from collections.abc import Awaitable, Callable
+from inspect import signature
 from typing import Any
 
 from langchain.agents import create_agent
-from langgraph_supervisor import create_supervisor
+from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
+from langchain_core.messages import HumanMessage
+from langchain_core.tools import BaseTool, StructuredTool
 
 from core import get_model, settings
 
@@ -30,33 +34,69 @@ def web_search(query: str) -> str:
     )
 
 
-math_agent: Any = create_agent(
+def agent_as_tool(agent: Any, name: str, description: str) -> BaseTool:
+    """Expose a sub-agent to a supervisor as a tool that returns its final answer."""
+
+    # Hide the sub-agent's tokens from the stream; its full messages still stream.
+    tagged_agent = agent.with_config(tags=["skip_stream"])
+
+    async def call_agent(request: str) -> str:
+        result = await tagged_agent.ainvoke({"messages": [HumanMessage(content=request)]})
+        return result["messages"][-1].text
+
+    return StructuredTool.from_function(coroutine=call_agent, name=name, description=description)
+
+
+class SequentialToolCalls(AgentMiddleware):
+    """Delegate to one sub-agent at a time so the UI can nest each sub-agent's messages.
+
+    Only OpenAI and Anthropic models support disabling parallel tool calls.
+    """
+
+    def _sequential(self, request: ModelRequest) -> ModelRequest:
+        if "parallel_tool_calls" not in signature(request.model.bind_tools).parameters:
+            return request
+        return request.override(
+            model_settings={**request.model_settings, "parallel_tool_calls": False}
+        )
+
+    def wrap_model_call(
+        self, request: ModelRequest, handler: Callable[[ModelRequest], ModelResponse]
+    ) -> ModelResponse:
+        return handler(self._sequential(request))
+
+    async def awrap_model_call(
+        self, request: ModelRequest, handler: Callable[[ModelRequest], Awaitable[ModelResponse]]
+    ) -> ModelResponse:
+        return await handler(self._sequential(request))
+
+
+math_agent = create_agent(
     model=model,
     tools=[add, multiply],
-    name="sub-agent-math_expert",
     system_prompt="You are a math expert. Always use one tool at a time.",
-).with_config(tags=["skip_stream"])
-
-research_agent: Any = create_agent(
-    model=model,
-    tools=[web_search],
-    name="sub-agent-research_expert",
-    system_prompt="You are a world class researcher with access to web search. Do not do any math.",
-).with_config(tags=["skip_stream"])
-
-
-# Create supervisor workflow
-workflow = create_supervisor(
-    [research_agent, math_agent],
-    model=model,
-    prompt=(
-        "You are a team supervisor managing a research expert and a math expert. "
-        "For current events, use research_agent. "
-        "For math problems, use math_agent."
-    ),
-    add_handoff_back_messages=True,
-    # UI now expects this to be True so we don't have to guess when a handoff back occurs
-    output_mode="full_history",  # otherwise when reloading conversations, the sub-agents' messages are not included
 )
 
-langgraph_supervisor_agent = workflow.compile()
+research_agent = create_agent(
+    model=model,
+    tools=[web_search],
+    system_prompt="You are a world class researcher with access to web search. Do not do any math.",
+)
+
+langgraph_supervisor_agent = create_agent(
+    model=model,
+    tools=[
+        agent_as_tool(
+            research_agent,
+            "research_expert",
+            "Research current events with web search. Do not use for math.",
+        ),
+        agent_as_tool(math_agent, "math_expert", "Solve math problems with a calculator."),
+    ],
+    system_prompt=(
+        "You are a team supervisor managing a research expert and a math expert. "
+        "For current events, use research_expert. "
+        "For math problems, use math_expert."
+    ),
+    middleware=[SequentialToolCalls()],
+)
