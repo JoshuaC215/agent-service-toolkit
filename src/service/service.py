@@ -17,7 +17,6 @@ from langchain_core.messages import (
     AIMessageChunk,
     BaseMessage,
     HumanMessage,
-    ToolMessage,
 )
 from langchain_core.runnables import RunnableConfig
 from langfuse import Langfuse  # type: ignore[import-untyped]
@@ -278,18 +277,6 @@ async def message_generator(
                         continue
                     updates = updates or {}
                     update_messages = updates.get("messages", [])
-                    # special cases for using langgraph-supervisor library
-                    if "supervisor" in node or "sub-agent" in node:
-                        # the only tools that come from the actual agent are the handoff and handback tools
-                        if isinstance(update_messages[-1], ToolMessage):
-                            if "sub-agent" in node and len(update_messages) > 1:
-                                # If this is a sub-agent, we want to keep the last 2 messages - the handback tool, and it's result
-                                update_messages = update_messages[-2:]
-                            else:
-                                # If this is a supervisor, we want to keep the last message only - the handoff result. The tool comes from the 'agent' node.
-                                update_messages = [update_messages[-1]]
-                        else:
-                            update_messages = []
                     new_messages.extend(update_messages)
 
             if stream_mode == "custom":

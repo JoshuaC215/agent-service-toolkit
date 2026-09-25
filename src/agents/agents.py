@@ -44,10 +44,11 @@ agents: dict[str, Agent] = {
     "command-agent": Agent(description="A command agent.", graph_like=command_agent),
     "bg-task-agent": Agent(description="A background task agent.", graph_like=bg_task_agent),
     "langgraph-supervisor-agent": Agent(
-        description="A langgraph supervisor agent", graph_like=langgraph_supervisor_agent
+        description="A supervisor agent with research and math subagents",
+        graph_like=langgraph_supervisor_agent,
     ),
     "langgraph-supervisor-hierarchy-agent": Agent(
-        description="A langgraph supervisor agent with a nested hierarchy of agents",
+        description="A supervisor agent delegating to a research team with math capabilities",
         graph_like=langgraph_supervisor_hierarchy_agent,
     ),
     "interrupt-agent": Agent(
