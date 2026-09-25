@@ -65,6 +65,7 @@ docker compose watch
 1. **Feedback Mechanism**: Includes a star-based feedback system integrated with LangSmith.
 1. **Docker Support**: Includes Dockerfiles and a docker compose file for easy development and deployment.
 1. **Testing**: Includes robust unit and integration tests for the full repo.
+1. **Local Knowledge Base RAG**: Upload PDF, DOCX, Markdown, or text files into an isolated Chroma collection and query them with the `local-rag-agent`, including source and page metadata. See [local knowledge-base docs](docs/LOCAL_KNOWLEDGE_BASE.md).
 
 ### Key Files
 

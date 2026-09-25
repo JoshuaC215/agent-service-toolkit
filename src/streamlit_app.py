@@ -219,6 +219,40 @@ async def main() -> None:
             # Display user ID (for debugging or user information)
             st.text_input("User ID (read-only)", value=user_id, disabled=True)
 
+        knowledge_base_id = st.session_state.get("knowledge_base_id", "")
+        if agent_client.agent == "local-rag-agent":
+            with st.expander("Local knowledge base", expanded=True):
+                knowledge_base_id = st.text_input(
+                    "Knowledge base ID",
+                    value=knowledge_base_id,
+                    key="knowledge_base_id",
+                    help="Use the same ID when uploading documents and asking questions.",
+                )
+                uploaded_file = st.file_uploader(
+                    "Upload a document",
+                    type=["docx", "md", "pdf", "txt"],
+                    key="knowledge_document",
+                )
+                if st.button(
+                    "Index document",
+                    use_container_width=True,
+                    disabled=not knowledge_base_id or uploaded_file is None,
+                ):
+                    try:
+                        indexed = await asyncio.to_thread(
+                            agent_client.upload_knowledge_document,
+                            knowledge_base_id,
+                            uploaded_file.name,
+                            uploaded_file.getvalue(),
+                            uploaded_file.type,
+                        )
+                        st.success(
+                            f"Indexed {indexed.filename} into {indexed.knowledge_base_id} "
+                            f"({indexed.chunk_count} chunks)."
+                        )
+                    except AgentClientError as e:
+                        st.error(f"Could not index document: {e}")
+
         @st.dialog("Architecture")
         def architecture_dialog() -> None:
             st.image(
@@ -314,17 +348,23 @@ async def main() -> None:
         user_input = st.chat_input()
 
     if user_input:
+        if agent_client.agent == "local-rag-agent" and not knowledge_base_id:
+            st.error("Enter a knowledge base ID before asking the local RAG agent.")
+            st.stop()
         is_first_message = len(messages) == 0
         messages.append(ChatMessage(type="human", content=user_input))
         st.chat_message("human").write(user_input)
         try:
+            request_kwargs = {
+                "message": user_input,
+                "model": model,
+                "thread_id": st.session_state.thread_id,
+                "user_id": user_id,
+            }
+            if agent_client.agent == "local-rag-agent":
+                request_kwargs["agent_config"] = {"knowledge_base_id": knowledge_base_id}
             if use_streaming:
-                stream = agent_client.astream(
-                    message=user_input,
-                    model=model,
-                    thread_id=st.session_state.thread_id,
-                    user_id=user_id,
-                )
+                stream = agent_client.astream(**request_kwargs)
                 await draw_messages(stream, is_new=True)
                 # Generate TTS audio for streaming response
                 # Note: draw_messages() stores the final message in st.session_state.messages
@@ -340,12 +380,7 @@ async def main() -> None:
                             audio_only=True,
                         )
             else:
-                response = await agent_client.ainvoke(
-                    message=user_input,
-                    model=model,
-                    thread_id=st.session_state.thread_id,
-                    user_id=user_id,
-                )
+                response = await agent_client.ainvoke(**request_kwargs)
                 messages.append(response)
                 # Render AI response with optional voice
                 with st.chat_message("ai"):

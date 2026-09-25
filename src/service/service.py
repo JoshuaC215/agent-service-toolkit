@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import json
 import logging
@@ -7,7 +8,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated, Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
+from fastapi import APIRouter, Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -30,6 +31,7 @@ from langsmith import uuid7
 
 from agents import DEFAULT_AGENT, AgentGraph, get_agent, get_all_agent_info, load_agent
 from core import settings
+from knowledge import KnowledgeBaseError, ingest_document, search_documents
 from memory import initialize_database, initialize_store
 from schema import (
     ChatHistory,
@@ -37,6 +39,9 @@ from schema import (
     ChatMessage,
     Feedback,
     FeedbackResponse,
+    KnowledgeDocumentResponse,
+    KnowledgeSearchResponse,
+    KnowledgeSearchResult,
     ServiceMetadata,
     StreamInput,
     UserInput,
@@ -472,6 +477,78 @@ async def threads(
         raise HTTPException(status_code=500, detail="Unexpected error")
 
     return UserThreads(threads=summaries)
+
+
+@router.post(
+    "/knowledge-bases/{knowledge_base_id}/documents",
+    response_model=KnowledgeDocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_knowledge_document(
+    knowledge_base_id: str,
+    file: UploadFile = File(...),
+) -> KnowledgeDocumentResponse:
+    """Parse and index one local document for the local-rag-agent."""
+    filename = file.filename or ""
+    max_bytes = settings.KNOWLEDGE_MAX_DOCUMENT_BYTES
+    content = await file.read(max_bytes + 1)
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Document exceeds the {max_bytes}-byte limit.",
+        )
+
+    try:
+        result = await asyncio.to_thread(
+            ingest_document,
+            knowledge_base_id,
+            filename,
+            content,
+            file.content_type,
+        )
+    except KnowledgeBaseError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+    return KnowledgeDocumentResponse(
+        knowledge_base_id=result.knowledge_base_id,
+        document_id=result.document_id,
+        filename=result.filename,
+        content_type=result.content_type,
+        size_bytes=result.size_bytes,
+        chunk_count=result.chunk_count,
+    )
+
+
+@router.get(
+    "/knowledge-bases/{knowledge_base_id}/search",
+    response_model=KnowledgeSearchResponse,
+)
+async def search_knowledge_base(
+    knowledge_base_id: str,
+    q: str = Query(..., min_length=1, max_length=2000),
+    k: int = Query(default=settings.KNOWLEDGE_DEFAULT_TOP_K, ge=1, le=20),
+) -> KnowledgeSearchResponse:
+    """Search indexed chunks and expose the metadata used for citations."""
+    try:
+        matches = await asyncio.to_thread(search_documents, knowledge_base_id, q, k)
+    except KnowledgeBaseError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
+
+    return KnowledgeSearchResponse(
+        knowledge_base_id=knowledge_base_id,
+        query=q,
+        results=[
+            KnowledgeSearchResult(
+                document_id=match.document_id,
+                source=match.source,
+                page=match.page,
+                content=match.content,
+                score=match.score,
+                metadata=match.metadata,
+            )
+            for match in matches
+        ],
+    )
 
 
 @app.get("/health")

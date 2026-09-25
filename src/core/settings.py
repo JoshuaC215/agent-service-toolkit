@@ -125,6 +125,15 @@ class Settings(BaseSettings):
     )  # Options: DatabaseType.SQLITE or DatabaseType.POSTGRES
     SQLITE_DB_PATH: str = "checkpoints.db"
 
+    # Local knowledge-base ingestion and retrieval
+    KNOWLEDGE_BASE_DIR: str = "data/knowledge_bases"
+    KNOWLEDGE_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    KNOWLEDGE_EMBEDDING_DIMENSIONS: int = 1536
+    KNOWLEDGE_MAX_DOCUMENT_BYTES: int = 10_000_000
+    KNOWLEDGE_CHUNK_SIZE: int = 1000
+    KNOWLEDGE_CHUNK_OVERLAP: int = 150
+    KNOWLEDGE_DEFAULT_TOP_K: int = 4
+
     # PostgreSQL Configuration
     POSTGRES_USER: str | None = None
     POSTGRES_PASSWORD: SecretStr | None = None

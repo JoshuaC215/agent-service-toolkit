@@ -216,3 +216,33 @@ class ThreadSummary(BaseModel):
 
 class UserThreads(BaseModel):
     threads: list[ThreadSummary]
+
+
+class KnowledgeDocumentResponse(BaseModel):
+    """Result of indexing one document into a local knowledge base."""
+
+    knowledge_base_id: str
+    document_id: str
+    filename: str
+    content_type: str
+    size_bytes: int
+    chunk_count: int
+
+
+class KnowledgeSearchResult(BaseModel):
+    """One retrieved chunk and the metadata needed to cite it."""
+
+    document_id: str
+    source: str
+    page: int | None = None
+    content: str
+    score: float
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class KnowledgeSearchResponse(BaseModel):
+    """Search results from a local knowledge base."""
+
+    knowledge_base_id: str
+    query: str
+    results: list[KnowledgeSearchResult]
