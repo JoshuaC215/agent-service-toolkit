@@ -89,6 +89,10 @@ def parse_safeguard_output(output: str) -> SafeguardOutput:
 
 class Safeguard:
     def __init__(self) -> None:
+        if settings.USE_FAKE_MODEL:
+            print("USE_FAKE_MODEL set, skipping Safeguard")
+            self.model = None
+            return
         if settings.GROQ_API_KEY is None:
             print("GROQ_API_KEY not set, skipping Safeguard")
             self.model = None
