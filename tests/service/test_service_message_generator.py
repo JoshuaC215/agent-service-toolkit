@@ -25,12 +25,22 @@ async def test_three_layer_supervisor_hierarchy_agent_with_fake_model():
         AIMessage(
             content="",
             tool_calls=[
-                ToolCall(name="transfer_to_sub-agent-research_expert", args={}, id="call-1")
+                ToolCall(
+                    name="task",
+                    args={"description": "research", "subagent_type": "research_expert"},
+                    id="call-1",
+                )
             ],
         ),
         AIMessage(
             content="",
-            tool_calls=[ToolCall(name="transfer_to_sub-agent-math_expert", args={}, id="call-2")],
+            tool_calls=[
+                ToolCall(
+                    name="task",
+                    args={"description": "math", "subagent_type": "math_expert"},
+                    id="call-2",
+                )
+            ],
         ),
         AIMessage(
             content="", tool_calls=[ToolCall(name="add", args={"a": 2, "b": 3}, id="call-3")]
@@ -44,7 +54,7 @@ async def test_three_layer_supervisor_hierarchy_agent_with_fake_model():
 
     from agents.langgraph_supervisor_hierarchy_agent import workflow
 
-    agent = workflow(FakeToolModel(responses)).compile(checkpointer=MemorySaver())
+    agent = workflow(FakeToolModel(responses), checkpointer=MemorySaver())
 
     with patch("service.service.get_agent", return_value=agent):
         from service.service import message_generator
@@ -60,16 +70,16 @@ async def test_three_layer_supervisor_hierarchy_agent_with_fake_model():
         for msg in messages:
             print(msg)
 
-        assert messages[0].tool_calls[0]["name"] == "transfer_to_sub-agent-research_expert"
-        assert messages[1].content == "Successfully transferred to sub-agent-research_expert"
-        assert messages[2].tool_calls[0]["name"] == "transfer_to_sub-agent-math_expert"
-        assert messages[3].content == "Successfully transferred to sub-agent-math_expert"
-        assert messages[4].tool_calls[0]["name"] == "add"
-        assert messages[5].content == "5.0"
-        assert messages[6].content == "2+3 is 5"
-        assert messages[7].tool_calls[0]["name"] == "transfer_back_to_supervisor-research_expert"
-        assert messages[8].content == "Successfully transferred back to supervisor-research_expert"
-        assert messages[9].content == "The Maths Expert says the answer is 5."
-        assert messages[10].tool_calls[0]["name"] == "transfer_back_to_supervisor"
-        assert messages[11].content == "Successfully transferred back to supervisor"
-        assert messages[12].content == "The result is 5."
+        assert messages[0].tool_calls[0]["name"] == "task"
+        assert messages[0].tool_calls[0]["args"]["subagent_type"] == "research_expert"
+        assert messages[1].tool_calls[0]["name"] == "task"
+        assert messages[1].tool_calls[0]["args"]["subagent_type"] == "math_expert"
+        assert messages[2].tool_calls[0]["name"] == "add"
+        assert messages[3].content == "5.0"
+        assert messages[4].content == "2+3 is 5"
+        assert messages[5].content == "2+3 is 5"
+        assert messages[5].tool_call_id == "call-2"
+        assert messages[6].content == "The Maths Expert says the answer is 5."
+        assert messages[7].content == "The Maths Expert says the answer is 5."
+        assert messages[7].tool_call_id == "call-1"
+        assert messages[8].content == "The result is 5."
