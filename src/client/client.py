@@ -1,6 +1,7 @@
 import json
 import os
 from collections.abc import AsyncGenerator, Generator
+from enum import Enum
 from typing import Any
 
 import httpx
@@ -20,6 +21,11 @@ from schema import (
 
 class AgentClientError(Exception):
     pass
+
+
+class _StreamControl(Enum):
+    IGNORE = "ignore"
+    DONE = "done"
 
 
 class AgentClient:
@@ -176,30 +182,34 @@ class AgentClient:
 
         return ChatMessage.model_validate(response.json())
 
-    def _parse_stream_line(self, line: str) -> ChatMessage | str | None:
+    def _parse_stream_line(self, line: str) -> ChatMessage | str | _StreamControl:
         line = line.strip()
-        if line.startswith("data: "):
-            data = line[6:]
-            if data == "[DONE]":
-                return None
-            try:
-                parsed = json.loads(data)
-            except Exception as e:
-                raise Exception(f"Error JSON parsing message from server: {e}")
-            match parsed["type"]:
-                case "message":
-                    # Convert the JSON formatted message to an AnyMessage
-                    try:
-                        return ChatMessage.model_validate(parsed["content"])
-                    except Exception as e:
-                        raise Exception(f"Server returned invalid message: {e}")
-                case "token":
-                    # Yield the str token directly
-                    return parsed["content"]
-                case "error":
-                    error_msg = "Error: " + parsed["content"]
-                    return ChatMessage(type="ai", content=error_msg)
-        return None
+        if not line or line.startswith(":") or not line.startswith("data:"):
+            return _StreamControl.IGNORE
+
+        data = line[5:].lstrip()
+        if data == "[DONE]":
+            return _StreamControl.DONE
+        try:
+            parsed = json.loads(data)
+        except json.JSONDecodeError as e:
+            raise AgentClientError(f"Error JSON parsing message from server: {e}") from e
+        if not isinstance(parsed, dict):
+            return _StreamControl.IGNORE
+
+        match parsed.get("type"):
+            case "message":
+                try:
+                    return ChatMessage.model_validate(parsed["content"])
+                except (KeyError, TypeError, ValueError) as e:
+                    raise AgentClientError(f"Server returned invalid message: {e}") from e
+            case "token":
+                return parsed["content"]
+            case "error":
+                error_msg = "Error: " + parsed["content"]
+                return ChatMessage(type="ai", content=error_msg)
+            case _:
+                return _StreamControl.IGNORE
 
     def stream(
         self,
@@ -252,8 +262,10 @@ class AgentClient:
                 for line in response.iter_lines():
                     if line.strip():
                         parsed = self._parse_stream_line(line)
-                        if parsed is None:
+                        if parsed is _StreamControl.DONE:
                             break
+                        if parsed is _StreamControl.IGNORE:
+                            continue
                         yield parsed
         except httpx.HTTPError as e:
             raise AgentClientError(f"Error: {e}")
@@ -310,8 +322,10 @@ class AgentClient:
                     async for line in response.aiter_lines():
                         if line.strip():
                             parsed = self._parse_stream_line(line)
-                            if parsed is None:
+                            if parsed is _StreamControl.DONE:
                                 break
+                            if parsed is _StreamControl.IGNORE:
+                                continue
                             # Don't yield empty string tokens as they cause generator issues
                             if parsed != "":
                                 yield parsed

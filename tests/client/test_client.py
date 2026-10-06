@@ -130,6 +130,7 @@ def test_stream(agent_client):
     # Create mock response with streaming events
     events = (
         [f"data: {json.dumps({'type': 'token', 'content': token})}" for token in TOKENS]
+        + [": ping"]
         + [
             f"data: {json.dumps({'type': 'message', 'content': {'type': 'ai', 'content': FINAL_ANSWER}})}"
         ]
@@ -182,6 +183,7 @@ async def test_astream(agent_client):
     # Create mock response with streaming events
     events = (
         [f"data: {json.dumps({'type': 'token', 'content': token})}" for token in TOKENS]
+        + [": ping"]
         + [
             f"data: {json.dumps({'type': 'message', 'content': {'type': 'ai', 'content': FINAL_ANSWER}})}"
         ]
