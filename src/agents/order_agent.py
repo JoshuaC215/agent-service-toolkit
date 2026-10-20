@@ -5,22 +5,47 @@ from langgraph.graph import END, MessagesState, StateGraph
 from langgraph.prebuilt import ToolNode
 
 from agents.order_tools import get_order
+from agents.ticket_tools import (
+    create_ticket,
+    get_ticket,
+    list_tickets_by_order,
+)
 from core import get_model, settings
 
 
-tools = [get_order]
+tools = [
+    get_order,
+    create_ticket,
+    get_ticket,
+    list_tickets_by_order,
+]
 
 
 instructions = """
-You are an order support agent.
+You are an order and after-sales support agent.
 
 Rules:
-- If the user asks about an order, use the get_order tool.
-- Never invent order information.
-- If the order does not exist, clearly tell the user.
 - Answer in the user's language.
+- Use get_order to retrieve real order information.
+- Never invent order information or ticket IDs.
+- If an order does not exist, clearly tell the user.
+- For an explicit after-sales request, obtain the order ID
+  and a clear description of the issue.
+- If required information is missing, ask the user instead
+  of creating an incomplete ticket.
+- Verify the order using get_order before creating a ticket.
+- Use create_ticket to record the request.
+- Only claim ticket creation succeeded if the tool returns
+  success=true.
+- Report the ticket ID and status exactly as returned by
+  the tool.
+- Use get_ticket to retrieve an existing ticket.
+- Use list_tickets_by_order to retrieve tickets for an order.
+- Creating a ticket does not mean a refund is approved.
+- Never claim to have issued a refund or changed an order
+  status. Those operations require separate authorization
+  and workflows.
 """
-
 
 def wrap_model(model: BaseChatModel) -> RunnableSerializable:
     bound_model = model.bind_tools(tools)

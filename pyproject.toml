@@ -58,6 +58,8 @@ dependencies = [
     "langchain-mcp-adapters>=0.3.0",
     "ddgs>=9.14.4",
     "ag-ui-langgraph~=0.0.42",
+    "sqlalchemy>=2.0,<3.0",
+    "alembic>=1.13,<2.0",
 ]
 
 # Supply-chain cooldown: resolution only considers releases >=14 days old. Needs the
