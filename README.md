@@ -149,6 +149,16 @@ For local development, we recommend using [docker compose watch](https://docs.do
 
 This setup allows you to develop and test your changes in real-time without manually restarting the services.
 
+### Research assistant web search
+
+The research assistant uses DuckDuckGo by default. To use free web search and page fetching with [Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp), set `SEARCH_PROVIDER=parallel` in `.env` and restart the service. Search uses Fast mode; no Parallel account or API key is required. Anonymous access has service rate limits.
+
+Set `SEARCH_PROVIDER=none` to disable web search and fetching. This also prevents individual requests from enabling them. Calculator, optional weather tools, and the input safeguard remain available.
+
+For direct graph calls, `configurable.search_provider` can select `duckduckgo`, `parallel`, or `none` for one invocation, unless the deployment has disabled search. Parallel exposes `WebSearch` and `WebFetch`; results are returned to the model for linked citations. `SEARCH_TIMEOUT_SECONDS` bounds each Parallel tool call, including discovery (default: 30 seconds). Errors are returned to the model without switching providers. Cancelling the graph cancels the request.
+
+The graph stores an opaque search session ID in its conversation state. With the service checkpointer, follow-up turns on the same thread reuse it across search and fetch calls. A new chat/thread starts a new ID. Standalone graph users should pass the returned state into follow-up invocations, or use a checkpointer, to preserve the conversation.
+
 ### Building other apps on the AgentClient
 
 The repo includes a generic `src/client/client.AgentClient` that can be used to interact with the agent service. This client is designed to be flexible and can be used to build other apps on top of the agent. It supports both synchronous and asynchronous invocations, and streaming and non-streaming requests.

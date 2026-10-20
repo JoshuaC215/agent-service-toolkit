@@ -1,12 +1,13 @@
 from enum import StrEnum
 from json import loads
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from dotenv import find_dotenv
 from pydantic import (
     BeforeValidator,
     Field,
     HttpUrl,
+    PositiveFloat,
     SecretStr,
     TypeAdapter,
     computed_field,
@@ -102,6 +103,9 @@ class Settings(BaseSettings):
     COMPATIBLE_BASE_URL: str | None = None
 
     OPENWEATHERMAP_API_KEY: SecretStr | None = None
+
+    SEARCH_PROVIDER: Literal["duckduckgo", "parallel", "none"] = "duckduckgo"
+    SEARCH_TIMEOUT_SECONDS: PositiveFloat = 30
 
     # MCP Configuration
     GITHUB_PAT: SecretStr | None = None
