@@ -1,35 +1,31 @@
+
 from langchain_core.tools import tool
 
-
-MOCK_ORDERS = {
-    "ORD001": {
-        "order_id": "ORD001",
-        "status": "paid",
-        "amount": 299.0,
-        "currency": "CNY",
-    },
-    "ORD002": {
-        "order_id": "ORD002",
-        "status": "shipped",
-        "amount": 599.0,
-        "currency": "CNY",
-    },
-}
+from db.repositories.order_repository import OrderRepository
+from db.session import AsyncSessionLocal
 
 
 @tool
-def get_order(order_id: str) -> dict:
-    """Query an order by its exact order ID."""
+async def get_order(order_id: str) -> dict:
+    """Query an order by its exact order ID from PostgreSQL."""
 
-    order = MOCK_ORDERS.get(order_id)
+    async with AsyncSessionLocal() as session:
+        repository = OrderRepository(session)
 
-    if order is None:
+        order = await repository.get_by_id(order_id)
+
+        if order is None:
+            return {
+                "found": False,
+                "error": "ORDER_NOT_FOUND",
+            }
+
         return {
-            "found": False,
-            "error": "ORDER_NOT_FOUND",
+            "found": True,
+            "order": {
+                "order_id": order.order_id,
+                "status": order.status,
+                "amount": str(order.amount),
+                "currency": order.currency,
+            },
         }
-
-    return {
-        "found": True,
-        "order": order,
-    }
