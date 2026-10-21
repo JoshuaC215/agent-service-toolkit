@@ -80,6 +80,7 @@ class Settings(BaseSettings):
 
     AUTH_SECRET: SecretStr | None = None
     APPROVAL_REVIEWERS: dict[str, SecretStr] = Field(default_factory=dict)
+    CUSTOMER_ACCESS_KEYS: dict[str, SecretStr] = Field(default_factory=dict)
 
     OPENAI_API_KEY: SecretStr | None = None
     DEEPSEEK_API_KEY: SecretStr | None = None

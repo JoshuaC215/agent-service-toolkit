@@ -38,6 +38,8 @@ class Order(Base):
         primary_key=True,
     )
 
+    owner_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+
     status: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
@@ -206,3 +208,39 @@ class RefundApproval(Base):
     ticket: Mapped["Ticket"] = relationship(
         back_populates="refund_approval",
     )
+
+
+class RefundExecution(Base):
+    """One full-order simulation; no payment provider is called."""
+
+    __tablename__ = "refund_executions"
+    __table_args__ = (
+        UniqueConstraint("approval_id", name="uq_refund_executions_approval"),
+        UniqueConstraint("order_id", name="uq_refund_executions_order"),
+        CheckConstraint("amount > 0", name="ck_refund_executions_amount"),
+        CheckConstraint("status = 'simulated_succeeded'", name="ck_refund_executions_status"),
+        CheckConstraint("length(trim(executor_id)) > 0", name="ck_refund_executions_executor"),
+    )
+
+    execution_id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    approval_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("refund_approvals.approval_id"), nullable=False
+    )
+    order_id: Mapped[str] = mapped_column(
+        String(32), ForeignKey("orders.order_id"), nullable=False
+    )
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    executor_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    result_message: Mapped[str] = mapped_column(Text, nullable=False)
+    executed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class ConversationOwner(Base):
+    __tablename__ = "conversation_owners"
+
+    thread_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)

@@ -6,9 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.settings import settings
 from db.refund_approval_service import ApprovalError, RefundApprovalService
+from db.refund_execution_service import RefundExecutionService
 from db.repositories.refund_approval_repository import RefundApprovalRepository
 from db.session import get_db_session
 from schema.refund_approvals import ApprovalDecision, ApprovalResponse
+from schema.refund_executions import ExecutionResponse, SimulationRequest, SimulationResponse
 
 
 async def require_reviewer(
@@ -40,9 +42,16 @@ router = APIRouter(
 
 def approval_http_error(exc: ApprovalError) -> HTTPException:
     code = str(exc)
-    if code in ("TICKET_NOT_FOUND", "APPROVAL_NOT_FOUND"):
+    if code in ("TICKET_NOT_FOUND", "APPROVAL_NOT_FOUND", "ORDER_NOT_FOUND", "EXECUTION_NOT_FOUND"):
         return HTTPException(404, code)
-    if code in ("TICKET_NOT_ACTIVE", "APPROVAL_ALREADY_EXISTS", "APPROVAL_ALREADY_REVIEWED"):
+    if code in (
+        "TICKET_NOT_ACTIVE",
+        "APPROVAL_ALREADY_EXISTS",
+        "APPROVAL_ALREADY_REVIEWED",
+        "APPROVAL_NOT_APPROVED",
+        "ORDER_NOT_REFUNDABLE",
+        "ORDER_ALREADY_SIMULATED",
+    ):
         return HTTPException(409, code)
     return HTTPException(422, code)
 
@@ -76,5 +85,30 @@ async def review_approval(
         return await RefundApprovalService(session).review(
             ticket_id, decision=payload.decision, reviewer_id=reviewer, reason=payload.reason
         )
+    except ApprovalError as exc:
+        raise approval_http_error(exc) from exc
+
+
+@router.post("/by-ticket/{ticket_id}/simulate-refund", response_model=SimulationResponse)
+async def simulate_refund(
+    ticket_id: str, payload: SimulationRequest, session: DbSession, reviewer: Reviewer
+):
+    """Record an atomic full-order simulation. Never calls a payment provider."""
+    try:
+        execution, created = await RefundExecutionService(session).execute(ticket_id, reviewer)
+        return SimulationResponse(
+            execution=ExecutionResponse.model_validate(execution), created=created
+        )
+    except ApprovalError as exc:
+        raise approval_http_error(exc) from exc
+
+
+@router.get("/by-ticket/{ticket_id}/execution", response_model=ExecutionResponse)
+async def get_refund_execution(ticket_id: str, session: DbSession):
+    try:
+        execution = await RefundExecutionService(session).get(ticket_id)
+        if execution is None:
+            raise HTTPException(404, "EXECUTION_NOT_FOUND")
+        return execution
     except ApprovalError as exc:
         raise approval_http_error(exc) from exc

@@ -1,3 +1,6 @@
+from datetime import UTC, datetime
+from decimal import Decimal
+from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import httpx
@@ -77,3 +80,50 @@ async def test_missing_approval_and_ticket(monkeypatch):
     ) as client:
         assert (await client.get("/refund-approvals/by-ticket/missing")).status_code == 404
         assert (await client.post("/refund-approvals/by-ticket/missing")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_simulation_auth_identity_confirmation_and_replay(monkeypatch):
+    app = FastAPI()
+    app.include_router(router)
+
+    async def override_session():
+        yield AsyncMock()
+
+    app.dependency_overrides[get_db_session] = override_session
+    monkeypatch.setattr(settings, "APPROVAL_REVIEWERS", {"staff": SecretStr("b" * 40)})
+    record = SimpleNamespace(
+        execution_id="SIM1",
+        approval_id="A1",
+        order_id="O1",
+        amount=Decimal("299.00"),
+        currency="CNY",
+        status="simulated_succeeded",
+        executor_id="staff",
+        result_message="No funds transferred",
+        executed_at=datetime.now(UTC),
+    )
+    execute = AsyncMock(return_value=(record, False))
+    monkeypatch.setattr("service.refund_approvals.RefundExecutionService.execute", execute)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        path = "/refund-approvals/by-ticket/T1/simulate-refund"
+        assert (await client.post(path, json={"confirm_simulation": True})).status_code == 401
+        execute.assert_not_awaited()
+        headers = {"X-Approval-Key": "b" * 40}
+        assert (await client.post(path, headers=headers, json={})).status_code == 422
+        assert (
+            await client.post(
+                path, headers=headers, json={"confirm_simulation": True, "executor_id": "forged"}
+            )
+        ).status_code == 422
+        response = await client.post(path, headers=headers, json={"confirm_simulation": True})
+        assert response.status_code == 200
+        assert response.json()["created"] is False
+        assert response.json()["funds_transferred"] is False
+        execute.assert_awaited_once_with("T1", "staff")
+        execute.side_effect = ApprovalError("APPROVAL_NOT_APPROVED")
+        assert (
+            await client.post(path, headers=headers, json={"confirm_simulation": True})
+        ).status_code == 409

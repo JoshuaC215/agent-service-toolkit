@@ -31,6 +31,7 @@ class AgentClient:
         agent: str | None = None,
         timeout: float | None = None,
         get_info: bool = True,
+        user_key: str | None = None,
     ) -> None:
         """
         Initialize the client.
@@ -43,6 +44,7 @@ class AgentClient:
                 Default: True
         """
         self.base_url = base_url
+        self.user_key = user_key
         self.auth_secret = os.getenv("AUTH_SECRET")
         self.timeout = timeout
         self.info: ServiceMetadata | None = None
@@ -55,6 +57,8 @@ class AgentClient:
     @property
     def _headers(self) -> dict[str, str]:
         headers = {}
+        if self.user_key:
+            headers["X-User-Key"] = self.user_key
         if self.auth_secret:
             headers["Authorization"] = f"Bearer {self.auth_secret}"
         return headers

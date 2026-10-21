@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from decimal import Decimal
 
@@ -50,3 +49,21 @@ class OrderStatusUpdate(BaseModel):
     """Request schema for updating an order status."""
 
     status: str = Field(min_length=1, max_length=32)
+
+
+class OrderOwnerUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    owner_id: str = Field(min_length=1, max_length=64)
+
+
+class MyOrdersQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    limit: int = Field(default=20, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+
+class MyOrdersResponse(BaseModel):
+    orders: list[OrderResponse]
+    limit: int
+    offset: int
+    has_more: bool

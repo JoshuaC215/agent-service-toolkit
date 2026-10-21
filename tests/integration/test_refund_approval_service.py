@@ -6,6 +6,8 @@ import pytest_asyncio
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from db.access import Principal, current_principal
+
 from db.models import Base, Order, RefundApproval, Ticket
 from db.refund_approval_service import ApprovalError, RefundApprovalService
 
@@ -115,3 +117,12 @@ async def test_competing_reviewers_only_one_succeeds(sessions):
     assert len(errors) == 1
     assert isinstance(errors[0], ApprovalError)
     assert str(errors[0]) == "APPROVAL_ALREADY_REVIEWED"
+
+
+@pytest.fixture(autouse=True)
+def trusted_staff_identity():
+    token = current_principal.set(Principal('test-staff', 'staff'))
+    try:
+        yield
+    finally:
+        current_principal.reset(token)

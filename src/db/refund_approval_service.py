@@ -10,6 +10,7 @@ from uuid import uuid4
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from db.access import require_staff, ticket_scope
 from db.models import RefundApproval, Ticket
 from db.repositories.refund_approval_repository import RefundApprovalRepository
 
@@ -38,7 +39,9 @@ class RefundApprovalService:
             # Serialize submissions for this ticket on PostgreSQL. The unique
             # constraint is an additional database guarantee against duplicates.
             ticket = await self.session.scalar(
-                select(Ticket).where(Ticket.ticket_id == ticket_id).with_for_update()
+                select(Ticket)
+                .where(Ticket.ticket_id == ticket_id, ticket_scope())
+                .with_for_update()
             )
             if ticket is None:
                 raise ApprovalError("TICKET_NOT_FOUND")
@@ -62,6 +65,7 @@ class RefundApprovalService:
     async def review(
         self, ticket_id: str, *, decision: str, reviewer_id: str, reason: str
     ) -> RefundApproval:
+        require_staff()
         ticket_id = _required(ticket_id, 32, "INVALID_TICKET_ID")
         reviewer_id = _required(reviewer_id, 64, "INVALID_REVIEWER")
         reason = _required(reason, 4000, "INVALID_REVIEW_REASON")

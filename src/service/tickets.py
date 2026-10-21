@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from db.access import require_staff
 from db.models import Ticket
 from db.repositories.order_repository import OrderRepository
 from db.repositories.ticket_repository import TicketRepository
@@ -13,7 +14,6 @@ from schema.tickets import (
     TicketResponse,
     TicketStatusUpdate,
 )
-
 
 router = APIRouter(
     prefix="/tickets",
@@ -57,10 +57,7 @@ async def create_ticket(
     except IntegrityError as exc:
         await session.rollback()
 
-        sqlstate = (
-            getattr(exc.orig, "sqlstate", None)
-            or getattr(exc.orig, "pgcode", None)
-        )
+        sqlstate = getattr(exc.orig, "sqlstate", None) or getattr(exc.orig, "pgcode", None)
 
         if sqlstate == "23505":
             raise HTTPException(
@@ -107,10 +104,7 @@ async def list_tickets_by_order(
     repository = TicketRepository(session)
     tickets = await repository.list_by_order_id(order_id)
 
-    return [
-        TicketResponse.model_validate(ticket)
-        for ticket in tickets
-    ]
+    return [TicketResponse.model_validate(ticket) for ticket in tickets]
 
 
 @router.get(
@@ -146,6 +140,7 @@ async def update_ticket_status(
 ) -> TicketResponse:
     """Update a ticket's status."""
 
+    require_staff()
     repository = TicketRepository(session)
     ticket = await repository.get_by_id(ticket_id)
 

@@ -57,7 +57,9 @@ def draw_approval_page(base_url: str):
     if right.button(":material/refresh: 刷新", use_container_width=True):
         st.rerun()
 
-    queue_tab, submit_tab, lookup_tab = st.tabs(["待审批", "提交审批", "查询结果"])
+    queue_tab, submit_tab, lookup_tab, execute_tab, owner_tab = st.tabs(
+        ["待审批", "提交审批", "查询结果", "模拟退款", "订单归属"]
+    )
     with queue_tab:
         if not pending:
             st.success("暂无待审批申请。可在“提交审批”中送审已有工单。")
@@ -106,6 +108,22 @@ def draw_approval_page(base_url: str):
                         st.rerun()
             except ApprovalClientError as exc:
                 st.error(str(exc))
+    with owner_tab:
+        st.caption("仅管理员可分配历史订单。已归属其他用户的订单不能在这里转移。")
+        with st.form("assign_order_owner"):
+            order_id = st.text_input("待分配订单号", max_chars=32).strip()
+            owner_id = st.text_input("用户编号（需已配置访问密钥）", max_chars=64).strip()
+            confirmed_owner = st.checkbox("确认该订单属于此用户，包括其关联工单和审批数据")
+            assign = st.form_submit_button("分配订单归属")
+        if assign:
+            if not order_id or not owner_id or not confirmed_owner:
+                st.warning("请填写订单号、用户编号，并确认归属。")
+            else:
+                try:
+                    client.assign_owner(order_id, owner_id)
+                    st.success(f"订单 {order_id} 已分配给 {owner_id}。")
+                except ApprovalClientError as exc:
+                    st.error(str(exc))
     with submit_tab:
         st.caption("将已有退款申请工单送入审批；不会创建新工单。")
         with st.form("approval_submit"):
@@ -131,5 +149,37 @@ def draw_approval_page(base_url: str):
         if lookup_id := st.session_state.get("approval_lookup"):
             try:
                 _show_result(client.get(lookup_id))
+            except ApprovalClientError as exc:
+                st.error(str(exc))
+    with execute_tab:
+        st.warning("仅为整单退款模拟：不转账、不修改真实订单状态，同一订单最多执行一次。")
+        execution_ticket = st.text_input("待执行或查询的工单号", max_chars=32).strip()
+        if execution_ticket:
+            try:
+                approval = client.get(execution_ticket)
+                st.caption(f"审批状态：{STATUS_LABELS.get(approval['status'], approval['status'])}")
+                ticket = client.ticket(execution_ticket)
+                order = client.order(ticket["order_id"])
+                st.write(
+                    f"订单 {ticket['order_id']} · 模拟金额 {order['amount']} {order['currency']}"
+                )
+                with st.form(f"simulate_{execution_ticket}"):
+                    confirmed = st.checkbox("确认对该申请执行整单模拟退款（不会真实转账）")
+                    execute = st.form_submit_button(
+                        "执行模拟退款", type="primary", disabled=approval["status"] != "approved"
+                    )
+                if execute:
+                    if not confirmed:
+                        st.warning("请先勾选模拟执行确认。")
+                    else:
+                        result = client.simulate_refund(execution_ticket)
+                        st.success(
+                            "模拟执行成功，未真实转账。"
+                            if result["created"]
+                            else "该申请已执行过，返回原记录，未重复执行。"
+                        )
+                        st.write(result["execution"])
+                if st.button("查询已保存的执行结果"):
+                    st.write(client.execution(execution_ticket))
             except ApprovalClientError as exc:
                 st.error(str(exc))

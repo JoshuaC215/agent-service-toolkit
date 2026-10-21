@@ -55,12 +55,13 @@ def get_or_create_user_id() -> str:
 
 @st.cache_data(ttl=600, show_spinner=False)
 def fetch_user_threads_cached(
-    base_url: str, user_id: str, agent_id: str | None = None, limit: int = 20
+    base_url: str, user_id: str, agent_id: str | None = None, limit: int = 20,
+    user_key: str | None = None,
 ) -> UserThreads:
     """
     Fetch and cache user threads using the new synchronous get_user_threads method.
     """
-    client = AgentClient(base_url=base_url, get_info=False)
+    client = AgentClient(base_url=base_url, get_info=False, user_key=user_key)
     return client.get_user_threads(user_id=user_id, agent=agent_id, limit=limit)
 
 
@@ -99,6 +100,16 @@ async def main() -> None:
         draw_approval_page(agent_url)
         return
 
+    from client.login_page import customer_login
+
+    login_url = os.getenv("AGENT_URL") or (
+        f"http://{os.getenv('HOST', '127.0.0.1')}:{os.getenv('PORT', '8080')}"
+    )
+    identity = customer_login(login_url)
+    if identity is None:
+        return
+    st.session_state[USER_ID_COOKIE] = identity["user_id"]
+
     # Get or create user ID
     user_id = get_or_create_user_id()
 
@@ -111,7 +122,9 @@ async def main() -> None:
             agent_url = f"http://{host}:{port}"
         try:
             with st.spinner("Connecting to agent service..."):
-                st.session_state.agent_client = AgentClient(base_url=agent_url)
+                st.session_state.agent_client = AgentClient(
+                    base_url=agent_url, agent="order-agent", user_key=st.session_state.customer_key
+                )
         except AgentClientError as e:
             st.error(f"Error connecting to agent service at {agent_url}: {e}")
             st.markdown("The service might be booting up. Try again in a few seconds.")
@@ -131,7 +144,7 @@ async def main() -> None:
         else:
             # Read the agent from the URL so history is fetched through the graph that
             # created the thread.
-            resume_agent = st.query_params.get("agent") or agent_client.agent
+            resume_agent = "order-agent"
             try:
                 messages: ChatHistory = agent_client.get_history(
                     thread_id=thread_id, agent=resume_agent
@@ -173,6 +186,7 @@ async def main() -> None:
                     user_id=user_id,
                     agent_id=agent_client.agent,
                     limit=20,
+                    user_key=st.session_state.customer_key,
                 )
                 thread_list = user_threads.threads
             except Exception as e:
@@ -199,8 +213,8 @@ async def main() -> None:
         with st.popover(":material/settings: Settings", use_container_width=True):
             model_idx = agent_client.info.models.index(agent_client.info.default_model)
             model = st.selectbox("LLM to use", options=agent_client.info.models, index=model_idx)
-            agent_list = [a.key for a in agent_client.info.agents]
-            agent_idx = agent_list.index(agent_client.info.default_agent)
+            agent_list = ["order-agent"]
+            agent_idx = 0
             # Sync the selection to the ?agent= URL param (dropped when it's the default).
             agent_client.agent = st.selectbox(
                 "Agent to use",

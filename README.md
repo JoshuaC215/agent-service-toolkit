@@ -29,7 +29,8 @@ Code changes sync and restart services; dependency changes rebuild images.
 Existing PostgreSQL and Chroma data are preserved in named volumes.
 
 Current scope: demo policies, order/ticket tools, local policy retrieval, human
-approval, and approval status lookup. Refund execution, customer ownership checks,
+approval, approval status lookup, and idempotent full-order refund simulation.
+Real payment execution, full account/session management,
 re-review history, and duplicate-ticket handling remain future work.
 
 ### [Try the app!](https://agent-service-toolkit.streamlit.app/)

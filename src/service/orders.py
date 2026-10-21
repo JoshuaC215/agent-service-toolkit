@@ -1,19 +1,23 @@
-
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.settings import settings
+from db.access import require_staff
 from db.models import Order
 from db.repositories.order_repository import OrderRepository
 from db.session import get_db_session
 from schema.orders import (
+    MyOrdersQuery,
+    MyOrdersResponse,
     OrderCreate,
+    OrderOwnerUpdate,
     OrderResponse,
     OrderStatusUpdate,
 )
-
 
 router = APIRouter(
     prefix="/orders",
@@ -21,6 +25,19 @@ router = APIRouter(
 )
 
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
+
+
+@router.get("/me", response_model=MyOrdersResponse)
+async def list_my_orders(filters: Annotated[MyOrdersQuery, Query()], session: DbSession):
+    orders, has_more = await OrderRepository(session).list_mine(
+        limit=filters.limit, offset=filters.offset
+    )
+    return MyOrdersResponse(
+        orders=[OrderResponse.model_validate(order) for order in orders],
+        limit=filters.limit,
+        offset=filters.offset,
+        has_more=has_more,
+    )
 
 
 @router.get("/{order_id}", response_model=OrderResponse)
@@ -49,6 +66,7 @@ async def create_order(
     payload: OrderCreate,
     session: DbSession,
 ) -> OrderResponse:
+    require_staff()
     repository = OrderRepository(session)
 
     order = Order(**payload.model_dump())
@@ -80,6 +98,7 @@ async def update_order_status(
     payload: OrderStatusUpdate,
     session: DbSession,
 ) -> OrderResponse:
+    require_staff()
     repository = OrderRepository(session)
 
     order = await repository.get_by_id(order_id)
@@ -94,4 +113,20 @@ async def update_order_status(
     await session.commit()
     await session.refresh(order)
 
+    return OrderResponse.model_validate(order)
+
+
+@router.put("/{order_id}/owner", response_model=OrderResponse)
+async def assign_order_owner(order_id: str, payload: OrderOwnerUpdate, session: DbSession):
+    require_staff()
+    if payload.owner_id not in settings.CUSTOMER_ACCESS_KEYS:
+        raise HTTPException(422, "UNKNOWN_OWNER")
+    order = await session.scalar(select(Order).where(Order.order_id == order_id).with_for_update())
+    if order is None:
+        raise HTTPException(404, "ORDER_NOT_FOUND")
+    if order.owner_id not in (None, payload.owner_id):
+        raise HTTPException(409, "ORDER_ALREADY_ASSIGNED")
+    order.owner_id = payload.owner_id
+    await session.commit()
+    await session.refresh(order)
     return OrderResponse.model_validate(order)
