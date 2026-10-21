@@ -8,7 +8,7 @@ ENV UV_COMPILE_BYTECODE=1
 COPY pyproject.toml .
 COPY uv.lock .
 RUN pip install --no-cache-dir uv==0.12.5
-RUN uv sync --frozen --no-install-project --no-dev
+RUN uv sync --frozen --no-install-project --no-dev --extra local-rag
 
 COPY src/agents/ ./agents/
 COPY src/db/ ./db/
@@ -16,6 +16,7 @@ COPY src/core/ ./core/
 COPY src/memory/ ./memory/
 COPY src/schema/ ./schema/
 COPY src/service/ ./service/
+COPY knowledge/ ./knowledge/
 COPY src/run_service.py .
 
 CMD ["python", "run_service.py"]

@@ -23,34 +23,72 @@ services:
       - "8080:8080"
     env_file:
       - .env
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "8080"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/info"]
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os, urllib.request;
+          key = os.getenv('AUTH_SECRET');
+          headers = {'Authorization': 'Bearer ' + key} if key else {};
+          urllib.request.urlopen(urllib.request.Request('http://127.0.0.1:8080/info', headers=headers), timeout=5)
       interval: 5s
       timeout: 5s
       retries: 5
     # Volume mount of development-only credentials since compose watch doesn't sync ignored files and doesn't do initial sync when the service starts
     volumes:
       - ./privatecredentials:/privatecredentials
+      - policy_chroma_data:/app/data/policy_chroma
+      - ./data/embedding_models:/app/data/embedding_models:ro
     develop:
       watch:
         - path: src/agents/
           action: sync+restart
+          initial_sync: true
           target: /app/agents/
         - path: src/schema/
           action: sync+restart
+          initial_sync: true
           target: /app/schema/
         - path: src/service/
           action: sync+restart
+          initial_sync: true
           target: /app/service/
         - path: src/core/
           action: sync+restart
+          initial_sync: true
           target: /app/core/
         - path: src/memory/
           action: sync+restart
+          initial_sync: true
           target: /app/memory/
+        - path: src/db/
+          action: sync+restart
+          initial_sync: true
+          target: /app/db/
+        - path: src/run_service.py
+          action: sync+restart
+          initial_sync: true
+          target: /app/run_service.py
+        - path: knowledge/
+          action: sync+restart
+          initial_sync: true
+          target: /app/knowledge/
+        - path: pyproject.toml
+          action: rebuild
+        - path: uv.lock
+          action: rebuild
+        - path: docker/Dockerfile.service
+          action: rebuild
   streamlit_app:
     build:
       context: .
@@ -58,25 +96,44 @@ services:
     ports:
       - "8501:8501"
     depends_on:
-      - agent_service
+      agent_service:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8501/healthz"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=5)"]
       interval: 5s
       timeout: 5s
       retries: 5
     environment:
       - AGENT_URL=http://agent_service:8080
+      - AUTH_SECRET=${AUTH_SECRET:-}
+      - NO_PROXY=agent_service,localhost,127.0.0.1
+      - VOICE_STT_PROVIDER=
+      - VOICE_TTS_PROVIDER=
     develop:
       watch:
         - path: src/client/
           action: sync+restart
+          initial_sync: true
           target: /app/client/
         - path: src/schema/
           action: sync+restart
+          initial_sync: true
           target: /app/schema/
         - path: src/streamlit_app.py
           action: sync+restart
+          initial_sync: true
           target: /app/streamlit_app.py
+        - path: src/voice/
+          action: sync+restart
+          initial_sync: true
+          target: /app/voice/
+        - path: pyproject.toml
+          action: rebuild
+        - path: uv.lock
+          action: rebuild
+        - path: docker/Dockerfile.app
+          action: rebuild
 
 volumes:
   postgres_data:
+  policy_chroma_data:

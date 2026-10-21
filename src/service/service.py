@@ -45,6 +45,7 @@ from schema import (
 )
 from service.agui import router as agui_router
 from service.orders import router as orders_router
+from service.refund_approvals import router as refund_approvals_router
 from service.tickets import router as tickets_router
 from service.threads import list_user_threads
 from service.utils import (
@@ -127,6 +128,7 @@ router = APIRouter(dependencies=[Depends(verify_bearer)])
 router.include_router(agui_router)
 router.include_router(orders_router)
 router.include_router(tickets_router)
+router.include_router(refund_approvals_router)
 
 @router.get("/info")
 async def info() -> ServiceMetadata:

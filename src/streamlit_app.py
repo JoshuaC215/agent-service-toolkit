@@ -88,6 +88,17 @@ async def main() -> None:
         await asyncio.sleep(0.1)
         st.rerun()
 
+    load_dotenv()
+    workspace = st.sidebar.radio("工作区", ["智能客服", "人工审批"], key="workspace")
+    if workspace == "人工审批":
+        from client.approval_page import draw_approval_page
+
+        agent_url = os.getenv("AGENT_URL") or (
+            f"http://{os.getenv('HOST', '127.0.0.1')}:{os.getenv('PORT', '8080')}"
+        )
+        draw_approval_page(agent_url)
+        return
+
     # Get or create user ID
     user_id = get_or_create_user_id()
 

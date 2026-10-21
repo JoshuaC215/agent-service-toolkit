@@ -9,6 +9,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -119,4 +120,89 @@ class Ticket(Base):
 
     order: Mapped["Order"] = relationship(
         back_populates="tickets",
+    )
+
+    refund_approval: Mapped["RefundApproval | None"] = relationship(
+        back_populates="ticket",
+        uselist=False,
+    )
+
+class RefundApproval(Base):
+    __tablename__ = "refund_approvals"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "ticket_id",
+            name="uq_refund_approvals_ticket_id",
+        ),
+        CheckConstraint(
+            "status IN ('pending', 'approved', 'rejected')",
+            name="ck_refund_approvals_status",
+        ),
+        CheckConstraint(
+            """
+            (
+                status = 'pending'
+                AND reviewer_id IS NULL
+                AND reviewed_at IS NULL
+                AND reason IS NULL
+            )
+            OR
+            (
+                status IN ('approved', 'rejected')
+                AND reviewer_id IS NOT NULL
+                AND length(trim(reviewer_id)) > 0
+                AND reviewed_at IS NOT NULL
+                AND reason IS NOT NULL
+                AND length(trim(reason)) > 0
+            )
+            """,
+            name="ck_refund_approvals_review_fields",
+        ),
+    )
+
+    approval_id: Mapped[str] = mapped_column(
+        String(32),
+        primary_key=True,
+    )
+
+    ticket_id: Mapped[str] = mapped_column(
+        String(32),
+        ForeignKey(
+            "tickets.ticket_id",
+            name="fk_refund_approvals_ticket_id_tickets",
+        ),
+        nullable=False,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default="pending",
+        server_default=text("'pending'"),
+    )
+
+    reviewer_id: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+    )
+
+    reason: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
+
+    reviewed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    ticket: Mapped["Ticket"] = relationship(
+        back_populates="refund_approval",
     )
