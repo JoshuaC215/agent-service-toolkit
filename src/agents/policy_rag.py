@@ -52,6 +52,8 @@ class PolicyRAG:
         chunk_overlap: int = 80,
         min_score: float = 0.65,
         top_k: int = 3,
+        reranker=None,
+        fetch_k: int = 8,
     ):
         if not embedding_id.strip():
             raise ValueError("embedding_id must identify the provider and embedding model")
@@ -65,6 +67,10 @@ class PolicyRAG:
         self.embedding_id = embedding_id
         self.min_score = min_score
         self.top_k = top_k
+        if not 1 <= fetch_k <= 50:
+            raise ValueError("fetch_k must be between 1 and 50")
+        self.fetch_k = max(top_k, fetch_k)
+        self.reranker = reranker
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
@@ -120,7 +126,8 @@ class PolicyRAG:
             raise ValueError("Policy question must contain 1 to 2000 characters")
         with self._lock:
             store, count = self._prepare_index()
-            candidates = store.similarity_search_with_score(question, k=min(self.top_k, count))
+            limit = self.fetch_k if self.reranker else self.top_k
+            candidates = store.similarity_search_with_score(question, k=min(limit, count))
         evidence = []
         for document, distance in candidates:
             score = 1.0 - float(distance)
@@ -135,10 +142,13 @@ class PolicyRAG:
                     "score": round(min(1.0, max(0.0, score)), 4),
                 }
             )
+        if self.reranker is not None:
+            evidence = self.reranker.rank(question, evidence)[: self.top_k]
         return {
             "status": "ok" if evidence else "no_evidence",
             "found": bool(evidence),
             "demo_policy": True,
             "requires_human_approval": True,
             "evidence": evidence,
+            "retrieval_mode": "vector_rerank" if self.reranker else "vector",
         }

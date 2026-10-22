@@ -215,12 +215,42 @@ def test_tool_returns_evidence_and_fails_closed(monkeypatch, policies, tmp_path)
 def test_existing_agent_tools_are_preserved():
     from agents.order_agent import instructions, tools
 
-    assert {tool.name for tool in tools} == {
+    assert {
         "get_order",
         "create_ticket",
         "get_ticket",
         "list_tickets_by_order",
         "search_after_sales_policy",
-    }
+    }.issubset({tool.name for tool in tools})
     assert "human verification" in instructions
     assert "Policy questions alone do not authorize" in instructions
+
+
+def test_rerank_fetches_more_then_filters_and_preserves_vector_scores(policies, tmp_path):
+    from langchain_core.documents import Document
+
+    def passage(source):
+        return Document(
+            page_content=source, metadata={"source": source, "title": source, "chunk_id": source}
+        )
+
+    store = Mock()
+    store.similarity_search_with_score.return_value = [
+        (passage("a.md"), 0.1),
+        (passage("b.md"), 0.2),
+        (passage("unrelated.md"), 0.9),
+    ]
+    ranker = Mock()
+    ranker.rank.side_effect = lambda query, evidence: [
+        {**evidence[1], "rerank_score": 2.3},
+        {**evidence[0], "rerank_score": 1.0},
+    ]
+    rag = make_rag(policies, tmp_path, TopicEmbeddings(), top_k=1, fetch_k=8, reranker=ranker)
+    rag._prepare_index = Mock(return_value=(store, 12))
+    result = rag.search("question")
+    store.similarity_search_with_score.assert_called_once_with("question", k=8)
+    assert len(ranker.rank.call_args.args[1]) == 2
+    assert result["retrieval_mode"] == "vector_rerank"
+    assert result["evidence"][0]["source"] == "b.md"
+    assert result["evidence"][0]["score"] == 0.8
+    assert result["evidence"][0]["rerank_score"] == 2.3

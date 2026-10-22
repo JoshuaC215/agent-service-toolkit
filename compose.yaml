@@ -49,6 +49,7 @@ services:
       - ./privatecredentials:/privatecredentials
       - policy_chroma_data:/app/data/policy_chroma
       - ./data/embedding_models:/app/data/embedding_models:ro
+      - ./data/reranker_models:/app/data/reranker_models:ro
     develop:
       watch:
         - path: src/agents/

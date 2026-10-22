@@ -47,6 +47,14 @@ def get_policy_rag() -> PolicyRAG:
             google_api_key=settings.GOOGLE_API_KEY,
         )
         embedding_id = f"{provider}:{model}"
+    reranker = None
+    cache_dir = PROJECT_ROOT / settings.POLICY_RERANK_CACHE_DIR
+    if settings.POLICY_RERANK_MODE == "on" or (
+        settings.POLICY_RERANK_MODE == "auto" and (cache_dir / "model.json").exists()
+    ):
+        from agents.policy_reranker import LocalPolicyReranker
+
+        reranker = LocalPolicyReranker(cache_dir)
     return PolicyRAG(
         knowledge_dir=PROJECT_ROOT / Path(settings.POLICY_KNOWLEDGE_DIR),
         persist_dir=PROJECT_ROOT / Path(settings.POLICY_PERSIST_DIR),
@@ -54,6 +62,8 @@ def get_policy_rag() -> PolicyRAG:
         embedding_id=embedding_id,
         min_score=settings.POLICY_MIN_SCORE,
         top_k=settings.POLICY_TOP_K,
+        reranker=reranker,
+        fetch_k=max(settings.POLICY_TOP_K, settings.POLICY_FETCH_K),
         chunk_size=400 if provider == "local" else 600,
         chunk_overlap=60 if provider == "local" else 80,
     )
@@ -70,7 +80,7 @@ def search_after_sales_policy(question: str) -> dict:
     try:
         return get_policy_rag().search(question)
     except Exception as exc:
-        logger.warning(
+        logger.exception(
             "Policy retrieval unavailable (%s); no evidence supplied", type(exc).__name__
         )
         return {

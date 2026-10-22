@@ -101,6 +101,11 @@ class Settings(BaseSettings):
     POLICY_PERSIST_DIR: str = "data/policy_chroma"
     POLICY_MIN_SCORE: float = Field(default=0.55, ge=0, le=1)
     POLICY_TOP_K: int = Field(default=3, ge=1, le=10)
+    ORDER_AGENT_TRIAGE_ENABLED: bool = True
+    ORDER_AGENT_REVIEW_ENABLED: bool = True
+    POLICY_RERANK_MODE: Literal["off", "auto", "on"] = "auto"
+    POLICY_RERANK_CACHE_DIR: str = "data/reranker_models"
+    POLICY_FETCH_K: int = Field(default=8, ge=1, le=50)
 
     # If DEFAULT_MODEL is None, it will be set in model_post_init
     DEFAULT_MODEL: AllModelEnum | None = None  # type: ignore[assignment]

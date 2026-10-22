@@ -83,7 +83,7 @@ def inspect_trace(messages: list) -> tuple[dict[str, bool], list[dict], str]:
 async def run_verification(model_name: DeepseekModelName) -> bool:
     graph = graph_builder.compile(checkpointer=InMemorySaver(), interrupt_before=["tools"])
     config = RunnableConfig(
-        configurable={"thread_id": uuid4().hex, "model": model_name}, recursion_limit=12
+        configurable={"thread_id": uuid4().hex, "model": model_name}, recursion_limit=32
     )
     await graph.ainvoke({"messages": [HumanMessage(content=QUESTION)]}, config)
     for _ in range(3):
@@ -102,6 +102,33 @@ async def run_verification(model_name: DeepseekModelName) -> bool:
     if state.next:
         raise RuntimeError("Policy tool round limit reached")
     checks, evidence, answer = inspect_trace(state.values["messages"])
+    if settings.ORDER_AGENT_TRIAGE_ENABLED:
+        checks["Triage completed without fallback"] = state.values.get("triage_status") == "ok"
+    if settings.ORDER_AGENT_REVIEW_ENABLED:
+        checks["Independent review approved the answer"] = (
+            state.values.get("review_passed") is True
+            and state.values.get("review_status") == "passed"
+        )
+    print("\nWorkflow diagnostics:", flush=True)
+    print(
+        json.dumps(
+            {
+                key: state.values.get(key)
+                for key in (
+                    "triage_status",
+                    "route",
+                    "review_status",
+                    "review_attempts",
+                    "review_feedback",
+                )
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        flush=True,
+    )
+    if not state.values.get("review_passed"):
+        print("Rejected draft:\n" + state.values.get("draft", ""), flush=True)
     print("\nRetrieved evidence:", flush=True)
     print(json.dumps(evidence, ensure_ascii=False, indent=2), flush=True)
     print("\nDeepSeek final answer:\n" + answer, flush=True)

@@ -182,6 +182,7 @@ cython_debug/
 # Chroma db
 /data/policy_chroma/
 /data/embedding_models/
+/data/reranker_models/
 *.db
 *.sqlite3
 *.bin
