@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir uv==0.12.5
 RUN uv sync --frozen --no-install-project --no-dev
 
 COPY src/agents/ ./agents/
+COPY src/db/ ./db/
 COPY src/core/ ./core/
 COPY src/memory/ ./memory/
 COPY src/schema/ ./schema/

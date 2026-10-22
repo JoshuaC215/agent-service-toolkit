@@ -44,6 +44,8 @@ from schema import (
     UserThreadsInput,
 )
 from service.agui import router as agui_router
+from service.orders import router as orders_router
+from service.tickets import router as tickets_router
 from service.threads import list_user_threads
 from service.utils import (
     convert_message_content_to_string,
@@ -121,8 +123,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
 router = APIRouter(dependencies=[Depends(verify_bearer)])
 # AG-UI protocol endpoints inherit the same bearer auth - see service/agui.py
-router.include_router(agui_router)
 
+router.include_router(agui_router)
+router.include_router(orders_router)
+router.include_router(tickets_router)
 
 @router.get("/info")
 async def info() -> ServiceMetadata:
