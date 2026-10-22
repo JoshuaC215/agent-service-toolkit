@@ -13,6 +13,31 @@ This project offers a template for you to easily build and run your own agents u
 
 ## Overview
 
+### AgentOps after-sales policy RAG
+
+HelpPilot's reranking pipeline and documented triage/grounding-review design are
+adapted for the order agent. See [implementation and validation](docs/HelpPilot_Adaptation.md)
+and [third-party attribution](THIRD_PARTY_NOTICES.md) for what is reused, what is
+implemented locally, model setup, and operational differences.
+
+The `order-agent` includes demo policy retrieval alongside real order and ticket tools.
+See [after-sales RAG setup and validation](docs/After_Sales_RAG.md) for embedding configuration,
+offline tests, index versioning, and the boundary between policy evidence and refund approval.
+
+The order agent can explicitly submit refund tickets for human review and query
+approval status. The Streamlit **人工审批** workspace records staff decisions via
+separate credentials. See [refund approvals and Docker development](docs/Refund_Approvals.md)
+for setup, API routes, and validation. Approval does not execute a refund.
+
+Run the container development stack with `docker compose up --build --watch`.
+Code changes sync and restart services; dependency changes rebuild images.
+Existing PostgreSQL and Chroma data are preserved in named volumes.
+
+Current scope: demo policies, order/ticket tools, local policy retrieval, human
+approval, approval status lookup, and idempotent full-order refund simulation.
+Real payment execution, full account/session management,
+re-review history, and duplicate-ticket handling remain future work.
+
 ### [Try the app!](https://agent-service-toolkit.streamlit.app/)
 
 <a href="https://agent-service-toolkit.streamlit.app/"><img src="media/app_screenshot.png" width="600" alt="App screenshot"></a>

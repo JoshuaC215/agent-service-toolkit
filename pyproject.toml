@@ -58,7 +58,12 @@ dependencies = [
     "langchain-mcp-adapters>=0.3.0",
     "ddgs>=9.14.4",
     "ag-ui-langgraph~=0.0.42",
+    "sqlalchemy>=2.0,<3.0",
+    "alembic>=1.13,<2.0",
 ]
+
+[project.optional-dependencies]
+local-rag = ["sentence-transformers>=5.1,<7"]
 
 # Supply-chain cooldown: resolution only considers releases >=14 days old. Needs the
 # repo's pinned uv version (older uv ignores this and strips it from uv.lock on re-lock).

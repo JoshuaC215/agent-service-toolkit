@@ -8,7 +8,7 @@ from typing import Annotated, Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.routing import APIRoute
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from langchain_core._api import LangChainBetaWarning
@@ -44,6 +44,12 @@ from schema import (
     UserThreadsInput,
 )
 from service.agui import router as agui_router
+from service.orders import router as orders_router
+from service.identity import IdentityMiddleware, router as identity_router
+from db.access import AccessDenied, principal
+from db.conversation_access import check_conversation
+from service.refund_approvals import router as refund_approvals_router
+from service.tickets import router as tickets_router
 from service.threads import list_user_threads
 from service.utils import (
     convert_message_content_to_string,
@@ -119,10 +125,24 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(lifespan=lifespan, generate_unique_id_function=custom_generate_unique_id)
-router = APIRouter(dependencies=[Depends(verify_bearer)])
-# AG-UI protocol endpoints inherit the same bearer auth - see service/agui.py
-router.include_router(agui_router)
+app.add_middleware(IdentityMiddleware)
 
+
+@app.exception_handler(AccessDenied)
+async def access_error(request, exc: AccessDenied):
+    code = str(exc)
+    status_code = 401 if code == "LOGIN_REQUIRED" else (404 if code.endswith("NOT_FOUND") else 403)
+    return JSONResponse({"detail": code}, status_code=status_code)
+
+
+router = APIRouter(dependencies=[Depends(verify_bearer)])
+router.include_router(identity_router)
+# AG-UI protocol endpoints inherit the same bearer auth - see service/agui.py
+
+router.include_router(agui_router)
+router.include_router(orders_router)
+router.include_router(tickets_router)
+router.include_router(refund_approvals_router)
 
 @router.get("/info")
 async def info() -> ServiceMetadata:
@@ -145,7 +165,8 @@ async def _handle_input(
     """
     run_id = uuid7()
     thread_id = user_input.thread_id or str(uuid4())
-    user_id = user_input.user_id or str(uuid4())
+    user_id = principal().user_id
+    await check_conversation(thread_id, create=True)
 
     configurable = {"thread_id": thread_id, "user_id": user_id}
     if user_input.model is not None:
@@ -161,7 +182,7 @@ async def _handle_input(
 
     if user_input.agent_config:
         # Check for reserved keys (including 'model' even if not in configurable)
-        reserved_keys = {"thread_id", "user_id", "model"}
+        reserved_keys = {"thread_id", "user_id", "model", "checkpoint_id", "checkpoint_ns"}
         if overlap := reserved_keys & user_input.agent_config.keys():
             raise HTTPException(
                 status_code=422,
@@ -426,6 +447,7 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
 
     If agent_id is not provided, the default agent will be used.
     """
+    await check_conversation(input.thread_id)
     agent: AgentGraph = get_agent(agent_id)
     config = RunnableConfig(configurable={"thread_id": input.thread_id})
     try:
@@ -466,7 +488,7 @@ async def threads(
         return UserThreads(threads=[])
 
     try:
-        summaries = await list_user_threads(checkpointer, input.user_id, agent_id, input.limit)
+        summaries = await list_user_threads(checkpointer, principal().user_id, agent_id, input.limit)
     except Exception as e:
         logger.error(f"An exception occurred: {e}")
         raise HTTPException(status_code=500, detail="Unexpected error")

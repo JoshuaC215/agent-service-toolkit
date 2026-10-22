@@ -10,4 +10,7 @@ env
 venv
 .venv
 *.db
+data/policy_chroma/
+data/embedding_models/
+data/reranker_models/
 privatecredentials/*

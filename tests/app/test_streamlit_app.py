@@ -9,9 +9,12 @@ from schema import ChatHistory, ChatMessage, ThreadSummary, UserThreads
 from schema.models import OpenAIModelName
 
 
+
 def test_app_simple_non_streaming(mock_agent_client):
     """Test the full app - happy path"""
-    at = AppTest.from_file("../../src/streamlit_app.py").run()
+    at = AppTest.from_file(
+        "../../src/streamlit_app.py"
+    ).run(timeout=15)
 
     WELCOME_START = "Hello! I'm an AI agent. Ask me anything!"
     PROMPT = "Know any jokes?"
@@ -25,14 +28,14 @@ def test_app_simple_non_streaming(mock_agent_client):
     assert at.chat_message[0].markdown[0].value.startswith(WELCOME_START)
 
     at.sidebar.toggle[0].set_value(False)  # Use Streaming = False
-    at.chat_input[0].set_value(PROMPT).run()
+    at.chat_input[0].set_value(PROMPT).run(timeout=15)
     print(at)
+
     assert at.chat_message[0].avatar == "user"
     assert at.chat_message[0].markdown[0].value == PROMPT
     assert at.chat_message[1].avatar == "assistant"
     assert at.chat_message[1].markdown[0].value == RESPONSE
     assert not at.exception
-
 
 def test_app_settings(mock_agent_client):
     """Test the full app - happy path"""

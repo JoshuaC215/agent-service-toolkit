@@ -54,6 +54,7 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
+/tmp-inspect/
 htmlcov/
 .tox/
 .nox/
@@ -179,6 +180,9 @@ cython_debug/
 *.pdf
 
 # Chroma db
+/data/policy_chroma/
+/data/embedding_models/
+/data/reranker_models/
 *.db
 *.sqlite3
 *.bin

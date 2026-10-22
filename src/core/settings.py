@@ -1,6 +1,6 @@
 from enum import StrEnum
 from json import loads
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from dotenv import find_dotenv
 from pydantic import (
@@ -79,6 +79,8 @@ class Settings(BaseSettings):
     LOG_LEVEL: LogLevel = LogLevel.WARNING
 
     AUTH_SECRET: SecretStr | None = None
+    APPROVAL_REVIEWERS: dict[str, SecretStr] = Field(default_factory=dict)
+    CUSTOMER_ACCESS_KEYS: dict[str, SecretStr] = Field(default_factory=dict)
 
     OPENAI_API_KEY: SecretStr | None = None
     DEEPSEEK_API_KEY: SecretStr | None = None
@@ -91,6 +93,19 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str | None = None
     USE_FAKE_MODEL: bool = False
     OPENROUTER_API_KEY: SecretStr | None = None
+
+    POLICY_EMBEDDING_PROVIDER: Literal["local", "openai", "google"] = "local"
+    POLICY_EMBEDDING_MODEL: str | None = None
+    POLICY_LOCAL_CACHE_DIR: str = "data/embedding_models"
+    POLICY_KNOWLEDGE_DIR: str = "knowledge/after_sales"
+    POLICY_PERSIST_DIR: str = "data/policy_chroma"
+    POLICY_MIN_SCORE: float = Field(default=0.55, ge=0, le=1)
+    POLICY_TOP_K: int = Field(default=3, ge=1, le=10)
+    ORDER_AGENT_TRIAGE_ENABLED: bool = True
+    ORDER_AGENT_REVIEW_ENABLED: bool = True
+    POLICY_RERANK_MODE: Literal["off", "auto", "on"] = "auto"
+    POLICY_RERANK_CACHE_DIR: str = "data/reranker_models"
+    POLICY_FETCH_K: int = Field(default=8, ge=1, le=50)
 
     # If DEFAULT_MODEL is None, it will be set in model_post_init
     DEFAULT_MODEL: AllModelEnum | None = None  # type: ignore[assignment]
