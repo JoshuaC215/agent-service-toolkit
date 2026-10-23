@@ -37,7 +37,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v10.0.1
         with:
-          version: "0.12.5"
+          version: "0.13.5"
       - name: Install Playwright Chromium
         run: uv run --with playwright playwright install --with-deps chromium
       - name: Run live smoke test

@@ -58,6 +58,7 @@ dependencies = [
     "langchain-mcp-adapters>=0.3.0",
     "ddgs>=9.14.4",
     "ag-ui-langgraph~=0.0.42",
+    "certifi>=2026.10.19",
 ]
 
 # Supply-chain cooldown: resolution only considers releases >=14 days old. Needs the
@@ -65,6 +66,9 @@ dependencies = [
 # Policy and override procedure: .claude/skills/dependency-refresh/SKILL.md
 [tool.uv]
 exclude-newer = "14 days"
+
+[tool.uv.exclude-newer-package]
+certifi = "0 days"  # emSign CA removal (eMudhra incident); remove once >14 days old
 
 [dependency-groups]
 dev = [
