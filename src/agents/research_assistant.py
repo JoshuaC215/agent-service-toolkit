@@ -1,7 +1,8 @@
 from datetime import datetime
 from typing import Literal
+from uuid import uuid4
 
-from langchain_community.tools import DuckDuckGoSearchResults, OpenWeatherMapQueryRun
+from langchain_community.tools import OpenWeatherMapQueryRun
 from langchain_community.utilities import OpenWeatherMapAPIWrapper
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, SystemMessage
@@ -12,6 +13,7 @@ from langgraph.prebuilt import ToolNode
 
 from agents.safeguard import Safeguard, SafeguardOutput, SafetyAssessment
 from agents.tools import calculator
+from agents.web_search import get_search_tools
 from core import get_model, settings
 
 
@@ -23,10 +25,10 @@ class AgentState(MessagesState, total=False):
 
     safety: SafeguardOutput
     remaining_steps: RemainingSteps
+    search_session_id: str
 
 
-web_search = DuckDuckGoSearchResults(name="WebSearch")
-tools = [web_search, calculator]
+tools = [calculator]
 
 # Add weather tool if API key is set
 # Register for an API key at https://openweathermap.org/api/
@@ -51,8 +53,10 @@ instructions = f"""
     """
 
 
-def wrap_model(model: BaseChatModel) -> RunnableSerializable[AgentState, AIMessage]:
-    bound_model = model.bind_tools(tools)
+def wrap_model(
+    model: BaseChatModel, config: RunnableConfig
+) -> RunnableSerializable[AgentState, AIMessage]:
+    bound_model = model.bind_tools(get_search_tools(config) + tools)
     preprocessor = RunnableLambda(
         lambda state: [SystemMessage(content=instructions)] + state["messages"],
         name="StateModifier",
@@ -69,7 +73,7 @@ def format_safety_message(safety: SafeguardOutput) -> AIMessage:
 
 async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
     m = get_model(config["configurable"].get("model", settings.DEFAULT_MODEL))
-    model_runnable = wrap_model(m)
+    model_runnable = wrap_model(m, config)
     response = await model_runnable.ainvoke(state, config)
 
     if state["remaining_steps"] < 2 and response.tool_calls:
@@ -88,7 +92,11 @@ async def acall_model(state: AgentState, config: RunnableConfig) -> AgentState:
 async def safeguard_input(state: AgentState, config: RunnableConfig) -> AgentState:
     safeguard = Safeguard()
     safety_output = await safeguard.ainvoke(state["messages"])
-    return {"safety": safety_output, "messages": []}
+    return {
+        "safety": safety_output,
+        "messages": [],
+        "search_session_id": state.get("search_session_id") or str(uuid4()),
+    }
 
 
 async def block_unsafe_content(state: AgentState, config: RunnableConfig) -> AgentState:
@@ -96,10 +104,14 @@ async def block_unsafe_content(state: AgentState, config: RunnableConfig) -> Age
     return {"messages": [format_safety_message(safety)]}
 
 
+async def call_tools(state: AgentState, config: RunnableConfig) -> AgentState:
+    return await ToolNode(get_search_tools(config) + tools).ainvoke(state, config)
+
+
 # Define the graph
 agent = StateGraph(AgentState)
 agent.add_node("model", acall_model)
-agent.add_node("tools", ToolNode(tools))
+agent.add_node("tools", call_tools)
 agent.add_node("guard_input", safeguard_input)
 agent.add_node("block_unsafe_content", block_unsafe_content)
 agent.set_entry_point("guard_input")
