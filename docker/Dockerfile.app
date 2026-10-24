@@ -7,7 +7,7 @@ ENV UV_COMPILE_BYTECODE=1
 
 COPY pyproject.toml .
 COPY uv.lock .
-RUN pip install --no-cache-dir uv==0.12.5
+RUN pip install --no-cache-dir --upgrade "pip>=26.2.2" && pip install --no-cache-dir uv==0.13.5
 
 # Install only the dependencies needed for the client application
 # --frozen: Use exact versions from the lock file
