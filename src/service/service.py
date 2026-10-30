@@ -281,7 +281,7 @@ async def message_generator(
                     # special cases for using langgraph-supervisor library
                     if "supervisor" in node or "sub-agent" in node:
                         # the only tools that come from the actual agent are the handoff and handback tools
-                        if isinstance(update_messages[-1], ToolMessage):
+                        if update_messages and isinstance(update_messages[-1], ToolMessage):
                             if "sub-agent" in node and len(update_messages) > 1:
                                 # If this is a sub-agent, we want to keep the last 2 messages - the handback tool, and it's result
                                 update_messages = update_messages[-2:]
