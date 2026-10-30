@@ -439,7 +439,7 @@ async def history(input: ChatHistoryInput, agent_id: str = DEFAULT_AGENT) -> Cha
                 messages = messages_from_checkpoint(tup.checkpoint)
         if not messages:
             state_snapshot = await agent.aget_state(config=config)
-            messages = state_snapshot.values["messages"]
+            messages = state_snapshot.values.get("messages", [])
         chat_messages: list[ChatMessage] = [langchain_to_chat_message(m) for m in messages]
         return ChatHistory(messages=chat_messages)
     except Exception as e:
