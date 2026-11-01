@@ -79,7 +79,6 @@ dependencies = [
     { name = "langchain" },
     { name = "langchain-anthropic" },
     { name = "langchain-aws" },
-    { name = "langchain-chroma" },
     { name = "langchain-community" },
     { name = "langchain-core" },
     { name = "langchain-google-genai" },
@@ -110,6 +109,11 @@ dependencies = [
     { name = "streamlit" },
     { name = "tiktoken" },
     { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+rag = [
+    { name = "langchain-chroma" },
 ]
 
 [package.dev-dependencies]
@@ -145,7 +149,7 @@ requires-dist = [
     { name = "langchain", specifier = "~=1.4.6" },
     { name = "langchain-anthropic", specifier = "~=1.7.6" },
     { name = "langchain-aws", specifier = "~=1.9.0" },
-    { name = "langchain-chroma", specifier = "~=1.1.0" },
+    { name = "langchain-chroma", marker = "extra == 'rag'", specifier = "~=1.1.0" },
     { name = "langchain-community", specifier = "~=0.4.2" },
     { name = "langchain-core", specifier = "~=1.6.12" },
     { name = "langchain-google-genai", specifier = "~=4.4.2" },
@@ -177,6 +181,7 @@ requires-dist = [
     { name = "tiktoken", specifier = ">=0.13.0" },
     { name = "uvicorn", specifier = "~=0.54.0" },
 ]
+provides-extras = ["rag"]
 
 [package.metadata.requires-dev]
 client = [
