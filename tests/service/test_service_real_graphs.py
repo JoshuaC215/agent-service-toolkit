@@ -255,6 +255,7 @@ async def test_history_for_new_thread_is_empty(checkpointer) -> None:
         ]
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("node_name", ["supervisor", "research-sub-agent"])
 @pytest.mark.parametrize("update", [None, {}, {"messages": []}])
 async def test_stream_continues_after_empty_supervisor_update(node_name, update) -> None:
