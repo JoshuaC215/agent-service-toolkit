@@ -239,6 +239,23 @@ async def test_stream_forwards_custom_data() -> None:
 
 
 @pytest.mark.asyncio
+async def test_history_for_new_thread_is_empty(checkpointer) -> None:
+    async with client_for({"counting-agent": build_counting_agent(checkpointer)}) as client:
+        response = await client.post("/counting-agent/history", json={"thread_id": "new-thread"})
+        assert response.status_code == 200
+        assert response.json() == {"messages": []}
+
+        response = await client.post(
+            "/counting-agent/invoke", json={"message": "hi", "thread_id": "new-thread"}
+        )
+        assert response.status_code == 200
+        assert await history_of(client, "/counting-agent/history", "new-thread") == [
+            ("human", "hi"),
+            ("ai", "heard 1 messages"),
+        ]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("node_name", ["supervisor", "research-sub-agent"])
 @pytest.mark.parametrize("update", [None, {}, {"messages": []}])
 async def test_stream_continues_after_empty_supervisor_update(node_name, update) -> None:
