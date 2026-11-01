@@ -16,8 +16,8 @@ def mock_agent_client(mock_env):
             AgentInfo(key="test-agent", description="Test agent"),
             AgentInfo(key="chatbot", description="Chatbot"),
         ],
-        default_model=OpenAIModelName.GPT_5_NANO,
-        models=[OpenAIModelName.GPT_5_NANO, OpenAIModelName.GPT_5_MINI],
+        default_model=OpenAIModelName.GPT_6_LUNA,
+        models=[OpenAIModelName.GPT_6_LUNA, OpenAIModelName.GPT_61_TERRA],
     )
 
     with (

@@ -49,7 +49,7 @@ class UserInput(BaseModel):
         title="Model",
         description="LLM Model to use for the agent. Defaults to the default model set in the settings of the service.",
         default=None,
-        examples=[OpenAIModelName.GPT_5_NANO, AnthropicModelName.HAIKU_45],
+        examples=[OpenAIModelName.GPT_6_LUNA, AnthropicModelName.HAIKU_55],
     )
     thread_id: str | None = Field(
         description="Thread ID to persist and continue a multi-turn conversation.",
