@@ -27,7 +27,6 @@ dependencies = [
     "langchain-community ~=0.4.2",
     "langchain-anthropic ~=1.7.6",
     "langchain-aws ~=1.9.0",
-    "langchain-chroma ~=1.1.0",
     "langchain-google-genai ~=4.4.2",
     "langchain-google-vertexai>=3.2.4",
     "langchain-groq ~=1.1.3",
@@ -61,6 +60,9 @@ dependencies = [
     "certifi>=2026.10.19",
 ]
 
+[project.optional-dependencies]
+rag = ["langchain-chroma ~=1.1.0"]
+
 # Supply-chain cooldown: resolution only considers releases >=14 days old. Needs the
 # repo's pinned uv version (older uv ignores this and strips it from uv.lock on re-lock).
 # Policy and override procedure: .claude/skills/dependency-refresh/SKILL.md
@@ -69,6 +71,10 @@ exclude-newer = "14 days"
 
 [tool.uv.exclude-newer-package]
 certifi = "0 days"  # emSign CA removal (eMudhra incident); remove once >14 days old
+pypdf = "0 days"  # security fixes; remove once 6.21.4 is >14 days old
+pyasn1 = "0 days"  # security fixes; remove once 0.6.5 is >14 days old
+virtualenv = "0 days"  # security fix; remove once the locked version is >14 days old
+streamlit = "0 days"  # 1.66.1 lifts the pillow<13 cap; remove once >14 days old
 
 [dependency-groups]
 dev = [

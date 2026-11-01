@@ -2,7 +2,6 @@ import math
 import re
 
 import numexpr
-from langchain_chroma import Chroma
 from langchain_core.tools import BaseTool, tool
 from langchain_openai import OpenAIEmbeddings
 
@@ -48,6 +47,13 @@ def format_contexts(docs):
 
 
 def load_chroma_db():
+    try:
+        from langchain_chroma import Chroma  # type: ignore[import-not-found]
+    except ImportError as e:
+        raise RuntimeError(
+            "The RAG assistant needs the optional 'rag' extra: uv sync --frozen --extra rag"
+        ) from e
+
     # Create the embedding function for our project description database
     try:
         embeddings = OpenAIEmbeddings()

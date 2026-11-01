@@ -2,6 +2,16 @@
 
 You can build a RAG assistant using a Chroma database.
 
+## Installing the RAG extra
+
+ChromaDB is an optional dependency, so it is not installed by default. Install it with:
+
+```sh
+uv sync --frozen --extra rag
+```
+
+Chroma is used in embedded mode, reading a local folder. If you instead point it at a standalone Chroma server, keep that server off untrusted networks and keep it patched.
+
 ## Setting up Chroma
 
 To create a Chroma database:
