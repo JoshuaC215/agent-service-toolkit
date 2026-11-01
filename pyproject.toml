@@ -69,6 +69,10 @@ exclude-newer = "14 days"
 
 [tool.uv.exclude-newer-package]
 certifi = "0 days"  # emSign CA removal (eMudhra incident); remove once >14 days old
+pypdf = "0 days"  # security fixes; remove once 6.21.4 is >14 days old
+pyasn1 = "0 days"  # security fixes; remove once 0.6.5 is >14 days old
+virtualenv = "0 days"  # security fix; remove once the locked version is >14 days old
+streamlit = "0 days"  # 1.66.1 lifts the pillow<13 cap; remove once >14 days old
 
 [dependency-groups]
 dev = [
