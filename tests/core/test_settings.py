@@ -56,7 +56,7 @@ def test_settings_with_anthropic_key():
     with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test_key"}, clear=True):
         settings = Settings(_env_file=None)
         assert settings.ANTHROPIC_API_KEY == SecretStr("test_key")
-        assert settings.DEFAULT_MODEL == AnthropicModelName.HAIKU_45
+        assert settings.DEFAULT_MODEL == AnthropicModelName.HAIKU_55
         assert settings.AVAILABLE_MODELS == set(AnthropicModelName)
 
 

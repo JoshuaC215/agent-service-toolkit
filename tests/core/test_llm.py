@@ -28,35 +28,14 @@ def test_get_model_openai():
         assert model.streaming is True
 
 
-def test_get_model_anthropic():
+@pytest.mark.parametrize("name", list(AnthropicModelName))
+def test_get_model_anthropic_omits_temperature(name):
     with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test_key"}):
-        model = get_model(AnthropicModelName.HAIKU_45)
+        model = get_model(name)
         assert isinstance(model, ChatAnthropic)
-        assert model.model == "claude-haiku-4-5"
-        assert model.temperature == 0.5
+        assert model.model == name.value
+        assert model.temperature is None
         assert model.streaming is True
-
-
-def test_get_model_anthropic_sonnet_5_omits_temperature():
-    # Claude Sonnet 5 rejects non-default sampling parameters with a 400 error,
-    # so get_model must not pass temperature for this model.
-    with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test_key"}):
-        model = get_model(AnthropicModelName.SONNET_5)
-        assert isinstance(model, ChatAnthropic)
-        assert model.model == "claude-sonnet-5"
-        assert model.streaming is True
-
-
-def test_get_model_anthropic_5_5_omits_temperature():
-    with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test_key"}):
-        for name, value in (
-            (AnthropicModelName.SONNET_55, "claude-sonnet-5-5"),
-            (AnthropicModelName.HAIKU_55, "claude-haiku-5-5"),
-        ):
-            model = get_model(name)
-            assert isinstance(model, ChatAnthropic)
-            assert model.model == value
-            assert model.temperature is None
 
 
 def test_get_model_groq():

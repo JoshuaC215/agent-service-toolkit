@@ -191,7 +191,7 @@ class Settings(BaseSettings):
                     self.AVAILABLE_MODELS.update(set(DeepseekModelName))
                 case Provider.ANTHROPIC:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = AnthropicModelName.HAIKU_45
+                        self.DEFAULT_MODEL = AnthropicModelName.HAIKU_55
                     self.AVAILABLE_MODELS.update(set(AnthropicModelName))
                 case Provider.GOOGLE:
                     if self.DEFAULT_MODEL is None:
