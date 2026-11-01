@@ -119,10 +119,9 @@ product decision (e.g. adding a whole new pricing tier), not a freshness update.
      `global.` (routes dynamically, region-agnostic — the best fit for a catalog
      value with no region context) and note in the PR that single-region
      deployments not enrolled in Global CRIS should swap the prefix for their geo.
-  2. Bedrock inherits the same **sampling-parameter restrictions** as the direct
-     Anthropic API — e.g. a Sonnet-5-class model rejects `temperature`. If you
-     point a Bedrock entry at such a model, mirror the no-`temperature` branch
-     that already exists for it in `llm.py`'s Anthropic and Bedrock dispatch.
+  2. Bedrock Claude models inherit the direct Anthropic API behavior: the catalog is
+     Claude 5 only, and `llm.py` omits `temperature` for every Anthropic and Bedrock
+     model because Claude 5 rejects non-default sampling parameters (400).
   If AWS credentials happen to be present, `boto3.client("bedrock").list_foundation_models()`
   is the fastest way to confirm real IDs — but note that Bedrock access is a
   separate enablement from plain AWS creds, so this can fail with an auth error
@@ -135,7 +134,7 @@ product decision (e.g. adding a whole new pricing tier), not a freshness update.
     deployment-map sample and the ~7 Azure cases in `tests/core/test_settings.py`.
   - `llm.py` hardcodes `temperature=0.5` for the Azure path, but Azure's GPT-5-era
     **reasoning** variants reject `temperature` (400). If you move Azure onto one,
-    add a no-`temperature` branch like the Anthropic/Bedrock Sonnet-5 handling.
+    omit `temperature` for those models.
   - Changing an Azure enum value is a **breaking change** to every user's
     deployment map (they name deployments after these keys). Treat an Azure
     generation bump as its own reviewed change, and flag the deployment-map break
