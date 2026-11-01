@@ -236,3 +236,28 @@ async def test_stream_forwards_custom_data() -> None:
         assert [m["type"] for m in messages] == ["custom", "ai"]
         assert messages[0]["custom_data"] == {"status": "running"}
         assert messages[1]["content"] == "all done"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("node_name", ["supervisor", "research-sub-agent"])
+@pytest.mark.parametrize("update", [None, {}, {"messages": []}])
+async def test_stream_continues_after_empty_supervisor_update(node_name, update) -> None:
+    async def no_messages(state: MessagesState):
+        return update
+
+    graph = StateGraph(MessagesState)
+    graph.add_node(node_name, no_messages)
+    graph.add_node("finished", finished)
+    graph.set_entry_point(node_name)
+    graph.add_edge(node_name, "finished")
+    graph.add_edge("finished", END)
+
+    async with client_for(
+        {"empty-update-agent": graph.compile(checkpointer=MemorySaver())}
+    ) as client:
+        events = await stream_events(
+            client, "/empty-update-agent/stream", {"message": "hi", "thread_id": "t"}
+        )
+
+        assert [event["type"] for event in events] == ["message"]
+        assert streamed_messages(events) == [("ai", "all done")]
