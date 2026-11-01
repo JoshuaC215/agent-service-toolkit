@@ -253,3 +253,27 @@ async def test_history_for_new_thread_is_empty(checkpointer) -> None:
             ("human", "hi"),
             ("ai", "heard 1 messages"),
         ]
+
+
+@pytest.mark.parametrize("node_name", ["supervisor", "research-sub-agent"])
+@pytest.mark.parametrize("update", [None, {}, {"messages": []}])
+async def test_stream_continues_after_empty_supervisor_update(node_name, update) -> None:
+    async def no_messages(state: MessagesState):
+        return update
+
+    graph = StateGraph(MessagesState)
+    graph.add_node(node_name, no_messages)
+    graph.add_node("finished", finished)
+    graph.set_entry_point(node_name)
+    graph.add_edge(node_name, "finished")
+    graph.add_edge("finished", END)
+
+    async with client_for(
+        {"empty-update-agent": graph.compile(checkpointer=MemorySaver())}
+    ) as client:
+        events = await stream_events(
+            client, "/empty-update-agent/stream", {"message": "hi", "thread_id": "t"}
+        )
+
+        assert [event["type"] for event in events] == ["message"]
+        assert streamed_messages(events) == [("ai", "all done")]

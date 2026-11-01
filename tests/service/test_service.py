@@ -70,7 +70,7 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     """Test that the model parameter is correctly passed to the agent if specified."""
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is sunny."
-    CUSTOM_MODEL = OpenAIModelName.GPT_5_MINI
+    CUSTOM_MODEL = OpenAIModelName.GPT_61_TERRA
     mock_agent.ainvoke.return_value = [("values", {"messages": [AIMessage(content=ANSWER)]})]
 
     response = test_client.post("/invoke", json={"message": QUESTION, "model": CUSTOM_MODEL})
@@ -87,7 +87,7 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     assert output.content == ANSWER
 
     # Verify a valid enum outside the configured allowlist returns a 400.
-    unavailable_model = AnthropicModelName.SONNET_45
+    unavailable_model = AnthropicModelName.SONNET_55
     response = test_client.post("/invoke", json={"message": QUESTION, "model": unavailable_model})
     assert response.status_code == 400
     assert "not available" in response.json()["detail"]
@@ -99,7 +99,7 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
 
 
 def test_invoke_no_model_param_uses_none_default(test_client, mock_agent) -> None:
-    """Test that when no model is specified, UserInput defaults to None and isn't passed to the runnable config (not hardcoded gpt-5-nano)."""
+    """Test that when no model is specified, UserInput defaults to None and isn't passed to the runnable config (not hardcoded gpt-6-luna)."""
     QUESTION = "What is the weather in Tokyo?"
     ANSWER = "The weather in Tokyo is sunny."
     mock_agent.ainvoke.return_value = [("values", {"messages": [AIMessage(content=ANSWER)]})]
@@ -143,7 +143,7 @@ def test_invoke_custom_agent_config(test_client, mock_agent) -> None:
     assert output.content == ANSWER
 
     # Verify a reserved key in agent_config throws a validation error
-    INVALID_CONFIG = {"model": "gpt-5-nano"}
+    INVALID_CONFIG = {"model": "gpt-6-luna"}
     response = test_client.post(
         "/invoke", json={"message": QUESTION, "agent_config": INVALID_CONFIG}
     )
@@ -424,8 +424,8 @@ def test_info(test_client, mock_settings) -> None:
 
     base_agent = Agent(description="A base agent.", graph_like=None)
     mock_settings.AUTH_SECRET = None
-    mock_settings.DEFAULT_MODEL = OpenAIModelName.GPT_5_NANO
-    mock_settings.AVAILABLE_MODELS = {OpenAIModelName.GPT_5_NANO, OpenAIModelName.GPT_5_MINI}
+    mock_settings.DEFAULT_MODEL = OpenAIModelName.GPT_6_LUNA
+    mock_settings.AVAILABLE_MODELS = {OpenAIModelName.GPT_6_LUNA, OpenAIModelName.GPT_61_TERRA}
     with patch.dict("agents.agents.agents", {"base-agent": base_agent}, clear=True):
         response = test_client.get("/info")
         assert response.status_code == 200
@@ -436,5 +436,5 @@ def test_info(test_client, mock_settings) -> None:
     assert output.agents[0].key == "base-agent"
     assert output.agents[0].description == "A base agent."
 
-    assert output.default_model == OpenAIModelName.GPT_5_NANO
-    assert output.models == [OpenAIModelName.GPT_5_MINI, OpenAIModelName.GPT_5_NANO]
+    assert output.default_model == OpenAIModelName.GPT_6_LUNA
+    assert output.models == [OpenAIModelName.GPT_6_LUNA, OpenAIModelName.GPT_61_TERRA]
