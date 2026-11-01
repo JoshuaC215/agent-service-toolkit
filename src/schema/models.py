@@ -38,7 +38,7 @@ class AzureOpenAIModelName(StrEnum):
 class DeepseekModelName(StrEnum):
     """https://api-docs.deepseek.com/quick_start/pricing"""
 
-    DEEPSEEK_V4_FLASH = "deepseek-v4-flash"
+    DEEPSEEK_FLASH = "deepseek-flash"
     DEEPSEEK_V4_PRO = "deepseek-v4-pro"
 
 
@@ -46,8 +46,9 @@ class AnthropicModelName(StrEnum):
     """https://platform.claude.com/docs/en/docs/about-claude/models"""
 
     HAIKU_45 = "claude-haiku-4-5"
-    SONNET_45 = "claude-sonnet-4-5"
+    HAIKU_55 = "claude-haiku-5-5"
     SONNET_5 = "claude-sonnet-5"
+    SONNET_55 = "claude-sonnet-5-5"
 
 
 class GoogleModelName(StrEnum):
@@ -59,6 +60,7 @@ class GoogleModelName(StrEnum):
     GEMINI_36_FLASH = "gemini-3.6-flash"
     GEMINI_37_FLASH = "gemini-3.7-flash"
     GEMINI_38_FLASH = "gemini-3.8-flash"
+    GEMINI_4_ARGON = "gemini-4-argon"
     # gemini-3-pro-preview was shut down 2026-03-09; 3.1 is the current preview-tier pro model.
     GEMINI_31_PRO_PREVIEW = "gemini-3.1-pro-preview"
 
@@ -91,6 +93,7 @@ class AWSModelName(StrEnum):
 
     # Values are global cross-region inference profile IDs; latest Claude on Bedrock rejects bare on-demand model IDs. Single-region deployments may need a us./eu. prefix instead.
     BEDROCK_HAIKU = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+    BEDROCK_HAIKU_55 = "global.anthropic.claude-haiku-5-5"
     BEDROCK_SONNET = "global.anthropic.claude-sonnet-5"
 
 

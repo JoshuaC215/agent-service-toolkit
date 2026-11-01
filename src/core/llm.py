@@ -106,10 +106,14 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             openai_api_key=settings.DEEPSEEK_API_KEY,
         )
     if model_name in AnthropicModelName:
-        if model_name == AnthropicModelName.SONNET_5:
-            # Claude Sonnet 5 rejects non-default sampling parameters (temperature,
-            # top_p, top_k) with a 400 error -- adaptive thinking is on by default
-            # instead. See https://docs.anthropic.com/en/docs/about-claude/models
+        if model_name in (
+            AnthropicModelName.SONNET_5,
+            AnthropicModelName.SONNET_55,
+            AnthropicModelName.HAIKU_55,
+        ):
+            # Claude 5-generation models reject non-default sampling parameters
+            # (temperature, top_p, top_k) with a 400 error -- adaptive thinking is on
+            # by default instead. See https://docs.anthropic.com/en/docs/about-claude/models
             return ChatAnthropic(model_name=api_model_name, streaming=True)
         return ChatAnthropic(model_name=api_model_name, temperature=0.5, streaming=True)
     if model_name in GoogleModelName:
@@ -121,8 +125,8 @@ def get_model(model_name: AllModelEnum, /) -> ModelT:
             return ChatGroq(model=api_model_name, temperature=0.0)  # type: ignore[call-arg]
         return ChatGroq(model=api_model_name, temperature=0.5)  # type: ignore[call-arg]
     if model_name in AWSModelName:
-        if model_name == AWSModelName.BEDROCK_SONNET:
-            # Sonnet 5 rejects non-default sampling params (400); omit temperature.
+        if model_name in (AWSModelName.BEDROCK_SONNET, AWSModelName.BEDROCK_HAIKU_55):
+            # Claude 5-generation models reject non-default sampling params (400); omit temperature.
             return ChatBedrock(model=api_model_name)
         return ChatBedrock(model=api_model_name, temperature=0.5)
     if model_name in OllamaModelName:

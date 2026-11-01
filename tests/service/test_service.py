@@ -87,7 +87,7 @@ def test_invoke_model_param(test_client, mock_agent) -> None:
     assert output.content == ANSWER
 
     # Verify a valid enum outside the configured allowlist returns a 400.
-    unavailable_model = AnthropicModelName.SONNET_45
+    unavailable_model = AnthropicModelName.SONNET_55
     response = test_client.post("/invoke", json={"message": QUESTION, "model": unavailable_model})
     assert response.status_code == 400
     assert "not available" in response.json()["detail"]

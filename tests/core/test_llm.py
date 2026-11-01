@@ -47,6 +47,18 @@ def test_get_model_anthropic_sonnet_5_omits_temperature():
         assert model.streaming is True
 
 
+def test_get_model_anthropic_5_5_omits_temperature():
+    with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test_key"}):
+        for name, value in (
+            (AnthropicModelName.SONNET_55, "claude-sonnet-5-5"),
+            (AnthropicModelName.HAIKU_55, "claude-haiku-5-5"),
+        ):
+            model = get_model(name)
+            assert isinstance(model, ChatAnthropic)
+            assert model.model == value
+            assert model.temperature is None
+
+
 def test_get_model_groq():
     with patch.dict(os.environ, {"GROQ_API_KEY": "test_key"}):
         model = get_model(GroqModelName.GPT_OSS_20B)
