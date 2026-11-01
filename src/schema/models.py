@@ -19,12 +19,8 @@ class Provider(StrEnum):
 class OpenAIModelName(StrEnum):
     """https://developers.openai.com/api/docs/models"""
 
-    GPT_5_NANO = "gpt-5-nano"
-    GPT_5_MINI = "gpt-5-mini"
-    GPT_5_1 = "gpt-5.1"
-    GPT_56_LUNA = "gpt-5.6-luna"
-    GPT_56_TERRA = "gpt-5.6-terra"
-    GPT_56_SOL = "gpt-5.6-sol"
+    GPT_6_LUNA = "gpt-6-luna"
+    GPT_61_TERRA = "gpt-6.1-terra"
 
 
 class AzureOpenAIModelName(StrEnum):

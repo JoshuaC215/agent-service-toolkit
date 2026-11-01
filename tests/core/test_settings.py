@@ -48,7 +48,7 @@ def test_settings_with_openai_key():
     with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}, clear=True):
         settings = Settings(_env_file=None)
         assert settings.OPENAI_API_KEY == SecretStr("test_key")
-        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_5_NANO
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_6_LUNA
         assert settings.AVAILABLE_MODELS == set(OpenAIModelName)
 
 
@@ -91,7 +91,7 @@ def test_settings_with_multiple_api_keys():
         assert settings.OPENAI_API_KEY == SecretStr("test_openai_key")
         assert settings.ANTHROPIC_API_KEY == SecretStr("test_anthropic_key")
         # When multiple providers are available, OpenAI should be the default
-        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_5_NANO
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_6_LUNA
         # Available models should include exactly all OpenAI and Anthropic models
         expected_models = set(OpenAIModelName)
         expected_models.update(set(AnthropicModelName))
@@ -131,8 +131,8 @@ def test_settings_explicit_default_model_overrides_fake():
         {"USE_FAKE_MODEL": "true", "OPENAI_API_KEY": "test_openai_key"},
         clear=True,
     ):
-        settings = Settings(_env_file=None, DEFAULT_MODEL=OpenAIModelName.GPT_5_NANO)
-        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_5_NANO
+        settings = Settings(_env_file=None, DEFAULT_MODEL=OpenAIModelName.GPT_6_LUNA)
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_6_LUNA
 
 
 def test_settings_base_url():
@@ -179,7 +179,7 @@ def test_settings_with_both_openai_and_azure():
         assert settings.OPENAI_API_KEY == SecretStr("test_openai_key")
         assert settings.AZURE_OPENAI_API_KEY == SecretStr("test_azure_key")
         # When multiple providers are available, OpenAI should be the default
-        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_5_NANO
+        assert settings.DEFAULT_MODEL == OpenAIModelName.GPT_6_LUNA
         # Available models should include both OpenAI and Azure OpenAI models
         expected_models = set(OpenAIModelName)
         expected_models.update(set(AzureOpenAIModelName))

@@ -22,9 +22,9 @@ from schema.models import (
 
 def test_get_model_openai():
     with patch.dict(os.environ, {"OPENAI_API_KEY": "test_key"}):
-        model = get_model(OpenAIModelName.GPT_5_NANO)
+        model = get_model(OpenAIModelName.GPT_6_LUNA)
         assert isinstance(model, ChatOpenAI)
-        assert model.model_name == "gpt-5-nano"
+        assert model.model_name == "gpt-6-luna"
         assert model.streaming is True
 
 

@@ -179,7 +179,7 @@ class Settings(BaseSettings):
             match provider:
                 case Provider.OPENAI:
                     if self.DEFAULT_MODEL is None:
-                        self.DEFAULT_MODEL = OpenAIModelName.GPT_5_NANO
+                        self.DEFAULT_MODEL = OpenAIModelName.GPT_6_LUNA
                     self.AVAILABLE_MODELS.update(set(OpenAIModelName))
                 case Provider.OPENAI_COMPATIBLE:
                     if self.DEFAULT_MODEL is None:
