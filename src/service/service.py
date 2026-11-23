@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import json
 import logging
@@ -240,6 +241,52 @@ async def invoke(user_input: UserInput, agent_id: str = DEFAULT_AGENT) -> ChatMe
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
+_SSE_PING = ": ping\n\n"
+_KEEP_ALIVE_INTERVAL = 15.0
+_STREAM_QUEUE_MAXSIZE = 1
+
+
+async def _agent_stream_with_keepalive(
+    agent: AgentGraph,
+    kwargs: dict[str, Any],
+    interval: float = _KEEP_ALIVE_INTERVAL,
+    queue_size: int = _STREAM_QUEUE_MAXSIZE,
+) -> AsyncGenerator[Any | str, None]:
+    """Yield agent events while keeping quiet SSE connections alive."""
+    if interval <= 0:
+        raise ValueError("interval must be greater than zero")
+    if queue_size <= 0:
+        raise ValueError("queue_size must be greater than zero")
+
+    queue: asyncio.Queue[Any] = asyncio.Queue(maxsize=queue_size)
+
+    async def produce() -> None:
+        async for event in agent.astream(  # type: ignore[no-matching-overload]
+            **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
+        ):
+            await queue.put(event)
+
+    producer_task = asyncio.create_task(produce())
+    try:
+        while True:
+            if producer_task.done() and queue.empty():
+                producer_task.result()
+                break
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=interval)
+            except TimeoutError:
+                if producer_task.done() and queue.empty():
+                    producer_task.result()
+                    break
+                yield _SSE_PING
+            else:
+                yield event
+    finally:
+        if not producer_task.done():
+            producer_task.cancel()
+        await asyncio.gather(producer_task, return_exceptions=True)
+
+
 async def message_generator(
     user_input: StreamInput, agent_id: str = DEFAULT_AGENT
 ) -> AsyncGenerator[str, None]:
@@ -253,9 +300,10 @@ async def message_generator(
 
     try:
         # Process streamed events from the graph and yield messages over the SSE stream.
-        async for stream_event in agent.astream(  # type: ignore[no-matching-overload]
-            **kwargs, stream_mode=["updates", "messages", "custom"], subgraphs=True
-        ):
+        async for stream_event in _agent_stream_with_keepalive(agent, kwargs):
+            if stream_event == _SSE_PING:
+                yield _SSE_PING
+                continue
             if not isinstance(stream_event, tuple):
                 continue
             # Handle different stream event structures based on subgraphs
