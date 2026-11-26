@@ -399,7 +399,7 @@ async def stream(user_input: StreamInput, agent_id: str = DEFAULT_AGENT) -> Stre
 
 
 @router.post("/feedback")
-async def feedback(feedback: Feedback) -> FeedbackResponse:
+def feedback(feedback: Feedback) -> FeedbackResponse:
     """
     Record feedback for a run to LangSmith.
 
@@ -475,7 +475,7 @@ async def threads(
 
 
 @app.get("/health")
-async def health_check():
+def health_check():
     """Health check endpoint."""
 
     health_status = {"status": "ok"}

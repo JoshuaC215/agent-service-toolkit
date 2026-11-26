@@ -1,6 +1,10 @@
+import asyncio
 import json
+import threading
+import time
 from unittest.mock import AsyncMock, patch
 
+import httpx
 import langsmith
 import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage
@@ -9,6 +13,7 @@ from langgraph.types import Interrupt, StateSnapshot
 from agents.agents import Agent
 from schema import ChatHistory, ChatMessage, ServiceMetadata
 from schema.models import AnthropicModelName, OpenAIModelName
+from service import app
 
 
 def test_invoke(test_client, mock_agent) -> None:
@@ -188,6 +193,32 @@ def test_feedback(mock_client: langsmith.Client, test_client) -> None:
         key="human-feedback-stars",
         score=0.8,
     )
+
+
+@pytest.mark.asyncio
+@patch("service.service.LangsmithClient")
+async def test_feedback_does_not_block_event_loop(mock_client: langsmith.Client) -> None:
+    """The LangSmith client is sync, so a slow upload must not stall other requests."""
+    feedback_started = threading.Event()
+
+    def slow_create_feedback(**kwargs):
+        feedback_started.set()
+        time.sleep(0.5)
+
+    mock_client.return_value.create_feedback.side_effect = slow_create_feedback
+    body = {
+        "run_id": "847c6285-8fc9-4560-a83f-4e6285809254",
+        "key": "human-feedback-stars",
+        "score": 0.8,
+    }
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        feedback_task = asyncio.create_task(client.post("/feedback", json=body))
+        await asyncio.to_thread(feedback_started.wait, 5)
+        info_response = await client.get("/info")
+        assert info_response.status_code == 200
+        assert not feedback_task.done()
+        assert (await feedback_task).status_code == 200
 
 
 def test_history(test_client, mock_agent) -> None:
